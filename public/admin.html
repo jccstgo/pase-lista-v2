@@ -1,4 +1,936 @@
-<!DOCTYPE html>
+<p style="color: #666;">Permite que supervisores con claves especiales puedan saltarse las restricciones de ubicación y dispositivo.</p>
+                        </div>
+
+                        <button type="submit" class="btn" id="saveRestrictionsBtn">Guardar Configuración</button>
+                    </form>
+
+                    <div class="message" id="restrictionsMessage"></div>
+
+                    <!-- Gestión de Claves Administrativas -->
+                    <div style="margin-top: 40px;">
+                        <h3>🔑 Gestión de Claves Administrativas</h3>
+                        <div style="background: white; border-radius: 8px; padding: 20px; margin-top: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h4>Claves Activas</h4>
+                                <button class="btn btn-success btn-small" onclick="showCreateKeyForm()">+ Nueva Clave</button>
+                            </div>
+
+                            <div id="createKeyForm" class="hidden" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                <h4>Crear Nueva Clave</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="newAdminKey">Clave:</label>
+                                        <input type="text" id="newAdminKey" placeholder="Ej: SUPERVISOR2024" maxlength="20">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="keyDescription">Descripción:</label>
+                                        <input type="text" id="keyDescription" placeholder="Ej: Para personal de supervisión">
+                                    </div>
+                                </div>
+                                <div>
+                                    <button class="btn btn-success btn-small" onclick="createAdminKey()">Crear</button>
+                                    <button class="btn btn-secondary btn-small" onclick="hideCreateKeyForm()">Cancelar</button>
+                                </div>
+                            </div>
+
+                            <div id="adminKeysList">
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                    <p>Cargando claves administrativas...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Upload Students -->
+            <div id="uploadTab" class="hidden">
+                <div class="card">
+                    <h2>📤 Subir Lista de Personal</h2>
+                    <p style="margin-bottom: 20px; color: #666;">
+                        Sube un archivo CSV con las columnas: <strong>matricula, nombre, grupo</strong>
+                    </p>
+                    <div style="margin-bottom: 20px; padding: 15px; background: #e9f7ef; border-radius: 8px; border-left: 4px solid #27ae60;">
+                        <h4 style="color: #27ae60; margin-bottom: 10px;">📋 Formato Requerido:</h4>
+                        <code style="background: #f8f9fa; padding: 8px; border-radius: 4px; display: block;">
+                            matricula,nombre,grupo<br>
+                            C123456,Teniente Juan Pérez López,a<br>
+                            A654321,Sargento María García Silva,b<br>
+                            B678904,Capitán 1/o Carlos López Martínez,c
+                        </code>
+                        <p style="margin-top: 10px; color: #27ae60; font-size: 14px;">
+                            <strong>Obligatorios:</strong> matricula, nombre, grupo
+                        </p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="csvFile">Seleccionar archivo CSV:</label>
+                        <input type="file" id="csvFile" accept=".csv" onchange="previewCSV()">
+                    </div>
+                    
+                    <div id="csvPreview"></div>
+                    
+                    <button class="btn" onclick="uploadStudents()" id="uploadBtn" disabled>
+                        Subir Lista de Personal
+                    </button>
+                    
+                    <div class="message" id="uploadMessage"></div>
+                </div>
+            </div>
+
+            <!-- Tab: Devices -->
+            <div id="devicesTab" class="hidden">
+                <div class="card">
+                    <h2>📱 Dispositivos Registrados</h2>
+                    <p style="margin-bottom: 20px; color: #666;">
+                        Lista de dispositivos que han registrado asistencia. Útil para monitorear el uso del sistema.
+                    </p>
+                    
+                    <div class="loading" id="devicesLoading">
+                        <div class="spinner"></div>
+                        <p>Cargando dispositivos...</p>
+                    </div>
+                    
+                    <div id="devicesContent"></div>
+                </div>
+            </div>
+
+            <!-- Tab: Settings -->
+            <div id="settingsTab" class="hidden">
+                <div class="card">
+                    <h2>⚙️ Configuración del Sistema</h2>
+                    
+                    <!-- Cambiar Contraseña -->
+                    <div style="margin-bottom: 30px;">
+                        <h3 style="color: #333; margin-bottom: 15px;">🔐 Cambiar Contraseña</h3>
+                        <form id="changePasswordForm">
+                            <input type="hidden" name="username" value="admin" autocomplete="username">
+                            <div class="form-group">
+                                <label for="currentPassword">Contraseña Actual:</label>
+                                <input type="password" id="currentPassword" name="currentPassword" autocomplete="current-password" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="newPassword">Nueva Contraseña:</label>
+                                <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" minlength="6" required>
+                                <small style="color: #666; font-size: 12px;">Mínimo 6 caracteres</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="confirmPassword">Confirmar Nueva Contraseña:</label>
+                                <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" minlength="6" required>
+                            </div>
+                            
+                            <button type="submit" class="btn" id="changePasswordBtn">
+                                Cambiar Contraseña
+                            </button>
+                        </form>
+                        
+                        <div class="message" id="passwordMessage"></div>
+                    </div>
+                    
+                    <!-- Información del Sistema -->
+                    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                        <h3 style="color: #333; margin-bottom: 15px;">ℹ️ Información del Sistema</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <strong>Versión:</strong> 2.0.0 (Con Restricciones)<br>
+                                <strong>Usuario actual:</strong> <span id="currentUser">admin</span><br>
+                                <strong>Sesión activa desde:</strong> <span id="sessionTime">-</span>
+                            </div>
+                            <div>
+                                <strong>Última actualización:</strong> <span id="lastUpdate">-</span><br>
+                                <strong>Total personal:</strong> <span id="systemTotalStudents">-</span><br>
+                                <strong>Registros hoy:</strong> <span id="systemTodayRecords">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+let authToken = localStorage.getItem('adminToken');
+let currentStudents = [];
+let systemConfig = {};
+
+// Verificar autenticación al cargar
+if (authToken) {
+    showAdminSection();
+    loadDashboard();
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔄 DOM cargado, configurando event listeners...');
+    
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
+
+    const changePasswordForm = document.getElementById('changePasswordForm');
+    if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', handleChangePassword);
+    }
+
+    const restrictionsForm = document.getElementById('restrictionsForm');
+    if (restrictionsForm) {
+        restrictionsForm.addEventListener('submit', handleRestrictionsSubmit);
+    }
+});
+
+async function handleLogin(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    
+    if (!username || !password) {
+        showMessage('loginMessage', 'Usuario y contraseña son requeridos', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            authToken = data.token;
+            localStorage.setItem('adminToken', authToken);
+            showAdminSection();
+            await loadDashboard();
+            updateSystemInfo();
+        } else {
+            showMessage('loginMessage', data.error || 'Error de autenticación', 'error');
+        }
+    } catch (error) {
+        console.error('❌ Error de conexión:', error);
+        showMessage('loginMessage', 'Error de conexión: ' + error.message, 'error');
+    }
+}
+
+async function handleChangePassword(e) {
+    e.preventDefault();
+    
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (newPassword !== confirmPassword) {
+        showMessage('passwordMessage', 'Las contraseñas no coinciden', 'error');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        showMessage('passwordMessage', 'La contraseña debe tener al menos 6 caracteres', 'error');
+        return;
+    }
+    
+    const changePasswordBtn = document.getElementById('changePasswordBtn');
+    changePasswordBtn.disabled = true;
+    changePasswordBtn.textContent = 'Cambiando...';
+    
+    try {
+        const response = await fetch('/api/admin/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ currentPassword, newPassword })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showMessage('passwordMessage', 'Contraseña cambiada exitosamente', 'success');
+            document.getElementById('changePasswordForm').reset();
+            
+            setTimeout(() => {
+                if (confirm('Contraseña cambiada exitosamente. ¿Deseas cerrar sesión para usar la nueva contraseña?')) {
+                    logout();
+                }
+            }, 2000);
+        } else {
+            showMessage('passwordMessage', data.error, 'error');
+        }
+    } catch (error) {
+        showMessage('passwordMessage', 'Error de conexión', 'error');
+    } finally {
+        changePasswordBtn.disabled = false;
+        changePasswordBtn.textContent = 'Cambiar Contraseña';
+    }
+}
+
+// Manejar envío de configuración de restricciones
+async function handleRestrictionsSubmit(e) {
+    e.preventDefault();
+    
+    const saveBtn = document.getElementById('saveRestrictionsBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Guardando...';
+    
+    try {
+        const formData = new FormData(document.getElementById('restrictionsForm'));
+        const config = {};
+        
+        // Convertir checkbox a string boolean
+        config.location_restriction_enabled = document.getElementById('locationRestrictionEnabled').checked ? 'true' : 'false';
+        config.device_restriction_enabled = document.getElementById('deviceRestrictionEnabled').checked ? 'true' : 'false';
+        config.admin_key_bypass_enabled = document.getElementById('adminKeyBypassEnabled').checked ? 'true' : 'false';
+        
+        // Otros campos
+        config.location_name = formData.get('location_name') || '';
+        config.location_latitude = formData.get('location_latitude') || '';
+        config.location_longitude = formData.get('location_longitude') || '';
+        config.location_radius_km = formData.get('location_radius_km') || '1';
+        
+        const response = await fetch('/api/admin/config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(config)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showMessage('restrictionsMessage', 'Configuración guardada exitosamente', 'success');
+            systemConfig = config;
+        } else {
+            showMessage('restrictionsMessage', data.error, 'error');
+        }
+    } catch (error) {
+        showMessage('restrictionsMessage', 'Error de conexión', 'error');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Guardar Configuración';
+    }
+}
+
+function showAdminSection() {
+    document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('adminSection').classList.remove('hidden');
+}
+
+function logout() {
+    localStorage.removeItem('adminToken');
+    authToken = null;
+    document.getElementById('loginSection').classList.remove('hidden');
+    document.getElementById('adminSection').classList.add('hidden');
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+}
+
+async function loadDashboard() {
+    await loadSystemConfig();
+    await loadStats();
+    await loadDetailedList();
+}
+
+// Cargar configuración del sistema
+async function loadSystemConfig() {
+    try {
+        const response = await fetch('/api/admin/config', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (response.ok) {
+            systemConfig = await response.json();
+            populateRestrictionsForm();
+        }
+    } catch (error) {
+        console.error('Error cargando configuración:', error);
+    }
+}
+
+// Poblar formulario de restricciones con datos actuales
+function populateRestrictionsForm() {
+    document.getElementById('locationRestrictionEnabled').checked = systemConfig.location_restriction_enabled === 'true';
+    document.getElementById('deviceRestrictionEnabled').checked = systemConfig.device_restriction_enabled === 'true';
+    document.getElementById('adminKeyBypassEnabled').checked = systemConfig.admin_key_bypass_enabled === 'true';
+    
+    document.getElementById('locationName').value = systemConfig.location_name || '';
+    document.getElementById('locationLatitude').value = systemConfig.location_latitude || '';
+    document.getElementById('locationLongitude').value = systemConfig.location_longitude || '';
+    document.getElementById('locationRadius').value = systemConfig.location_radius_km || '1';
+}
+
+// Obtener ubicación actual del administrador
+function getCurrentLocation() {
+    if (!navigator.geolocation) {
+        alert('La geolocalización no está disponible en este navegador');
+        return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            document.getElementById('locationLatitude').value = position.coords.latitude.toFixed(6);
+            document.getElementById('locationLongitude').value = position.coords.longitude.toFixed(6);
+            alert('Ubicación obtenida exitosamente');
+        },
+        function(error) {
+            alert('Error obteniendo ubicación: ' + error.message);
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000
+        }
+    );
+}
+
+async function loadStats() {
+    try {
+        const response = await fetch('/api/admin/stats', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (response.ok) {
+            const stats = await response.json();
+            
+            document.getElementById('totalStudents').textContent = stats.totalStudents;
+            document.getElementById('presentRegistered').textContent = stats.presentRegistered;
+            const attendanceRate = stats.totalStudents > 0 ? 
+                ((stats.presentRegistered / stats.totalStudents) * 100).toFixed(1) : 0;
+            document.getElementById('attendanceRate').textContent = attendanceRate + '%';
+            document.getElementById('absent').textContent = stats.absent;
+            
+            const overviewContent = document.getElementById('overviewContent');
+            const overviewLoading = document.getElementById('overviewLoading');
+            
+            overviewLoading.style.display = 'none';
+            overviewContent.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
+                    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                        <h3 style="color: #2ecc71; margin-bottom: 10px;">✅ Asistencia Total</h3>
+                        <p style="font-size: 24px; font-weight: bold;">${stats.totalPresent}</p>
+                        <p style="color: #666; font-size: 14px;">
+                            ${((stats.totalPresent / Math.max(stats.totalStudents, 1)) * 100).toFixed(1)}% del total
+                        </p>
+                    </div>
+                    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                        <h3 style="color: #3498db; margin-bottom: 10px;">🪖 Personal Presente</h3>
+                        <p style="font-size: 24px; font-weight: bold;">${stats.presentRegistered}</p>
+                        <p style="color: #666; font-size: 14px;">
+                            ${stats.totalStudents > 0 ? ((stats.presentRegistered / stats.totalStudents) * 100).toFixed(1) : 0}% Asistencia
+                        </p>
+                    </div>
+                    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                        <h3 style="color: #B22222; margin-bottom: 10px;">📊 Efectivo</h3>
+                        <p style="font-size: 24px; font-weight: bold;">${((stats.presentRegistered / Math.max(stats.totalStudents, 1)) * 100).toFixed(1)}%</p>
+                        <p style="color: #666; font-size: 14px;">Asistencia</p>
+                    </div>
+                    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                        <h3 style="color: #9b59b6; margin-bottom: 10px;">🛡️ Restricciones</h3>
+                        <p style="font-size: 14px; font-weight: bold;">
+                            ${systemConfig.location_restriction_enabled === 'true' ? '📍 Ubicación' : ''}
+                            ${systemConfig.device_restriction_enabled === 'true' ? '📱 Dispositivo' : ''}
+                            ${systemConfig.location_restriction_enabled !== 'true' && systemConfig.device_restriction_enabled !== 'true' ? 'Ninguna' : ''}
+                        </p>
+                        <p style="color: #666; font-size: 12px;">Estado actual</p>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: #e9ecef; border-radius: 10px;">
+                    <p style="margin: 0;"><strong>Fecha:</strong> ${new Date(stats.date).toLocaleDateString('es-MX', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                    })}</p>
+                </div>
+            `;
+        } else {
+            throw new Error('Error al cargar estadísticas');
+        }
+    } catch (error) {
+        console.error('Error loading stats:', error);
+        if (error.message.includes('401') || error.message.includes('403')) {
+            logout();
+        }
+    }
+}
+
+async function loadDetailedList() {
+    try {
+        const response = await fetch('/api/admin/detailed-list', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayDetailedList(data);
+            document.getElementById('detailedLoading').style.display = 'none';
+        } else {
+            throw new Error('Error al cargar lista detallada');
+        }
+    } catch (error) {
+        console.error('Error loading detailed list:', error);
+        document.getElementById('detailedLoading').style.display = 'none';
+        if (error.message.includes('401') || error.message.includes('403')) {
+            logout();
+        }
+    }
+}
+
+function displayDetailedList(data) {
+    const content = document.getElementById('detailedContent');
+    
+    let html = '<div style="margin-bottom: 20px;">';
+    html += `<h3>Fecha: ${new Date(data.date).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</h3>`;
+    html += '</div>';
+    
+    if (data.presentRegistered.length > 0) {
+        html += '<h3 style="color: #2ecc71; margin: 20px 0 10px 0;">✅ Presentes (En Lista)</h3>';
+        html += createDetailedTable(data.presentRegistered);
+    }
+    
+    if (data.absent.length > 0) {
+        html += '<h3 style="color: #e74c3c; margin: 20px 0 10px 0;">❌ Faltistas</h3>';
+        html += createDetailedTable(data.absent);
+    }
+    
+    content.innerHTML = html;
+}
+
+function createDetailedTable(students) {
+    if (!students || students.length === 0) return '<p>No hay registros</p>';
+    
+    let html = '<div class="table-container"><table><thead><tr>';
+    html += '<th>Matrícula</th><th>Nombre</th><th>Grupo</th><th>Estado</th><th>Hora</th><th>Ubicación</th><th>Dispositivo</th>';
+    html += '</tr></thead><tbody>';
+    
+    students.forEach(student => {
+        const statusClass = student.status.includes('Presente') ? 'status-present' : 'status-absent';
+
+        const timeString = student.timestamp ? 
+            new Date(student.timestamp).toLocaleTimeString('es-MX', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            }) : '-';
+        
+        html += `<tr>
+            <td>${student.matricula || '-'}</td>
+            <td>${decodeSpecialChars(student.nombre) || '-'}</td>
+            <td>${decodeSpecialChars(student.grupo || '-').toUpperCase()}</td>
+            <td><span class="status-badge ${statusClass}">${student.status}</span></td>
+            <td>${timeString}</td>
+            <td style="font-size: 12px;">${student.location || 'N/A'}</td>
+            <td style="font-size: 12px; font-family: monospace;">${student.device || 'N/A'}</td>
+        </tr>`;
+    });
+    
+    html += '</tbody></table></div>';
+    return html;
+}
+
+// Cargar dispositivos registrados
+async function loadDevices() {
+    try {
+        document.getElementById('devicesLoading').style.display = 'block';
+        
+        const response = await fetch('/api/admin/devices', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (response.ok) {
+            const devices = await response.json();
+            displayDevices(devices);
+        } else {
+            throw new Error('Error al cargar dispositivos');
+        }
+    } catch (error) {
+        console.error('Error loading devices:', error);
+        document.getElementById('devicesContent').innerHTML = '<p style="color: #e74c3c;">Error cargando dispositivos</p>';
+    } finally {
+        document.getElementById('devicesLoading').style.display = 'none';
+    }
+}
+
+function displayDevices(devices) {
+    const content = document.getElementById('devicesContent');
+    
+    if (devices.length === 0) {
+        content.innerHTML = '<p>No hay dispositivos registrados</p>';
+        return;
+    }
+
+    let html = '<div class="table-container"><table><thead><tr>';
+    html += '<th>Huella Digital</th><th>Matrícula</th><th>Primer Registro</th><th>Último Uso</th><th>Navegador</th>';
+    html += '</tr></thead><tbody>';
+    
+    devices.forEach(device => {
+        const firstRegistration = device.first_registration ? 
+            new Date(device.first_registration).toLocaleString('es-MX') : '-';
+        const lastUsed = device.last_used ? 
+            new Date(device.last_used).toLocaleString('es-MX') : '-';
+        
+        html += `<tr>
+            <td style="font-family: monospace; font-size: 12px;">${device.device_fingerprint}</td>
+            <td><strong>${device.matricula}</strong></td>
+            <td>${firstRegistration}</td>
+            <td>${lastUsed}</td>
+            <td style="font-size: 12px;">${device.user_agent || 'Desconocido'}</td>
+        </tr>`;
+    });
+    
+    html += '</tbody></table></div>';
+    content.innerHTML = html;
+}
+
+// Gestión de claves administrativas
+async function loadAdminKeys() {
+    try {
+        const response = await fetch('/api/admin/admin-keys', {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        if (response.ok) {
+            const adminKeys = await response.json();
+            displayAdminKeys(adminKeys);
+        } else {
+            throw new Error('Error al cargar claves administrativas');
+        }
+    } catch (error) {
+        console.error('Error loading admin keys:', error);
+        document.getElementById('adminKeysList').innerHTML = '<p style="color: #e74c3c;">Error cargando claves administrativas</p>';
+    }
+}
+
+function displayAdminKeys(adminKeys) {
+    const content = document.getElementById('adminKeysList');
+    
+    if (adminKeys.length === 0) {
+        content.innerHTML = '<p>No hay claves administrativas configuradas</p>';
+        return;
+    }
+
+    let html = '';
+    adminKeys.forEach(key => {
+        const isActive = key.is_active === 'true';
+        const createdDate = new Date(key.created_at).toLocaleDateString('es-MX');
+        
+        html += `
+            <div class="admin-key-item ${isActive ? '' : 'inactive'}">
+                <div class="admin-key-info">
+                    <div style="font-weight: bold; font-family: monospace;">${key.key}</div>
+                    <div style="color: #666; font-size: 14px;">${key.description}</div>
+                    <div style="color: #999; font-size: 12px;">Creada: ${createdDate} | Estado: ${isActive ? '✅ Activa' : '❌ Inactiva'}</div>
+                </div>
+                <div class="admin-key-actions">
+                    ${isActive ? 
+                        `<button class="btn btn-danger btn-small" onclick="deactivateAdminKey('${key.key}')">Desactivar</button>` :
+                        '<span style="color: #999;">Inactiva</span>'
+                    }
+                </div>
+            </div>
+        `;
+    });
+    
+    content.innerHTML = html;
+}
+
+function showCreateKeyForm() {
+    document.getElementById('createKeyForm').classList.remove('hidden');
+    document.getElementById('newAdminKey').focus();
+}
+
+function hideCreateKeyForm() {
+    document.getElementById('createKeyForm').classList.add('hidden');
+    document.getElementById('newAdminKey').value = '';
+    document.getElementById('keyDescription').value = '';
+}
+
+async function createAdminKey() {
+    const key = document.getElementById('newAdminKey').value.trim().toUpperCase();
+    const description = document.getElementById('keyDescription').value.trim();
+    
+    if (!key || !description) {
+        alert('Por favor, completa todos los campos');
+        return;
+    }
+    
+    if (key.length < 4) {
+        alert('La clave debe tener al menos 4 caracteres');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/admin/admin-keys', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ key, description })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            hideCreateKeyForm();
+            await loadAdminKeys();
+            alert('Clave administrativa creada exitosamente');
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error de conexión');
+    }
+}
+
+function showTab(tabName) {
+    document.querySelectorAll('[id$="Tab"]').forEach(tab => {
+        tab.classList.add('hidden');
+    });
+    
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    document.getElementById(tabName + 'Tab').classList.remove('hidden');
+    event.target.classList.add('active');
+    
+    if (tabName === 'detailed') {
+        loadDetailedList();
+    } else if (tabName === 'settings') {
+        updateSystemInfo();
+    } else if (tabName === 'restrictions') {
+        loadSystemConfig();
+        loadAdminKeys();
+    } else if (tabName === 'devices') {
+        loadDevices();
+    }
+}
+
+async function previewCSV() {
+    const fileInput = document.getElementById('csvFile');
+    const file = fileInput.files[0];
+    
+    if (!file) return;
+    
+    const text = await file.text();
+    const lines = text.split('\n').filter(line => line.trim());
+    
+    if (lines.length === 0) {
+        showMessage('uploadMessage', 'El archivo está vacío', 'error');
+        return;
+    }
+    
+    const rows = lines.map(line => {
+        const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
+        return columns;
+    });
+    
+    const headers = rows[0];
+    const dataRows = rows.slice(1);
+    
+    const expectedHeaders = ['matricula', 'nombre', 'grupo'];
+    const hasRequiredHeaders = expectedHeaders.every(header => 
+        headers.some(h => h.toLowerCase() === header)
+    );
+    
+    if (!hasRequiredHeaders) {
+        showMessage('uploadMessage', 
+            'Headers obligatorios faltantes. Se requieren: matricula, nombre, grupo. Se encontraron: ' + headers.join(', '), 
+            'error');
+        return;
+    }
+    
+    currentStudents = dataRows.map(row => {
+        const student = {};
+        headers.forEach((header, index) => {
+            const cleanHeader = (header || '').toString().toLowerCase().trim();
+            const cleanValue = (row[index] || '').toString().trim();
+            student[cleanHeader] = cleanValue;
+        });
+        return student;
+    }).filter(student => 
+        student.matricula && 
+        student.matricula.trim() !== '' && 
+        student.nombre && 
+        student.nombre.trim() !== ''
+    );
+    
+    const preview = document.getElementById('csvPreview');
+    let html = '<div style="margin: 20px 0;">';
+    html += '<h3>Vista Previa (' + currentStudents.length + ' registros válidos)</h3>';
+    html += '<div class="table-container" style="max-height: 300px;">';
+    html += '<table><thead><tr><th>Matrícula</th><th>Nombre</th><th>Grupo</th></tr></thead><tbody>';
+
+    currentStudents.slice(0, 10).forEach(student => {
+        html += '<tr>';
+        html += '<td>' + student.matricula + '</td>';
+        html += '<td>' + decodeSpecialChars(student.nombre) + '</td>';
+        html += '<td>' + decodeSpecialChars(student.grupo || '-').toUpperCase() + '</td>';
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    if (currentStudents.length > 10) {
+        html += '<p style="color: #666; font-size: 14px;">Mostrando los primeros 10 de ' + currentStudents.length + ' registros</p>';
+    }
+    html += '</div>';
+    
+    preview.innerHTML = html;
+    document.getElementById('uploadBtn').disabled = false;
+}
+
+async function uploadStudents() {
+    if (currentStudents.length === 0) {
+        showMessage('uploadMessage', 'No hay estudiantes para subir', 'error');
+        return;
+    }
+    
+    const uploadBtn = document.getElementById('uploadBtn');
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Subiendo...';
+    
+    try {
+        const response = await fetch('/api/admin/upload-students', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + authToken
+            },
+            body: JSON.stringify({ students: currentStudents })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showMessage('uploadMessage', data.message, 'success');
+            document.getElementById('csvFile').value = '';
+            document.getElementById('csvPreview').innerHTML = '';
+            currentStudents = [];
+            
+            await loadStats();
+            
+            // Mostrar advertencia sobre reinicio de restricciones
+            if (systemConfig.device_restriction_enabled === 'true') {
+                setTimeout(() => {
+                    showMessage('uploadMessage', '⚠️ Los dispositivos registrados han sido reiniciados debido a la nueva lista de personal', 'warning');
+                }, 3000);
+            }
+        } else {
+            showMessage('uploadMessage', data.error, 'error');
+        }
+    } catch (error) {
+        showMessage('uploadMessage', 'Error de conexión', 'error');
+    } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Subir Lista de Personal';
+    }
+}
+
+function updateSystemInfo() {
+    document.getElementById('currentUser').textContent = 'admin';
+    document.getElementById('sessionTime').textContent = new Date().toLocaleString('es-MX');
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleString('es-MX');
+    
+    if (authToken) {
+        fetch('/api/admin/stats', {
+            headers: { 'Authorization': 'Bearer ' + authToken }
+        }).then(response => response.json())
+        .then(stats => {
+            document.getElementById('systemTotalStudents').textContent = stats.totalStudents;
+            document.getElementById('systemTodayRecords').textContent = stats.totalPresent;
+        }).catch(() => {
+            document.getElementById('systemTotalStudents').textContent = 'Error';
+            document.getElementById('systemTodayRecords').textContent = 'Error';
+        });
+    }
+}
+
+function showMessage(elementId, message, type) {
+    const element = document.getElementById(elementId);
+    element.innerHTML = decodeSpecialChars(message);
+    element.className = 'message ' + type;
+    element.style.display = 'block';
+    
+    setTimeout(() => {
+        element.style.display = 'none';
+    }, 5000);
+}
+
+// Función para decodificar caracteres especiales
+function decodeSpecialChars(text) {
+    if (!text || typeof text !== 'string') return text;
+    
+    return text.replace(/â/g, 'ñ')
+              .replace(/Ã¡/g, 'á')
+              .replace(/Ã©/g, 'é')
+              .replace(/Ã­/g, 'í')
+              .replace(/Ã³/g, 'ó')
+              .replace(/Ãº/g, 'ú')
+              .replace(/Ã/g, 'Á')
+              .replace(/Ã‰/g, 'É')
+              .replace(/Ã/g, 'Í')
+              .replace(/Ã"/g, 'Ó')
+              .replace(/Ãš/g, 'Ú')
+              .replace(/Ã±/g, 'ñ')
+              .replace(/Ã'/g, 'Ñ')
+              .replace(/Ã¼/g, 'ü')
+              .replace(/Ã/g, 'Ü');
+}
+
+// Actualización automática de estadísticas
+setInterval(() => {
+    if (authToken && !document.getElementById('adminSection').classList.contains('hidden')) {
+        loadStats();
+    }
+}, 30000);
+
+// Event listeners para habilitar/deshabilitar secciones según checkboxes
+document.addEventListener('DOMContentLoaded', function() {
+    // Manejar habilitación de configuración de ubicación
+    document.getElementById('locationRestrictionEnabled')?.addEventListener('change', function() {
+        const locationSettings = document.getElementById('locationSettings');
+        if (this.checked) {
+            locationSettings.style.opacity = '1';
+            locationSettings.querySelectorAll('input').forEach(input => input.disabled = false);
+        } else {
+            locationSettings.style.opacity = '0.5';
+            locationSettings.querySelectorAll('input').forEach(input => input.disabled = true);
+        }
+    });
+});
+</script>
+</body>
+</html> + data.error);
+        }
+    } catch (error) {
+        alert('Error de conexión');
+    }
+}
+
+async function deactivateAdminKey(key) {
+    if (!confirm(`¿Estás seguro de desactivar la clave "${key}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/admin-keys/${key}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            await loadAdminKeys();
+            alert('Clave administrativa desactivada exitosamente');
+        } else {
+            alert('Error: '<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -124,6 +1056,12 @@
             margin-bottom: 20px;
         }
 
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
         label {
             display: block;
             margin-bottom: 8px;
@@ -131,13 +1069,24 @@
             color: #555;
         }
 
-        input[type="text"], input[type="password"], input[type="file"], input[type="number"], select {
+        input[type="text"], input[type="password"], input[type="file"], input[type="number"], select, input[type="checkbox"] {
             width: 100%;
             padding: 12px;
             border: 2px solid #ddd;
             border-radius: 8px;
             font-size: 16px;
             transition: border-color 0.3s ease;
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
         }
 
         input:focus, select:focus {
@@ -170,6 +1119,14 @@
 
         .btn-secondary {
             background: #6c757d;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
         }
 
         .message {
@@ -270,6 +1227,7 @@
             display: flex;
             margin-bottom: 20px;
             border-bottom: 2px solid #eee;
+            overflow-x: auto;
         }
 
         .tab {
@@ -278,6 +1236,7 @@
             border-bottom: 3px solid transparent;
             transition: all 0.3s ease;
             font-weight: 600;
+            white-space: nowrap;
         }
 
         .tab.active {
@@ -300,6 +1259,61 @@
             opacity: 1;
         }
 
+        .config-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .config-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .restriction-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+        }
+
+        .restriction-card.location { border-left-color: #3498db; }
+        .restriction-card.device { border-left-color: #9b59b6; }
+        .restriction-card.admin-keys { border-left-color: #f39c12; }
+
+        .admin-key-item {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-key-item.inactive {
+            opacity: 0.6;
+            background: #f8f9fa;
+        }
+
+        .admin-key-info {
+            flex: 1;
+        }
+
+        .admin-key-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
         @media (max-width: 768px) {
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -317,6 +1331,24 @@
             .tab {
                 text-align: center;
             }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #1976d2;
+        }
+
+        .info-box h4 {
+            margin-bottom: 10px;
+            color: #1565c0;
         }
     </style>
 </head>
@@ -372,10 +1404,6 @@
                     <span class="stat-number" id="presentRegistered">-</span>
                     <span class="stat-label">Presentes (En Lista)</span>
                 </div>
-                <!-- <div class="stat-card not-in-list">
-                    <span class="stat-number" id="presentNotInList">-</span>
-                    <span class="stat-label">Presentes (No en Lista)</span>
-                </div> -->
                 <div class="stat-card present">
                     <span class="stat-number" id="attendanceRate">-</span>
                     <span class="stat-label">% Asistencia</span>
@@ -390,7 +1418,9 @@
             <div class="tabs">
                 <div class="tab active" onclick="showTab('overview')">📈 Resumen</div>
                 <div class="tab" onclick="showTab('detailed')">📋 Lista Detallada</div>
+                <div class="tab" onclick="showTab('restrictions')">🛡️ Restricciones</div>
                 <div class="tab" onclick="showTab('upload')">📤 Subir Lista</div>
+                <div class="tab" onclick="showTab('devices')">📱 Dispositivos</div>
                 <div class="tab" onclick="showTab('settings')">⚙️ Configuración</div>
             </div>
 
@@ -419,572 +1449,63 @@
                 </div>
             </div>
 
-            <!-- Tab: Upload Students -->
-            <div id="uploadTab" class="hidden">
+            <!-- Tab: Restrictions Configuration -->
+            <div id="restrictionsTab" class="hidden">
                 <div class="card">
-                    <h2>📤 Subir Lista de Personal</h2>
-                   <p style="margin-bottom: 20px; color: #666;">
-                        Sube un archivo CSV con las columnas: <strong>matricula, nombre, grupo</strong>
-                    </p>
-                    <div style="margin-bottom: 20px; padding: 15px; background: #e9f7ef; border-radius: 8px; border-left: 4px solid #27ae60;">
-                        <h4 style="color: #27ae60; margin-bottom: 10px;">📋 Formato Requerido:</h4>
-                        <code style="background: #f8f9fa; padding: 8px; border-radius: 4px; display: block;">
-                            matricula,nombre,grupo<br>
-                            C123456,Teniente Juan Pérez López,a<br>
-                            A654321,Sargento María García Silva,b<br>
-                            B678904,Capitán 1/o Carlos López Martínez,c
-                        </code>
-                        <p style="margin-top: 10px; color: #27ae60; font-size: 14px;">
-                            <strong>Obligatorios:</strong> matricula, nombre, grupo
-                        </p>
+                    <h2>🛡️ Configuración de Restricciones</h2>
+                    
+                    <div class="info-box">
+                        <h4>ℹ️ Información sobre las Restricciones</h4>
+                        <p>Las restricciones permiten controlar dónde y cómo se puede registrar la asistencia. Los supervisores con claves administrativas pueden saltarse estas restricciones.</p>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="csvFile">Seleccionar archivo CSV:</label>
-                        <input type="file" id="csvFile" accept=".csv" onchange="previewCSV()">
-                    </div>
-                    
-                    <div id="csvPreview"></div>
-                    
-                    <button class="btn" onclick="uploadStudents()" id="uploadBtn" disabled>
-                        Subir Lista de Personal
-                    </button>
-                    
-                    <div class="message" id="uploadMessage"></div>
-                </div>
-            </div>
 
-            <!-- Tab: Settings -->
-            <div id="settingsTab" class="hidden">
-                <div class="card">
-                    <h2>⚙️ Configuración del Sistema</h2>
-                    
-                    <!-- Cambiar Contraseña -->
-                    <div style="margin-bottom: 30px;">
-                        <h3 style="color: #333; margin-bottom: 15px;">🔐 Cambiar Contraseña</h3>
-                        <form id="changePasswordForm">
-                            <input type="hidden" name="username" value="admin" autocomplete="username">
-                            <div class="form-group">
-                                <label for="currentPassword">Contraseña Actual:</label>
-                                <input type="password" id="currentPassword" name="currentPassword" autocomplete="current-password" required>
+                    <form id="restrictionsForm">
+                        <!-- Restricción de Ubicación -->
+                        <div class="restriction-card location">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="locationRestrictionEnabled" name="location_restriction_enabled">
+                                <label for="locationRestrictionEnabled"><strong>📍 Restricción por Ubicación</strong></label>
                             </div>
+                            <p style="margin-bottom: 15px; color: #666;">Solo permite registrar asistencia dentro de un radio específico de una ubicación.</p>
                             
-                            <div class="form-group">
-                                <label for="newPassword">Nueva Contraseña:</label>
-                                <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" minlength="6" required>
-                                <small style="color: #666; font-size: 12px;">Mínimo 6 caracteres</small>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="confirmPassword">Confirmar Nueva Contraseña:</label>
-                                <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" minlength="6" required>
-                            </div>
-                            
-                            <button type="submit" class="btn" id="changePasswordBtn">
-                                Cambiar Contraseña
-                            </button>
-                        </form>
-                        
-                        <div class="message" id="passwordMessage"></div>
-                    </div>
-                    
-                    <!-- Información del Sistema -->
-                    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                        <h3 style="color: #333; margin-bottom: 15px;">ℹ️ Información del Sistema</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div>
-                                <strong>Versión:</strong> 1.0.0<br>
-                                <strong>Usuario actual:</strong> <span id="currentUser">admin</span><br>
-                                <strong>Sesión activa desde:</strong> <span id="sessionTime">-</span>
-                            </div>
-                            <div>
-                                <strong>Última actualización:</strong> <span id="lastUpdate">-</span><br>
-                                <strong>Total personal:</strong> <span id="systemTotalStudents">-</span><br>
-                                <strong>Registros hoy:</strong> <span id="systemTodayRecords">-</span>
+                            <div id="locationSettings">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="locationName">Nombre del Lugar:</label>
+                                        <input type="text" id="locationName" name="location_name" placeholder="Ej: Escuela Superior de Guerra">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="locationRadius">Radio (km):</label>
+                                        <input type="number" id="locationRadius" name="location_radius_km" min="0.1" max="10" step="0.1" placeholder="1.0">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="locationLatitude">Latitud:</label>
+                                        <input type="text" id="locationLatitude" name="location_latitude" placeholder="19.4326">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="locationLongitude">Longitud:</label>
+                                        <input type="text" id="locationLongitude" name="location_longitude" placeholder="-99.1332">
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-secondary btn-small" onclick="getCurrentLocation()">📍 Obtener mi Ubicación Actual</button>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-<script>
-let authToken = localStorage.getItem('adminToken');
-let currentStudents = [];
+                        <!-- Restricción de Dispositivo -->
+                        <div class="restriction-card device">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="deviceRestrictionEnabled" name="device_restriction_enabled">
+                                <label for="deviceRestrictionEnabled"><strong>📱 Restricción por Dispositivo</strong></label>
+                            </div>
+                            <p style="color: #666;">Solo permite un registro por dispositivo/teléfono. Evita que múltiples personas usen el mismo dispositivo.</p>
+                        </div>
 
-// Verificar autenticación al cargar
-if (authToken) {
-    showAdminSection();
-    loadDashboard();
-}
-
-// Event Listeners
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔄 DOM cargado, configurando event listeners...');
-    
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        console.log('✅ Formulario de login encontrado');
-        loginForm.addEventListener('submit', handleLogin);
-    }
-
-    const changePasswordForm = document.getElementById('changePasswordForm');
-    if (changePasswordForm) {
-        console.log('✅ Formulario de cambio de contraseña encontrado');
-        changePasswordForm.addEventListener('submit', handleChangePassword);
-    }
-});
-
-async function handleLogin(e) {
-    e.preventDefault();
-    console.log('🔐 Intentando login...');
-    
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    
-    console.log('📝 Usuario:', username);
-    
-    if (!username || !password) {
-        showMessage('loginMessage', 'Usuario y contraseña son requeridos', 'error');
-        return;
-    }
-    
-    try {
-        console.log('🌐 Enviando petición al servidor...');
-        const response = await fetch('/api/admin/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-        
-        console.log('📡 Respuesta del servidor:', response.status);
-        const data = await response.json();
-        
-        if (response.ok) {
-            authToken = data.token;
-            localStorage.setItem('adminToken', authToken);
-            console.log('✅ Login exitoso, mostrando panel admin');
-            showAdminSection();
-            await loadDashboard();
-            updateSystemInfo();
-        } else {
-            console.log('❌ Error de login:', data.error);
-            showMessage('loginMessage', data.error || 'Error de autenticación', 'error');
-        }
-    } catch (error) {
-        console.error('❌ Error de conexión:', error);
-        showMessage('loginMessage', 'Error de conexión: ' + error.message, 'error');
-    }
-}
-
-async function handleChangePassword(e) {
-    e.preventDefault();
-    
-    const currentPassword = document.getElementById('currentPassword').value;
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-    
-    if (newPassword !== confirmPassword) {
-        showMessage('passwordMessage', 'Las contraseñas no coinciden', 'error');
-        return;
-    }
-    
-    if (newPassword.length < 6) {
-        showMessage('passwordMessage', 'La contraseña debe tener al menos 6 caracteres', 'error');
-        return;
-    }
-    
-    const changePasswordBtn = document.getElementById('changePasswordBtn');
-    changePasswordBtn.disabled = true;
-    changePasswordBtn.textContent = 'Cambiando...';
-    
-    try {
-        const response = await fetch('/api/admin/change-password', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify({ currentPassword, newPassword })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            showMessage('passwordMessage', 'Contraseña cambiada exitosamente', 'success');
-            document.getElementById('changePasswordForm').reset();
-            
-            setTimeout(() => {
-                if (confirm('Contraseña cambiada exitosamente. ¿Deseas cerrar sesión para usar la nueva contraseña?')) {
-                    logout();
-                }
-            }, 2000);
-        } else {
-            showMessage('passwordMessage', data.error, 'error');
-        }
-    } catch (error) {
-        showMessage('passwordMessage', 'Error de conexión', 'error');
-    } finally {
-        changePasswordBtn.disabled = false;
-        changePasswordBtn.textContent = 'Cambiar Contraseña';
-    }
-}
-
-function showAdminSection() {
-    document.getElementById('loginSection').classList.add('hidden');
-    document.getElementById('adminSection').classList.remove('hidden');
-}
-
-function logout() {
-    localStorage.removeItem('adminToken');
-    authToken = null;
-    document.getElementById('loginSection').classList.remove('hidden');
-    document.getElementById('adminSection').classList.add('hidden');
-    document.getElementById('username').value = '';
-    document.getElementById('password').value = '';
-}
-
-async function loadDashboard() {
-    await loadStats();
-    await loadDetailedList();
-}
-
-async function loadStats() {
-    try {
-        const response = await fetch('/api/admin/stats', {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        
-        if (response.ok) {
-            const stats = await response.json();
-            
-            document.getElementById('totalStudents').textContent = stats.totalStudents;
-            document.getElementById('presentRegistered').textContent = stats.presentRegistered;
-            //document.getElementById('presentNotInList').textContent = stats.presentNotInList;
-            const attendanceRate = stats.totalStudents > 0 ? 
-                ((stats.presentRegistered / stats.totalStudents) * 100).toFixed(1) : 0;
-            document.getElementById('attendanceRate').textContent = attendanceRate + '%';
-            document.getElementById('absent').textContent = stats.absent;
-            
-            const overviewContent = document.getElementById('overviewContent');
-            const overviewLoading = document.getElementById('overviewLoading');
-            
-            overviewLoading.style.display = 'none';
-            overviewContent.innerHTML = `
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
-                    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                        <h3 style="color: #2ecc71; margin-bottom: 10px;">✅ Asistencia Total</h3>
-                        <p style="font-size: 24px; font-weight: bold;">${stats.totalPresent}</p>
-                        <p style="color: #666; font-size: 14px;">
-                            ${((stats.totalPresent / Math.max(stats.totalStudents, 1)) * 100).toFixed(1)}% del total
-                        </p>
-                    </div>
-                    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                        <h3 style="color: #3498db; margin-bottom: 10px;">🪖 Personal Presente</h3>
-                        <p style="font-size: 24px; font-weight: bold;">${stats.presentRegistered}</p>
-                        <p style="color: #666; font-size: 14px;">
-                            ${stats.totalStudents > 0 ? ((stats.presentRegistered / stats.totalStudents) * 100).toFixed(1) : 0}% Asistencia
-                        </p>
-                    </div>
-                    <!-- <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                        <h3 style="color: #f39c12; margin-bottom: 10px;">⚠️ No en Lista</h3>
-                        <p style="font-size: 24px; font-weight: bold;">${stats.presentNotInList}</p>
-                        <p style="color: #666; font-size: 14px;">Requieren verificación</p>
-                    </div> -->
-                    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                        <h3 style="color: #B22222; margin-bottom: 10px;">📊 Efectivo</h3>
-                        <p style="font-size: 24px; font-weight: bold;">${((stats.presentRegistered / Math.max(stats.totalStudents, 1)) * 100).toFixed(1)}%</p>
-                        <p style="color: #666; font-size: 14px;">Asistencia</p>
-                    </div>
-                </div>
-                <div style="margin-top: 20px; padding: 15px; background: #e9ecef; border-radius: 10px;">
-                    <p style="margin: 0;"><strong>Fecha:</strong> ${new Date(stats.date).toLocaleDateString('es-MX', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                    })}</p>
-                </div>
-            `;
-        } else {
-            throw new Error('Error al cargar estadísticas');
-        }
-    } catch (error) {
-        console.error('Error loading stats:', error);
-        if (error.message.includes('401') || error.message.includes('403')) {
-            logout();
-        }
-    }
-}
-
-async function loadDetailedList() {
-    try {
-        const response = await fetch('/api/admin/detailed-list', {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            displayDetailedList(data);
-            document.getElementById('detailedLoading').style.display = 'none';
-        } else {
-            throw new Error('Error al cargar lista detallada');
-        }
-    } catch (error) {
-        console.error('Error loading detailed list:', error);
-        document.getElementById('detailedLoading').style.display = 'none';
-        if (error.message.includes('401') || error.message.includes('403')) {
-            logout();
-        }
-    }
-}
-
-function displayDetailedList(data) {
-    const content = document.getElementById('detailedContent');
-    
-    let html = '<div style="margin-bottom: 20px;">';
-    html += `<h3>Fecha: ${new Date(data.date).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</h3>`;
-    html += '</div>';
-    
-    if (data.presentRegistered.length > 0) {
-        html += '<h3 style="color: #2ecc71; margin: 20px 0 10px 0;">✅ Presentes (En Lista)</h3>';
-        html += createTable(data.presentRegistered);
-    }
-    
-    /*if (data.presentNotInList.length > 0) {
-        html += '<h3 style="color: #f39c12; margin: 20px 0 10px 0;">⚠️ Presentes (No en Lista)</h3>';
-        html += createTable(data.presentNotInList);
-    }*/
-    
-    if (data.absent.length > 0) {
-        html += '<h3 style="color: #e74c3c; margin: 20px 0 10px 0;">❌ Faltistas</h3>';
-        html += createTable(data.absent);
-    }
-    
-    content.innerHTML = html;
-}
-
-function createTable(students) {
-    if (!students || students.length === 0) return '<p>No hay registros</p>';
-    
-    let html = '<div class="table-container"><table><thead><tr>';
-    html += '<th>Matrícula</th><th>Nombre</th><th>Grupo</th><th>Estado</th><th>Hora</th>';
-    html += '</tr></thead><tbody>';
-    
-    students.forEach(student => {
-        /*const statusClass = student.status.includes('Presente (En lista)') ? 'status-present' :
-                          student.status.includes('Presente (No en lista)') ? 'status-not-in-list' :
-                          'status-absent';*/
-        const statusClass = student.status.includes('Presente') ? 'status-present' : 'status-absent';
-
-        const timeString = student.timestamp ? 
-            new Date(student.timestamp).toLocaleTimeString('es-MX', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            }) : '-';
-        
-       html += `<tr>
-            <td>${student.matricula || '-'}</td>
-            <td>${decodeSpecialChars(student.nombre) || '-'}</td>
-            <td>${decodeSpecialChars(student.grupo || '-').toUpperCase()}</td>
-            <td><span class="status-badge ${statusClass}">${student.status}</span></td>
-            <td>${timeString}</td>
-        </tr>`;
-    });
-    
-    html += '</tbody></table></div>';
-    return html;
-}
-
-function showTab(tabName) {
-    document.querySelectorAll('[id$="Tab"]').forEach(tab => {
-        tab.classList.add('hidden');
-    });
-    
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    document.getElementById(tabName + 'Tab').classList.remove('hidden');
-    event.target.classList.add('active');
-    
-    if (tabName === 'detailed') {
-        loadDetailedList();
-    } else if (tabName === 'settings') {
-        updateSystemInfo();
-    }
-}
-
-async function previewCSV() {
-    const fileInput = document.getElementById('csvFile');
-    const file = fileInput.files[0];
-    
-    if (!file) return;
-    
-    const text = await file.text();
-    const lines = text.split('\n').filter(line => line.trim());
-    
-    if (lines.length === 0) {
-        showMessage('uploadMessage', 'El archivo está vacío', 'error');
-        return;
-    }
-    
-    const rows = lines.map(line => {
-        const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
-        return columns;
-    });
-    
-    const headers = rows[0];
-    const dataRows = rows.slice(1);
-    
-    const expectedHeaders = ['matricula', 'nombre', 'grupo'];
-    const hasRequiredHeaders = expectedHeaders.every(header => 
-        headers.some(h => h.toLowerCase() === header)
-    );
-    
-    if (!hasRequiredHeaders) {
-        showMessage('uploadMessage', 
-            'Headers obligatorios faltantes. Se requieren: matricula, nombre. Se encontraron: ' + headers.join(', '), 
-            'error');
-        return;
-    }
-    
-    currentStudents = dataRows.map(row => {
-        const student = {};
-        headers.forEach((header, index) => {
-            // Asegurar que el header y el valor sean strings válidos
-            const cleanHeader = (header || '').toString().toLowerCase().trim();
-            const cleanValue = (row[index] || '').toString().trim();
-            student[cleanHeader] = cleanValue;
-        });
-        return student;
-    }).filter(student => 
-        student.matricula && 
-        student.matricula.trim() !== '' && 
-        student.nombre && 
-        student.nombre.trim() !== ''
-    );
-    
-    const preview = document.getElementById('csvPreview');
-    let html = '<div style="margin: 20px 0;">';
-    html += '<h3>Vista Previa (' + currentStudents.length + ' registros válidos)</h3>';
-    html += '<div class="table-container" style="max-height: 300px;">';
-    html += '<table><thead><tr><th>Matrícula</th><th>Nombre</th><th>Grupo</th></tr></thead><tbody>';
-
-    currentStudents.slice(0, 10).forEach(student => {
-        html += '<tr>';
-        html += '<td>' + student.matricula + '</td>';
-        html += '<td>' + decodeSpecialChars(student.nombre) + '</td>';
-        html += '<td>' + decodeSpecialChars(student.grupo || '-').toUpperCase() + '</td>';
-        html += '</tr>';
-    });
-    
-    html += '</tbody></table></div>';
-    if (currentStudents.length > 10) {
-        html += '<p style="color: #666; font-size: 14px;">Mostrando los primeros 10 de ' + currentStudents.length + ' registros</p>';
-    }
-    html += '</div>';
-    
-    preview.innerHTML = html;
-    document.getElementById('uploadBtn').disabled = false;
-}
-
-async function uploadStudents() {
-    if (currentStudents.length === 0) {
-        showMessage('uploadMessage', 'No hay estudiantes para subir', 'error');
-        return;
-    }
-    
-    const uploadBtn = document.getElementById('uploadBtn');
-    uploadBtn.disabled = true;
-    uploadBtn.textContent = 'Subiendo...';
-    
-    try {
-        const response = await fetch('/api/admin/upload-students', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + authToken
-            },
-            body: JSON.stringify({ students: currentStudents })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            showMessage('uploadMessage', data.message, 'success');
-            document.getElementById('csvFile').value = '';
-            document.getElementById('csvPreview').innerHTML = '';
-            currentStudents = [];
-            
-            await loadStats();
-        } else {
-            showMessage('uploadMessage', data.error, 'error');
-        }
-    } catch (error) {
-        showMessage('uploadMessage', 'Error de conexión', 'error');
-    } finally {
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = 'Subir Lista de Personal';
-    }
-}
-
-function updateSystemInfo() {
-    document.getElementById('currentUser').textContent = 'admin';
-    document.getElementById('sessionTime').textContent = new Date().toLocaleString('es-MX');
-    document.getElementById('lastUpdate').textContent = new Date().toLocaleString('es-MX');
-    
-    if (authToken) {
-        fetch('/api/admin/stats', {
-            headers: { 'Authorization': 'Bearer ' + authToken }
-        }).then(response => response.json())
-        .then(stats => {
-            document.getElementById('systemTotalStudents').textContent = stats.totalStudents;
-            document.getElementById('systemTodayRecords').textContent = stats.totalPresent;
-        }).catch(() => {
-            document.getElementById('systemTotalStudents').textContent = 'Error';
-            document.getElementById('systemTodayRecords').textContent = 'Error';
-        });
-    }
-}
-
-function showMessage(elementId, message, type) {
-    const element = document.getElementById(elementId);
-    element.innerHTML = decodeSpecialChars(message);
-    element.className = 'message ' + type;
-    element.style.display = 'block';
-    
-    setTimeout(() => {
-        element.style.display = 'none';
-    }, 5000);
-}
-
-// Función para decodificar caracteres especiales
-function decodeSpecialChars(text) {
-    if (!text || typeof text !== 'string') return text;
-    
-    return text.replace(/â/g, 'ñ')
-              .replace(/Ã¡/g, 'á')
-              .replace(/Ã©/g, 'é')
-              .replace(/Ã­/g, 'í')
-              .replace(/Ã³/g, 'ó')
-              .replace(/Ãº/g, 'ú')
-              .replace(/Ã/g, 'Á')
-              .replace(/Ã‰/g, 'É')
-              .replace(/Ã/g, 'Í')
-              .replace(/Ã"/g, 'Ó')
-              .replace(/Ãš/g, 'Ú')
-              .replace(/Ã±/g, 'ñ')
-              .replace(/Ã'/g, 'Ñ')
-              .replace(/Ã¼/g, 'ü')
-              .replace(/Ã/g, 'Ü');
-}
-
-setInterval(() => {
-    if (authToken && !document.getElementById('adminSection').classList.contains('hidden')) {
-        loadStats();
-    }
-}, 30000);
-</script>
-</body>
-</html>
+                        <!-- Claves Administrativas -->
+                        <div class="restriction-card admin-keys">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="adminKeyBypassEnabled" name="admin_key_bypass_enabled">
+                                <label for="adminKeyBypassEnabled"><strong>🔑 Permitir Claves de Supervisor</strong></label>
+                            </div>
+                            <p style="color: #666;">Permite que supervisores

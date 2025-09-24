@@ -1,6 +1,6 @@
 {
-  "name": "sistema-pase-lista",
-  "version": "1.0.0",
+  "name": "sistema-pase-lista-v2",
+  "version": "2.0.0",
   "description": "Sistema de pase de lista militar con interfaz web y panel administrativo",
   "main": "server.js",
   "scripts": {

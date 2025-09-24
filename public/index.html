@@ -45,7 +45,6 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        
 
         h1 {
             color: #333;
@@ -65,7 +64,7 @@
             font-weight: 600;
         }
 
-        input[type="text"] {
+        input[type="text"], input[type="password"] {
             width: 100%;
             padding: 15px;
             border: 2px solid #ddd;
@@ -75,7 +74,7 @@
             outline: none;
         }
 
-        input[type="text"]:focus {
+        input[type="text"]:focus, input[type="password"]:focus {
             border-color: #ea8566;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
@@ -91,6 +90,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
+            margin-bottom: 10px;
         }
 
         .btn:hover {
@@ -102,6 +102,10 @@
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
         }
 
         .message {
@@ -176,6 +180,50 @@
             background: rgba(255,255,255,0.3);
         }
 
+        .location-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #1976d2;
+            display: none;
+        }
+
+        .admin-key-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .admin-key-section h4 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .toggle-link {
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 12px;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        .restrictions-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #666;
+            text-align: left;
+        }
+
         @media (max-width: 480px) {
             .container {
                 padding: 30px 20px;
@@ -185,6 +233,16 @@
             h1 {
                 font-size: 24px;
             }
+            
+            .admin-link {
+                position: relative;
+                top: auto;
+                right: auto;
+                display: inline-block;
+                margin-bottom: 20px;
+                color: #007bff;
+                background: transparent;
+            }
         }
     </style>
 </head>
@@ -192,14 +250,21 @@
     <a href="/admin" class="admin-link">👤 Admin</a>
     
     <div class="container">
-        <!-- <div class="logo">📝</div> -->
-         <!-- Aquí colocarás la imagen del escudo -->
         <img src="/assets/esg.png" alt="Escuela Superior de Guerra" class="escudo-header">
         
         <div class="institution-name">Escuela Superior de Guerra</div>
         <br>
         <h3>Registro de Asistencia</h3>
         <br>
+        
+        <!-- Sección de clave administrativa (oculta por defecto) -->
+        <div class="admin-key-section" id="adminKeySection">
+            <h4>🔑 Acceso Supervisores</h4>
+            <div class="form-group">
+                <input type="password" id="adminKey" placeholder="Clave de supervisor (opcional)">
+            </div>
+            <small style="color: #856404;">La clave permite saltarse las restricciones de ubicación y dispositivo</small>
+        </div>
         
         <form id="attendanceForm">
             <div class="form-group">
@@ -210,7 +275,15 @@
             <button type="submit" class="btn" id="submitBtn">
                 Registrar Asistencia
             </button>
+            
+            <button type="button" class="btn btn-secondary" id="locationBtn" onclick="requestLocation()" style="display: none;">
+                📍 Permitir Ubicación
+            </button>
         </form>
+        
+        <div class="toggle-link" onclick="toggleAdminKeySection()">
+            🔑 Tengo clave de supervisor
+        </div>
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
@@ -219,12 +292,182 @@
         
         <div class="message" id="message"></div>
         
+        <div class="location-info" id="locationInfo">
+            <strong>📍 Ubicación:</strong> <span id="coordinates">Obteniendo...</span><br>
+            <span id="locationStatus">Estado: Pendiente</span>
+        </div>
+        
+        <div class="restrictions-info" id="restrictionsInfo">
+            <!-- Se llenará dinámicamente -->
+        </div>
+        
         <div class="time-info">
             <div id="currentTime"></div>
         </div>
     </div>
 
     <script>
+        // Variables globales
+        let currentLocation = null;
+        let systemConfig = null;
+        let deviceFingerprint = null;
+
+        // Generar huella digital del dispositivo
+        function generateDeviceFingerprint() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.fillText('Device fingerprint', 2, 2);
+            
+            const fingerprint = [
+                navigator.userAgent,
+                navigator.language,
+                screen.width + 'x' + screen.height,
+                new Date().getTimezoneOffset(),
+                canvas.toDataURL()
+            ].join('|');
+            
+            // Crear hash simple
+            let hash = 0;
+            for (let i = 0; i < fingerprint.length; i++) {
+                const char = fingerprint.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            
+            return Math.abs(hash).toString(16).substring(0, 16);
+        }
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            deviceFingerprint = generateDeviceFingerprint();
+            console.log('🔍 Device fingerprint:', deviceFingerprint);
+            
+            loadSystemConfig();
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            document.getElementById('matricula').focus();
+            document.getElementById('attendanceForm').addEventListener('submit', handleSubmit);
+        });
+
+        // Cargar configuración del sistema
+        async function loadSystemConfig() {
+            try {
+                const response = await fetch('/api/config');
+                systemConfig = await response.json();
+                
+                updateRestrictionsInfo();
+                
+                if (systemConfig.location_restriction_enabled) {
+                    document.getElementById('locationBtn').style.display = 'block';
+                    requestLocation();
+                }
+            } catch (error) {
+                console.error('Error cargando configuración:', error);
+            }
+        }
+
+        // Actualizar información de restricciones
+        function updateRestrictionsInfo() {
+            const restrictionsInfo = document.getElementById('restrictionsInfo');
+            let html = '<strong>🛡️ Restricciones Activas:</strong><br>';
+            
+            if (systemConfig.location_restriction_enabled) {
+                html += '📍 Verificación de ubicación requerida<br>';
+            }
+            
+            if (systemConfig.device_restriction_enabled) {
+                html += '📱 Un registro por dispositivo<br>';
+            }
+            
+            if (!systemConfig.location_restriction_enabled && !systemConfig.device_restriction_enabled) {
+                html += 'Ninguna restricción activa';
+            }
+            
+            if (systemConfig.admin_key_bypass_enabled) {
+                html += '<br><small>🔑 Las claves de supervisor pueden saltarse las restricciones</small>';
+            }
+            
+            restrictionsInfo.innerHTML = html;
+        }
+
+        // Mostrar/ocultar sección de clave administrativa
+        function toggleAdminKeySection() {
+            const section = document.getElementById('adminKeySection');
+            const isVisible = section.style.display === 'block';
+            section.style.display = isVisible ? 'none' : 'block';
+        }
+
+        // Solicitar ubicación
+        function requestLocation() {
+            const locationBtn = document.getElementById('locationBtn');
+            const locationInfo = document.getElementById('locationInfo');
+            const locationStatus = document.getElementById('locationStatus');
+            const coordinates = document.getElementById('coordinates');
+            
+            if (!navigator.geolocation) {
+                showMessage('La geolocalización no está disponible en este dispositivo', 'error');
+                return;
+            }
+            
+            locationBtn.textContent = '📍 Obteniendo ubicación...';
+            locationBtn.disabled = true;
+            locationInfo.style.display = 'block';
+            locationStatus.textContent = 'Estado: Obteniendo...';
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    currentLocation = {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    };
+                    
+                    console.log('📍 Ubicación obtenida:', currentLocation);
+                    
+                    coordinates.textContent = `${currentLocation.latitude.toFixed(6)}, ${currentLocation.longitude.toFixed(6)}`;
+                    locationStatus.innerHTML = `<span style="color: green;">Estado: ✅ Ubicación obtenida (±${Math.round(currentLocation.accuracy)}m)</span>`;
+                    locationBtn.textContent = '📍 Ubicación Obtenida';
+                    locationBtn.style.background = 'linear-gradient(135deg, #2ecc71, #27ae60)';
+                },
+                function(error) {
+                    console.error('❌ Error obteniendo ubicación:', error);
+                    
+                    let errorMessage = 'Error obteniendo ubicación: ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage += 'Permiso denegado. Por favor, permite el acceso a la ubicación.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage += 'Ubicación no disponible.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage += 'Tiempo de espera agotado.';
+                            break;
+                        default:
+                            errorMessage += 'Error desconocido.';
+                            break;
+                    }
+                    
+                    locationStatus.innerHTML = `<span style="color: red;">Estado: ❌ ${errorMessage}</span>`;
+                    locationBtn.textContent = '📍 Reintentar Ubicación';
+                    locationBtn.disabled = false;
+                    locationBtn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                    
+                    if (systemConfig.location_restriction_enabled) {
+                        showMessage(errorMessage, 'error');
+                    }
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000 // 5 minutos
+                }
+            );
+        }
+
         // Mostrar hora actual
         function updateTime() {
             const now = new Date();
@@ -239,15 +482,13 @@
             });
             document.getElementById('currentTime').textContent = timeString;
         }
-        
-        updateTime();
-        setInterval(updateTime, 1000);
 
         // Manejar envío del formulario
-        document.getElementById('attendanceForm').addEventListener('submit', async (e) => {
+        async function handleSubmit(e) {
             e.preventDefault();
             
             const matricula = document.getElementById('matricula').value.trim();
+            const adminKey = document.getElementById('adminKey').value.trim();
             const submitBtn = document.getElementById('submitBtn');
             const loading = document.getElementById('loading');
             const message = document.getElementById('message');
@@ -258,39 +499,60 @@
                 return;
             }
 
+            // Verificar restricciones antes del envío
+            if (systemConfig && systemConfig.location_restriction_enabled && !currentLocation && !adminKey) {
+                showMessage('Se requiere ubicación para registrar asistencia. Haz clic en "Permitir Ubicación"', 'warning');
+                document.getElementById('locationBtn').style.display = 'block';
+                requestLocation();
+                return;
+            }
+
             // UI feedback
             submitBtn.disabled = true;
             loading.style.display = 'block';
             message.style.display = 'none';
             
             try {
+                const requestData = {
+                    matricula: matricula,
+                    deviceFingerprint: deviceFingerprint
+                };
+
+                // Agregar ubicación si está disponible
+                if (currentLocation) {
+                    requestData.latitude = currentLocation.latitude;
+                    requestData.longitude = currentLocation.longitude;
+                }
+
+                // Agregar clave administrativa si se proporcionó
+                if (adminKey) {
+                    requestData.adminKey = adminKey;
+                }
+
+                console.log('📤 Enviando datos:', { ...requestData, adminKey: adminKey ? '[CLAVE OCULTA]' : undefined });
+                
                 const response = await fetch('/api/attendance', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ matricula })
+                    body: JSON.stringify(requestData)
                 });
                 
                 const data = await response.json();
                 
-               /* if (response.ok) {
+                if (response.ok) {
+                    // Mensaje de éxito
                     showMessage(data.message, 'success');
                     document.getElementById('matricula').value = '';
+                    document.getElementById('adminKey').value = '';
                     
-                    // Mensaje adicional según el estado
-                    if (data.status === 'not_in_list') {
+                    // Mostrar información adicional si se usó clave admin
+                    if (data.adminKeyUsed) {
                         setTimeout(() => {
-                            showMessage('Tu asistencia fue registrada, pero no estás en la lista oficial. Contacta al administrador si esto es un error.', 'warning');
+                            showMessage('✅ Registro completado con clave de supervisor', 'success');
                         }, 3000);
                     }
-                } else {
-                    showMessage(data.error || 'Error al registrar asistencia', 'error');
-                }*/
-                if (response.ok) {
-                    // Mensaje de éxito personalizado con grado y nombre
-                    showMessage(data.message, 'success');
-                    document.getElementById('matricula').value = '';
                     
                     // Limpiar el campo después de 3 segundos para el siguiente usuario
                     setTimeout(() => {
@@ -299,13 +561,23 @@
                 } else {
                     // Manejo específico de errores
                     if (response.status === 404) {
-                        // Matrícula no registrada
                         showMessage(data.error, 'error');
                     } else if (response.status === 409) {
-                        // Ya registrado hoy
                         showMessage(data.error, 'warning');
+                    } else if (response.status === 403) {
+                        // Errores de restricciones
+                        if (data.distance) {
+                            showMessage(`❌ Ubicación: ${data.error}`, 'error');
+                        } else if (data.deviceRestricted) {
+                            showMessage(`❌ Dispositivo: ${data.error}`, 'error');
+                        } else {
+                            showMessage(data.error, 'error');
+                        }
+                    } else if (response.status === 400 && data.requiresLocation) {
+                        showMessage(data.error, 'warning');
+                        document.getElementById('locationBtn').style.display = 'block';
+                        requestLocation();
                     } else {
-                        // Otros errores
                         showMessage(data.error || 'Error al registrar asistencia', 'error');
                     }
                     
@@ -313,7 +585,7 @@
                     setTimeout(() => {
                         document.getElementById('matricula').value = '';
                         document.getElementById('matricula').focus();
-                    }, 3000);
+                    }, 5000);
                 }
                 
             } catch (error) {
@@ -323,10 +595,11 @@
                 submitBtn.disabled = false;
                 loading.style.display = 'none';
             }
-        });
+        }
         
         function showMessage(text, type) {
             const message = document.getElementById('message');
+            
             // Decodificar caracteres especiales si es necesario
             const decodedText = text.replace(/â/g, 'ñ')
                                 .replace(/Ã¡/g, 'á')
@@ -346,30 +619,31 @@
             message.className = `message ${type}`;
             message.style.display = 'block';
             
-            // Auto-ocultar después de 5 segundos para mensajes de éxito
-            if (type === 'success') {
-                setTimeout(() => {
-                    message.style.display = 'none';
-                }, 10000);
-            }
+            // Auto-ocultar después de tiempo variable según el tipo
+            const hideTimeout = type === 'success' ? 8000 : 6000;
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, hideTimeout);
         }
         
-        // Auto-focus en el campo de matrícula
-        document.getElementById('matricula').focus();
-        
-        // Permitir solo números y letras en matrícula
         // Normalizar formato de matrícula
         document.getElementById('matricula').addEventListener('input', (e) => {
-            // Permitir letras, números, espacios y guiones temporalmente
             let value = e.target.value.toUpperCase();
-            
-            // Limpiar espacios y guiones para normalizar
             const cleanValue = value.replace(/[\s\-]/g, '');
-            
-            // Permitir solo letras y números en el resultado final
             const normalizedValue = cleanValue.replace(/[^a-zA-Z0-9]/g, '');
-            
             e.target.value = normalizedValue;
+        });
+
+        // Limpiar clave admin en input
+        document.getElementById('adminKey').addEventListener('input', (e) => {
+            e.target.value = e.target.value.toUpperCase().replace(/[^a-zA-Z0-9]/g, '');
+        });
+
+        // Detectar Enter en el campo de clave admin
+        document.getElementById('adminKey').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('matricula').focus();
+            }
         });
     </script>
 </body>
