@@ -1,4 +1,8 @@
-require('dotenv').config();
+try {
+    require('dotenv').config();
+} catch (error) {
+    console.warn('⚠️ dotenv no encontrado, usando configuración por defecto');
+}
 
 const config = {
     // Configuración del servidor
