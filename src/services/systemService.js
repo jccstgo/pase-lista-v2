@@ -5,21 +5,16 @@ const { AppError } = require('../middleware/errorHandler');
 
 class SystemService {
     /**
-     * Inicializar el sistema completo
+     * Ejecuta todas las tareas necesarias para que el sistema pueda arrancar.
      */
     static async initializeSystem() {
         try {
             console.log('🔄 Iniciando proceso de inicialización del sistema...');
-            
-            // Crear directorio de datos
-            await this.createDataDirectory();
-            
-            // Inicializar archivos CSV
-            await this.initializeCSVFiles();
-            
-            // Crear administrador por defecto si no existe
-            await this.createDefaultAdmin();
-            
+
+            await SystemService.createDataDirectory();
+            await SystemService.initializeCSVFiles();
+            await SystemService.createDefaultAdmin();
+
             console.log('🎉 Sistema inicializado exitosamente');
             return true;
         } catch (error) {
@@ -29,7 +24,7 @@ class SystemService {
     }
 
     /**
-     * Crear directorio de datos
+     * Crea el directorio de datos definido en la configuración si aún no existe.
      */
     static async createDataDirectory() {
         try {
@@ -42,13 +37,13 @@ class SystemService {
     }
 
     /**
-     * Inicializar todos los archivos CSV necesarios
+     * Inicializa todos los archivos CSV requeridos por el sistema.
      */
     static async initializeCSVFiles() {
         try {
-            await this.initializeStudentsFile();
-            await this.initializeAttendanceFile();
-            await this.initializeAdminFile();
+            await SystemService.initializeStudentsFile();
+            await SystemService.initializeAttendanceFile();
+            await SystemService.initializeAdminFile();
             console.log('✅ Archivos CSV inicializados');
         } catch (error) {
             console.error('❌ Error inicializando archivos CSV:', error);
@@ -56,56 +51,97 @@ class SystemService {
         }
     }
 
-    /**
-     * Inicializar archivo de estudiantes
-     */
     static async initializeStudentsFile() {
-        try {
-            if (!(await CSVService.fileExists(config.FILES.STUDENTS))) {
-                console.log('📁 Creando archivo de estudiantes...');
-                await CSVService.writeEmptyCSV(config.FILES.STUDENTS, config.CSV_HEADERS.STUDENTS);
-                console.log('✅ Archivo students.csv creado con formato: matricula, nombre, grupo');
-            } else {
-                console.log('✅ Archivo students.csv existe');
-                
-                // Verificar integridad del archivo
-                await this.verifyFileIntegrity(config.FILES.STUDENTS, config.CSV_HEADERS.STUDENTS);
-            }
-        } catch (error) {
-            console.error('❌ Error inicializando archivo de estudiantes:', error);
-            throw error;
-        }
+        await SystemService.initializeFile(config.FILES.STUDENTS, config.CSV_HEADERS.STUDENTS, 'students.csv');
     }
 
-    /**
-     * Inicializar archivo de asistencias
-     */
     static async initializeAttendanceFile() {
+        await SystemService.initializeFile(config.FILES.ATTENDANCE, config.CSV_HEADERS.ATTENDANCE, 'attendance.csv');
+    }
+
+    static async initializeAdminFile() {
+        await SystemService.initializeFile(config.FILES.ADMIN, config.CSV_HEADERS.ADMIN, 'admin.csv');
+    }
+
+    /**
+     * Inicializa un archivo CSV genérico y verifica su integridad si ya existe.
+     */
+    static async initializeFile(filePath, headers, fileName) {
         try {
-            if (!(await CSVService.fileExists(config.FILES.ATTENDANCE))) {
-                console.log('📝 Creando archivo de asistencias...');
-                await CSVService.writeEmptyCSV(config.FILES.ATTENDANCE, config.CSV_HEADERS.ATTENDANCE);
-                console.log('✅ Archivo attendance.csv creado');
+            if (!(await CSVService.fileExists(filePath))) {
+                console.log(`📁 Creando archivo ${fileName}...`);
+                await CSVService.writeEmptyCSV(filePath, headers);
+                console.log(`✅ Archivo ${fileName} creado`);
             } else {
-                console.log('✅ Archivo attendance.csv existe');
-                
-                // Verificar integridad del archivo
-                await this.verifyFileIntegrity(config.FILES.ATTENDANCE, config.CSV_HEADERS.ATTENDANCE);
+                console.log(`✅ Archivo ${fileName} existe`);
+                await SystemService.verifyFileIntegrity(filePath, headers);
             }
         } catch (error) {
-            console.error('❌ Error inicializando archivo de asistencias:', error);
-            throw error;
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw new AppError(`Error inicializando ${fileName}`, 500, 'CSV_INIT_ERROR');
         }
     }
 
     /**
-     * Inicializar archivo de administradores
+     * Realiza validaciones básicas sobre un archivo CSV existente.
      */
-    static async initializeAdminFile() {
+    static async verifyFileIntegrity(filePath, headers) {
         try {
-            if (!(await CSVService.fileExists(config.FILES.ADMIN))) {
-                console.log('🔐 Creando archivo de administradores...');
-                await CSVService.writeEmptyCSV(config.FILES.ADMIN, config.CSV_HEADERS.ADMIN);
-                console.log('✅ Archivo admin.csv creado');
-            } else {
-                console.log('
+            const records = await CSVService.readCSV(filePath);
+            const requiredFields = headers.map(header => header.id);
+
+            const invalidRecords = records.filter(record =>
+                requiredFields.some(field => !(field in record))
+            );
+
+            if (invalidRecords.length > 0) {
+                console.warn(`⚠️ Registros inválidos encontrados en ${filePath}: ${invalidRecords.length}`);
+            }
+
+            return true;
+        } catch (error) {
+            console.error(`❌ Error verificando integridad de ${filePath}:`, error);
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw new AppError('Error verificando integridad de archivos', 500, 'CSV_INTEGRITY_ERROR');
+        }
+    }
+
+    /**
+     * Crea un administrador por defecto (admin/admin123) si no existe.
+     */
+    static async createDefaultAdmin() {
+        try {
+            const csvData = await CSVService.readCSV(config.FILES.ADMIN);
+            const admins = Admin.fromCSVArray(csvData);
+            const existingAdmin = Admin.findByUsername(admins, 'admin');
+
+            if (existingAdmin) {
+                console.log('✅ Administrador por defecto existente');
+                return existingAdmin;
+            }
+
+            const defaultAdmin = await Admin.createDefault();
+            await CSVService.writeCSV(
+                config.FILES.ADMIN,
+                [defaultAdmin.toCSV(), ...csvData],
+                config.CSV_HEADERS.ADMIN
+            );
+
+            console.log('✅ Administrador por defecto creado: admin/admin123');
+            return defaultAdmin;
+        } catch (error) {
+            console.error('❌ Error creando administrador por defecto:', error);
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw new AppError('Error al crear administrador por defecto', 500, 'DEFAULT_ADMIN_ERROR');
+        }
+    }
+}
+
+module.exports = SystemService;
+
