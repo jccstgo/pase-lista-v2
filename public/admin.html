@@ -194,22 +194,23 @@ async function handleLogin(e) {
     }
     
     try {
-        const response = await fetch('/api/admin/login', {
+        const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
-        
+
         const data = await response.json();
-        
-        if (response.ok) {
-            authToken = data.token;
+
+        if (response.ok && data.success && data.data?.token) {
+            authToken = data.data.token;
             localStorage.setItem('adminToken', authToken);
             showAdminSection();
             await loadDashboard();
             updateSystemInfo();
         } else {
-            showMessage('loginMessage', data.error || 'Error de autenticación', 'error');
+            const errorMessage = data.error || data.message || 'Error de autenticación';
+            showMessage('loginMessage', errorMessage, 'error');
         }
     } catch (error) {
         console.error('❌ Error de conexión:', error);
