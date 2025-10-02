@@ -1,6 +1,6 @@
 const app = require('./src/app');
 const config = require('./src/config/server');
-const { initializeSystem } = require('./src/services/systemService');
+const SystemService = require('./src/services/systemService');
 
 const PORT = process.env.PORT || config.DEFAULT_PORT;
 
@@ -8,21 +8,21 @@ async function startServer() {
     try {
         // Inicializar el sistema (crear directorios, archivos base, etc.)
         console.log('🔄 Inicializando sistema...');
-        await initializeSystem();
-        
+        await SystemService.initializeSystem();
+
         // Iniciar servidor
         const server = app.listen(PORT, () => {
             console.log('🚀 ================================');
-            console.log(`🪖 Sistema de Pase de Lista Militar`);
+            console.log('🪖 Sistema de Pase de Lista Militar');
             console.log(`🌍 Entorno: ${process.env.NODE_ENV || 'development'}`);
             console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-            
+
             if (process.env.NODE_ENV !== 'production') {
                 console.log(`🌐 URL local: http://localhost:${PORT}`);
                 console.log(`👤 Panel admin: http://localhost:${PORT}/admin`);
             }
-            
-            console.log(`🔐 Usuario admin por defecto: admin / admin123`);
+
+            console.log('🔐 Usuario admin por defecto: admin / admin123');
             console.log('🚀 ================================');
         });
 
@@ -42,7 +42,6 @@ async function startServer() {
                 process.exit(0);
             });
         });
-
     } catch (error) {
         console.error('❌ Error fatal al iniciar servidor:', error);
         process.exit(1);
