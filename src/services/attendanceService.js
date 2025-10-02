@@ -3,6 +3,7 @@ const Student = require('../models/Student');
 const StudentService = require('./studentService');
 const CSVService = require('./csvService');
 const config = require('../config/server');
+const DeviceService = require('./deviceService');
 const { AppError } = require('../middleware/errorHandler');
 
 class AttendanceService {
@@ -28,13 +29,17 @@ class AttendanceService {
     /**
      * Registrar asistencia de un estudiante
      */
-    static async registerAttendance(matricula) {
+    static async registerAttendance(attendanceRequest) {
         try {
-            if (!matricula) {
+            const request = typeof attendanceRequest === 'object' && attendanceRequest !== null
+                ? attendanceRequest
+                : { matricula: attendanceRequest };
+
+            if (!request.matricula) {
                 throw new AppError('Matrícula es requerida', 400, 'MISSING_MATRICULA');
             }
 
-            const cleanMatricula = matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
+            const cleanMatricula = request.matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
             console.log(`📝 Registrando asistencia para: ${cleanMatricula}`);
 
             // Buscar estudiante en la lista oficial
@@ -80,13 +85,20 @@ class AttendanceService {
 
             // Guardar en CSV
             await CSVService.appendToCSV(
-                config.FILES.ATTENDANCE, 
-                attendance.toCSV(), 
+                config.FILES.ATTENDANCE,
+                attendance.toCSV(),
                 config.CSV_HEADERS.ATTENDANCE
             );
 
             console.log(`✅ Asistencia registrada: ${student.nombre} (${cleanMatricula})`);
-            
+
+            // Registrar información del dispositivo si está disponible
+            await DeviceService.registerDeviceUsage({
+                matricula: student.matricula,
+                deviceFingerprint: request.deviceFingerprint,
+                userAgent: request.userAgent
+            });
+
             return {
                 success: true,
                 message: `¡Asistencia registrada exitosamente!<br>Grado y Nombre: <strong>${student.nombre}</strong><br>Grupo: <strong>${student.grupo}</strong>`,

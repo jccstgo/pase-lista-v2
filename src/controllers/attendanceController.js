@@ -9,9 +9,13 @@ class AttendanceController {
     static registerAttendance = asyncHandler(async (req, res) => {
         console.log('📝 Petición de registro de asistencia recibida');
         
-        const { matricula } = req.body;
-        
-        const result = await AttendanceService.registerAttendance(matricula);
+        const { matricula, deviceFingerprint } = req.body;
+
+        const result = await AttendanceService.registerAttendance({
+            matricula,
+            deviceFingerprint,
+            userAgent: req.headers['user-agent'] || ''
+        });
         
         res.status(200).json({
             success: true,

@@ -11,6 +11,7 @@ const { requestLogger } = require('./middleware/logger');
 const attendanceRoutes = require('./routes/attendance');
 const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
+const configRoutes = require('./routes/config');
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/config', configRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/admin', adminRoutes);
