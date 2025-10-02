@@ -1,0 +1,8 @@
+key,value,updated_at
+location_restriction_enabled,false,2025-10-02T00:00:00.000Z
+device_restriction_enabled,false,2025-10-02T00:00:00.000Z
+admin_key_bypass_enabled,false,2025-10-02T00:00:00.000Z
+location_name,,2025-10-02T00:00:00.000Z
+location_latitude,,2025-10-02T00:00:00.000Z
+location_longitude,,2025-10-02T00:00:00.000Z
+location_radius_km,1,2025-10-02T00:00:00.000Z

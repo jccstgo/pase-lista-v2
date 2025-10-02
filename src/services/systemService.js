@@ -5,6 +5,9 @@ const os = require('os');
 const Admin = require('../models/Admin');
 const CSVService = require('./csvService');
 const config = require('../config/server');
+const ConfigService = require('./configService');
+const AdminKeyService = require('./adminKeyService');
+const DeviceService = require('./deviceService');
 const { AppError } = require('../middleware/errorHandler');
 
 class SystemService {
@@ -53,6 +56,9 @@ class SystemService {
             await this.initializeStudentsFile();
             await this.initializeAttendanceFile();
             await this.initializeAdminFile();
+            await this.initializeConfigFile();
+            await this.initializeAdminKeysFile();
+            await this.initializeDevicesFile();
             console.log('✅ Archivos CSV inicializados');
         } catch (error) {
             console.error('❌ Error inicializando archivos CSV:', error);
@@ -120,6 +126,45 @@ class SystemService {
         } catch (error) {
             console.error('❌ Error inicializando archivo de administradores:', error);
             throw error instanceof AppError ? error : new AppError(error.message, 500, 'ADMIN_FILE_ERROR');
+        }
+    }
+
+    /**
+     * Inicializar archivo de configuración del sistema
+     */
+    static async initializeConfigFile() {
+        try {
+            await ConfigService.ensureInitialized();
+            console.log('✅ Archivo system_config.csv verificado');
+        } catch (error) {
+            console.error('❌ Error inicializando archivo de configuración:', error);
+            throw error instanceof AppError ? error : new AppError('No se pudo inicializar el archivo de configuración', 500, 'CONFIG_FILE_ERROR');
+        }
+    }
+
+    /**
+     * Inicializar archivo de claves administrativas
+     */
+    static async initializeAdminKeysFile() {
+        try {
+            await AdminKeyService.ensureInitialized();
+            console.log('✅ Archivo admin_keys.csv verificado');
+        } catch (error) {
+            console.error('❌ Error inicializando archivo de claves administrativas:', error);
+            throw error instanceof AppError ? error : new AppError('No se pudo inicializar el archivo de claves administrativas', 500, 'ADMIN_KEYS_FILE_ERROR');
+        }
+    }
+
+    /**
+     * Inicializar archivo de dispositivos registrados
+     */
+    static async initializeDevicesFile() {
+        try {
+            await DeviceService.ensureInitialized();
+            console.log('✅ Archivo devices.csv verificado');
+        } catch (error) {
+            console.error('❌ Error inicializando archivo de dispositivos:', error);
+            throw error instanceof AppError ? error : new AppError('No se pudo inicializar el archivo de dispositivos', 500, 'DEVICES_FILE_ERROR');
         }
     }
 
@@ -227,10 +272,20 @@ class SystemService {
      */
     static async getSystemStatus() {
         try {
-            const [studentsStatus, attendanceStatus, adminStatus] = await Promise.all([
+            const [
+                studentsStatus,
+                attendanceStatus,
+                adminStatus,
+                configStatus,
+                adminKeysStatus,
+                devicesStatus
+            ] = await Promise.all([
                 this.getFileStatus(config.FILES.STUDENTS, config.CSV_HEADERS.STUDENTS),
                 this.getFileStatus(config.FILES.ATTENDANCE, config.CSV_HEADERS.ATTENDANCE),
-                this.getFileStatus(config.FILES.ADMIN, config.CSV_HEADERS.ADMIN)
+                this.getFileStatus(config.FILES.ADMIN, config.CSV_HEADERS.ADMIN),
+                this.getFileStatus(config.FILES.CONFIG, config.CSV_HEADERS.CONFIG),
+                this.getFileStatus(config.FILES.ADMIN_KEYS, config.CSV_HEADERS.ADMIN_KEYS),
+                this.getFileStatus(config.FILES.DEVICES, config.CSV_HEADERS.DEVICES)
             ]);
 
             const adminInfo = await this.checkAdminExists();
@@ -248,7 +303,10 @@ class SystemService {
                 files: {
                     students: studentsStatus,
                     attendance: attendanceStatus,
-                    admin: adminStatus
+                    admin: adminStatus,
+                    configuration: configStatus,
+                    adminKeys: adminKeysStatus,
+                    devices: devicesStatus
                 },
                 admin: adminInfo
             };
@@ -307,10 +365,13 @@ class SystemService {
             const backupDir = path.join(config.DATA_DIR, 'backups');
             await CSVService.ensureDirectory(backupDir);
 
-            const [students, attendance, admins] = await Promise.all([
+            const [students, attendance, admins, systemConfig, adminKeys, devices] = await Promise.all([
                 CSVService.readCSV(config.FILES.STUDENTS),
                 CSVService.readCSV(config.FILES.ATTENDANCE),
-                CSVService.readCSV(config.FILES.ADMIN)
+                CSVService.readCSV(config.FILES.ADMIN),
+                ConfigService.getSystemConfig(),
+                AdminKeyService.getAllKeys(),
+                DeviceService.getAllDevices()
             ]);
 
             const backupData = {
@@ -322,7 +383,10 @@ class SystemService {
                 data: {
                     students,
                     attendance,
-                    admins
+                    admins,
+                    systemConfig,
+                    adminKeys,
+                    devices
                 }
             };
 

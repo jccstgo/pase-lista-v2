@@ -18,9 +18,12 @@ const config = {
     FILES: {
         STUDENTS: 'data/students.csv',
         ATTENDANCE: 'data/attendance.csv',
-        ADMIN: 'data/admin.csv'
+        ADMIN: 'data/admin.csv',
+        CONFIG: 'data/system_config.csv',
+        ADMIN_KEYS: 'data/admin_keys.csv',
+        DEVICES: 'data/devices.csv'
     },
-    
+
     // Configuración de CSV
     CSV_HEADERS: {
         STUDENTS: [
@@ -38,7 +41,37 @@ const config = {
         ADMIN: [
             { id: 'username', title: 'username' },
             { id: 'password', title: 'password' }
+        ],
+        CONFIG: [
+            { id: 'key', title: 'key' },
+            { id: 'value', title: 'value' },
+            { id: 'updated_at', title: 'updated_at' }
+        ],
+        ADMIN_KEYS: [
+            { id: 'key', title: 'key' },
+            { id: 'description', title: 'description' },
+            { id: 'is_active', title: 'is_active' },
+            { id: 'created_at', title: 'created_at' },
+            { id: 'deactivated_at', title: 'deactivated_at' }
+        ],
+        DEVICES: [
+            { id: 'device_fingerprint', title: 'device_fingerprint' },
+            { id: 'matricula', title: 'matricula' },
+            { id: 'first_registration', title: 'first_registration' },
+            { id: 'last_used', title: 'last_used' },
+            { id: 'user_agent', title: 'user_agent' }
         ]
+    },
+
+    // Configuración del sistema (restricciones y comportamiento)
+    DEFAULT_SYSTEM_CONFIG: {
+        location_restriction_enabled: 'false',
+        device_restriction_enabled: 'false',
+        admin_key_bypass_enabled: 'false',
+        location_name: '',
+        location_latitude: '',
+        location_longitude: '',
+        location_radius_km: '1'
     },
     
     // Configuración de validación

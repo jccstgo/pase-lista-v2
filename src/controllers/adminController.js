@@ -2,6 +2,9 @@ const AdminService = require('../services/adminService');
 const StudentService = require('../services/studentService');
 const AttendanceService = require('../services/attendanceService');
 const SystemService = require('../services/systemService');
+const ConfigService = require('../services/configService');
+const AdminKeyService = require('../services/adminKeyService');
+const DeviceService = require('../services/deviceService');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 class AdminController {
@@ -49,10 +52,11 @@ class AdminController {
         const { students } = req.body;
         
         const result = await StudentService.updateStudentsList(students);
-        
+
         // Limpiar registros de asistencia al subir nueva lista
         await AttendanceService.clearAttendanceRecords();
-        
+        await DeviceService.clearAllDevices();
+
         res.status(200).json({
             success: true,
             message: `${result.validStudents} ${result.message}. Registros de asistencia reiniciados.`,
@@ -160,14 +164,83 @@ class AdminController {
      */
     static cleanupSystem = asyncHandler(async (req, res) => {
         console.log('🧹 Petición de limpieza del sistema');
-        
+
         const cleanup = await SystemService.cleanupSystem();
-        
+
         res.status(200).json({
             success: true,
             message: 'Limpieza completada exitosamente',
             data: cleanup
         });
+    });
+
+    /**
+     * Obtener configuración del sistema (restricciones)
+     * GET /api/admin/config
+     */
+    static getSystemConfig = asyncHandler(async (req, res) => {
+        console.log('⚙️ Petición de configuración del sistema');
+
+        const systemConfig = await ConfigService.getSystemConfig();
+        res.status(200).json(systemConfig);
+    });
+
+    /**
+     * Actualizar configuración del sistema (restricciones)
+     * POST /api/admin/config
+     */
+    static updateSystemConfig = asyncHandler(async (req, res) => {
+        console.log('💾 Petición de guardado de configuración');
+
+        const updatedConfig = await ConfigService.saveSystemConfig(req.body || {});
+        res.status(200).json(updatedConfig);
+    });
+
+    /**
+     * Obtener claves administrativas
+     * GET /api/admin/admin-keys
+     */
+    static getAdminKeys = asyncHandler(async (req, res) => {
+        console.log('🔑 Petición de listado de claves administrativas');
+
+        const keys = await AdminKeyService.getAllKeys();
+        res.status(200).json(keys);
+    });
+
+    /**
+     * Crear nueva clave administrativa
+     * POST /api/admin/admin-keys
+     */
+    static createAdminKey = asyncHandler(async (req, res) => {
+        console.log('➕ Petición de creación de clave administrativa');
+
+        const { key, description } = req.body || {};
+        const newKey = await AdminKeyService.createKey(key, description);
+
+        res.status(201).json(newKey);
+    });
+
+    /**
+     * Desactivar clave administrativa
+     * DELETE /api/admin/admin-keys/:key
+     */
+    static deactivateAdminKey = asyncHandler(async (req, res) => {
+        const { key } = req.params;
+        console.log(`🗝️ Petición de desactivación de clave: ${key}`);
+
+        const updatedKey = await AdminKeyService.deactivateKey(key);
+        res.status(200).json(updatedKey);
+    });
+
+    /**
+     * Obtener dispositivos registrados
+     * GET /api/admin/devices
+     */
+    static getRegisteredDevices = asyncHandler(async (req, res) => {
+        console.log('📱 Petición de dispositivos registrados');
+
+        const devices = await DeviceService.getAllDevices();
+        res.status(200).json(devices);
     });
 
     /**

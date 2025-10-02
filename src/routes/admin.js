@@ -17,6 +17,28 @@ router.use(sanitizeInput);
  * Rutas principales de estadísticas y reportes
  */
 
+/**
+ * Configuración del sistema y restricciones
+ */
+router.get('/config', AdminController.getSystemConfig);
+router.post('/config', AdminController.updateSystemConfig);
+
+/**
+ * Gestión de claves administrativas
+ */
+router.get('/admin-keys', AdminController.getAdminKeys);
+router.post('/admin-keys', AdminController.createAdminKey);
+router.delete('/admin-keys/:key', AdminController.deactivateAdminKey);
+
+/**
+ * Gestión de dispositivos registrados
+ */
+router.get('/devices', AdminController.getRegisteredDevices);
+
+/**
+ * Rutas principales de estadísticas y reportes
+ */
+
 // Obtener estadísticas generales del sistema
 router.get('/stats', AdminController.getSystemStats);
 
