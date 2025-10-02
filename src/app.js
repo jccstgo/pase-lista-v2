@@ -35,8 +35,8 @@ app.use('/assets', express.static(path.join(__dirname, '../public/assets')));
 
 // Health check
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
+    res.json({
+        status: 'OK',
         timestamp: new Date().toISOString(),
         message: 'Sistema de pase de lista funcionando correctamente',
         version: process.env.npm_package_version || '1.0.0'
@@ -60,7 +60,7 @@ app.get('/admin', (req, res) => {
 // Manejo de rutas no encontradas
 app.use('*', (req, res) => {
     console.log(`⚠️ Ruta no encontrada: ${req.method} ${req.originalUrl}`);
-    res.status(404).json({ 
+    res.status(404).json({
         error: 'Ruta no encontrada',
         path: req.originalUrl,
         method: req.method
