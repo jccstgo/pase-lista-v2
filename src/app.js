@@ -51,12 +51,22 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Rutas de vistas
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/views/index.html'));
+app.get('/', (req, res, next) => {
+    res.sendFile(path.join(__dirname, '../public/index.html'), (error) => {
+        if (error) {
+            console.error('❌ Error al servir la vista principal:', error.message);
+            next(error);
+        }
+    });
 });
 
-app.get('/admin', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/views/admin.html'));
+app.get('/admin', (req, res, next) => {
+    res.sendFile(path.join(__dirname, '../public/admin.html'), (error) => {
+        if (error) {
+            console.error('❌ Error al servir la vista de administración:', error.message);
+            next(error);
+        }
+    });
 });
 
 // Manejo de rutas no encontradas
