@@ -1,5 +1,3 @@
-const fs = require('fs/promises');
-
 const Student = require('../models/Student');
 const database = require('./databaseService');
 const config = require('../config/server');
@@ -14,12 +12,14 @@ class StudentService {
             return null;
         }
 
+        const normalizeDate = (value) => (value instanceof Date ? value.toISOString() : value);
+
         return new Student({
             matricula: row.matricula,
             nombre: row.nombre,
             grupo: row.grupo,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at
+            createdAt: normalizeDate(row.created_at),
+            updatedAt: normalizeDate(row.updated_at)
         });
     }
 
@@ -28,10 +28,10 @@ class StudentService {
      */
     static async getAllStudents() {
         try {
-            const rows = database.all(
+            const rows = await database.all(
                 `SELECT matricula, nombre, grupo, created_at, updated_at
                  FROM students
-                 ORDER BY nombre COLLATE NOCASE`
+                 ORDER BY LOWER(nombre) ASC, nombre ASC`
             );
 
             const students = rows.map(row => this.mapRowToStudent(row));
@@ -56,11 +56,11 @@ class StudentService {
             }
 
             const normalizedMatricula = new Student({ matricula }).matricula;
-            const row = database.get(
+            const row = await database.get(
                 `SELECT matricula, nombre, grupo, created_at, updated_at
                  FROM students
-                 WHERE matricula = @matricula`,
-                { matricula: normalizedMatricula }
+                 WHERE matricula = $1`,
+                [normalizedMatricula]
             );
 
             if (!row) {
@@ -90,12 +90,12 @@ class StudentService {
             }
 
             const normalizedGroup = new Student({ grupo }).grupo;
-            const rows = database.all(
+            const rows = await database.all(
                 `SELECT matricula, nombre, grupo, created_at, updated_at
                  FROM students
-                 WHERE grupo = @grupo
-                 ORDER BY nombre COLLATE NOCASE`,
-                { grupo: normalizedGroup }
+                 WHERE grupo = $1
+                 ORDER BY LOWER(nombre) ASC, nombre ASC`,
+                [normalizedGroup]
             );
 
             const students = rows.map(row => this.mapRowToStudent(row));
@@ -160,34 +160,32 @@ class StudentService {
             }
 
             try {
-                database.backupDatabase('students');
+                await database.backupDatabase('students');
             } catch (backupError) {
                 console.warn('⚠️ No se pudo crear respaldo de estudiantes:', backupError.message);
             }
 
-            const insertStatement = database.prepare(`
-                INSERT INTO students (matricula, nombre, grupo, created_at, updated_at)
-                VALUES (@matricula, @nombre, @grupo, @createdAt, @updatedAt)
-                ON CONFLICT(matricula) DO UPDATE SET
-                    nombre = excluded.nombre,
-                    grupo = excluded.grupo,
-                    updated_at = excluded.updated_at
-            `);
+            await database.transaction(async (client) => {
+                await client.query('DELETE FROM students');
 
-            const replaceStudents = database.transaction(students => {
-                database.run('DELETE FROM students');
-                students.forEach(student => {
-                    insertStatement.run({
-                        matricula: student.matricula,
-                        nombre: student.nombre,
-                        grupo: student.grupo,
-                        createdAt: student.createdAt,
-                        updatedAt: student.updatedAt
-                    });
-                });
+                for (const student of validStudents) {
+                    await client.query(
+                        `INSERT INTO students (matricula, nombre, grupo, created_at, updated_at)
+                         VALUES ($1, $2, $3, $4, $5)
+                         ON CONFLICT (matricula) DO UPDATE SET
+                             nombre = EXCLUDED.nombre,
+                             grupo = EXCLUDED.grupo,
+                             updated_at = EXCLUDED.updated_at`,
+                        [
+                            student.matricula,
+                            student.nombre,
+                            student.grupo,
+                            student.createdAt,
+                            student.updatedAt
+                        ]
+                    );
+                }
             });
-
-            replaceStudents(validStudents);
 
             console.log(`✅ Lista de estudiantes actualizada en base de datos: ${validStudents.length} registros válidos`);
 
@@ -226,25 +224,25 @@ class StudentService {
                 throw new AppError(`Datos de estudiante inválidos: ${validation.errors.join(', ')}`, 400, 'INVALID_STUDENT_DATA');
             }
 
-            const existing = database.get(
-                'SELECT matricula FROM students WHERE matricula = @matricula',
-                { matricula: student.matricula }
+            const existing = await database.get(
+                'SELECT matricula FROM students WHERE matricula = $1',
+                [student.matricula]
             );
 
             if (existing) {
                 throw new AppError(`Ya existe un estudiante con matrícula ${student.matricula}`, 409, 'STUDENT_ALREADY_EXISTS');
             }
 
-            database.run(
+            await database.run(
                 `INSERT INTO students (matricula, nombre, grupo, created_at, updated_at)
-                 VALUES (@matricula, @nombre, @grupo, @createdAt, @updatedAt)`,
-                {
-                    matricula: student.matricula,
-                    nombre: student.nombre,
-                    grupo: student.grupo,
-                    createdAt: student.createdAt,
-                    updatedAt: student.updatedAt
-                }
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [
+                    student.matricula,
+                    student.nombre,
+                    student.grupo,
+                    student.createdAt,
+                    student.updatedAt
+                ]
             );
 
             console.log(`✅ Estudiante agregado a la base de datos: ${student.nombre} (${student.matricula})`);
@@ -282,21 +280,21 @@ class StudentService {
                 throw new AppError(`Datos actualizados inválidos: ${validation.errors.join(', ')}`, 400, 'INVALID_UPDATE_DATA');
             }
 
-            const result = database.run(
+            const result = await database.run(
                 `UPDATE students
-                 SET nombre = @nombre,
-                     grupo = @grupo,
-                     updated_at = @updatedAt
-                 WHERE matricula = @matricula`,
-                {
-                    matricula: updatedStudent.matricula,
-                    nombre: updatedStudent.nombre,
-                    grupo: updatedStudent.grupo,
-                    updatedAt: updatedStudent.updatedAt
-                }
+                 SET nombre = $1,
+                     grupo = $2,
+                     updated_at = $3
+                 WHERE matricula = $4`,
+                [
+                    updatedStudent.nombre,
+                    updatedStudent.grupo,
+                    updatedStudent.updatedAt,
+                    updatedStudent.matricula
+                ]
             );
 
-            if (result.changes === 0) {
+            if (result.rowCount === 0) {
                 throw new AppError('No se pudo actualizar el estudiante', 500, 'UPDATE_FAILED');
             }
 
@@ -321,12 +319,12 @@ class StudentService {
                 throw new AppError('Estudiante no encontrado', 404, 'STUDENT_NOT_FOUND');
             }
 
-            const result = database.run(
-                'DELETE FROM students WHERE matricula = @matricula',
-                { matricula: existingStudent.matricula }
+            const result = await database.run(
+                'DELETE FROM students WHERE matricula = $1',
+                [existingStudent.matricula]
             );
 
-            if (result.changes === 0) {
+            if (result.rowCount === 0) {
                 throw new AppError('No se pudo eliminar el estudiante', 500, 'DELETE_FAILED');
             }
 
@@ -347,16 +345,16 @@ class StudentService {
     static async clearAllStudents() {
         try {
             try {
-                database.backupDatabase('students-clear');
+                await database.backupDatabase('students-clear');
             } catch (backupError) {
                 console.warn('⚠️ No se pudo crear respaldo antes de limpiar estudiantes:', backupError.message);
             }
 
-            const result = database.clearTable('students');
-            console.log(`🧹 Base de datos de estudiantes limpiada. Registros eliminados: ${result.changes}`);
+            const result = await database.clearTable('students');
+            console.log(`🧹 Base de datos de estudiantes limpiada. Registros eliminados: ${result.rowCount}`);
 
             return {
-                deleted: result.changes,
+                deleted: result.rowCount,
                 timestamp: new Date().toISOString()
             };
         } catch (error) {
@@ -373,8 +371,8 @@ class StudentService {
      */
     static async getStudentStats() {
         try {
-            const totals = database.get('SELECT COUNT(*) AS total FROM students');
-            const groupRows = database.all(
+            const totals = await database.get('SELECT COUNT(*) AS total FROM students');
+            const groupRows = await database.all(
                 `SELECT grupo, COUNT(*) AS total
                  FROM students
                  GROUP BY grupo
@@ -383,25 +381,16 @@ class StudentService {
 
             const groups = {};
             groupRows.forEach(row => {
-                groups[row.grupo] = row.total;
+                groups[row.grupo] = Number.parseInt(row.total, 10);
             });
 
-            let fileInfo = {};
-            try {
-                const stats = await fs.stat(config.DATABASE.FILE);
-                fileInfo = {
-                    lastModified: stats.mtime.toISOString(),
-                    fileSize: stats.size
-                };
-            } catch (statError) {
-                console.warn('⚠️ No se pudo obtener información del archivo de base de datos:', statError.message);
-            }
-
             return {
-                total: totals?.total || 0,
+                total: Number.parseInt(totals?.total, 10) || 0,
                 groups,
                 groupCount: Object.keys(groups).length,
-                fileInfo,
+                storage: {
+                    connection: config.DATABASE.SUMMARY
+                },
                 timestamp: new Date().toISOString()
             };
         } catch (error) {
@@ -419,21 +408,25 @@ class StudentService {
     static async searchStudents(filters = {}) {
         try {
             const conditions = [];
-            const params = {};
+            const values = [];
+            let paramIndex = 1;
 
             if (filters.matricula) {
-                conditions.push('matricula LIKE @matricula');
-                params.matricula = `%${filters.matricula.toString().trim().toUpperCase()}%`;
+                conditions.push(`matricula ILIKE $${paramIndex}`);
+                values.push(`%${filters.matricula.toString().trim().toUpperCase()}%`);
+                paramIndex += 1;
             }
 
             if (filters.nombre) {
-                conditions.push('LOWER(nombre) LIKE @nombre');
-                params.nombre = `%${filters.nombre.toString().trim().toLowerCase()}%`;
+                conditions.push(`nombre ILIKE $${paramIndex}`);
+                values.push(`%${filters.nombre.toString().trim()}%`);
+                paramIndex += 1;
             }
 
             if (filters.grupo) {
-                conditions.push('grupo = @grupo');
-                params.grupo = filters.grupo.toString().trim().toUpperCase();
+                conditions.push(`grupo = $${paramIndex}`);
+                values.push(filters.grupo.toString().trim().toUpperCase());
+                paramIndex += 1;
             }
 
             const whereClause = conditions.length > 0
@@ -442,54 +435,57 @@ class StudentService {
 
             const allowedSortFields = {
                 matricula: 'matricula',
-                nombre: 'nombre',
+                nombre: 'LOWER(nombre)',
                 grupo: 'grupo'
             };
 
-            const sortField = allowedSortFields[filters.sortBy] || 'nombre';
+            const sortField = allowedSortFields[filters.sortBy] || 'LOWER(nombre)';
             const sortOrder = filters.sortOrder === 'desc' ? 'DESC' : 'ASC';
-            const orderClause = `ORDER BY ${sortField} COLLATE NOCASE ${sortOrder}`;
+            const orderClause = sortField === 'LOWER(nombre)'
+                ? `ORDER BY LOWER(nombre) ${sortOrder}, nombre ${sortOrder}`
+                : `ORDER BY ${sortField} ${sortOrder}`;
 
             if (filters.page && filters.limit) {
                 const page = Math.max(parseInt(filters.page, 10) || 1, 1);
                 const limit = Math.max(parseInt(filters.limit, 10) || 10, 1);
                 const offset = (page - 1) * limit;
 
-                const totalRow = database.get(
+                const totalRow = await database.get(
                     `SELECT COUNT(*) AS total FROM students ${whereClause}`,
-                    params
+                    values
                 );
 
-                const rows = database.all(
+                const paginatedRows = await database.all(
                     `SELECT matricula, nombre, grupo, created_at, updated_at
                      FROM students
                      ${whereClause}
                      ${orderClause}
-                     LIMIT @limit OFFSET @offset`,
-                    { ...params, limit, offset }
+                     LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+                    [...values, limit, offset]
                 );
 
-                const students = rows.map(row => this.mapRowToStudent(row));
+                const students = paginatedRows.map(row => this.mapRowToStudent(row));
+                const total = Number.parseInt(totalRow?.total, 10) || 0;
 
                 return {
                     students,
                     pagination: {
                         page,
                         limit,
-                        total: totalRow?.total || 0,
-                        totalPages: Math.ceil((totalRow?.total || 0) / limit) || 1,
-                        hasNext: offset + students.length < (totalRow?.total || 0),
+                        total,
+                        totalPages: Math.ceil(total / limit) || 1,
+                        hasNext: offset + students.length < total,
                         hasPrev: page > 1
                     }
                 };
             }
 
-            const rows = database.all(
+            const rows = await database.all(
                 `SELECT matricula, nombre, grupo, created_at, updated_at
                  FROM students
                  ${whereClause}
                  ${orderClause}`,
-                params
+                values
             );
 
             const students = rows.map(row => this.mapRowToStudent(row));

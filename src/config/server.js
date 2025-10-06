@@ -9,6 +9,29 @@ try {
 const DATA_DIR = process.env.DATA_DIR || 'data';
 const resolveDataPath = (...segments) => path.join(DATA_DIR, ...segments);
 
+const DEFAULT_DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/pase_lista';
+
+const parseNumber = (value, defaultValue) => {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : defaultValue;
+};
+
+const shouldUseSSL = (value) => value === true || (typeof value === 'string' && value.toLowerCase() === 'true');
+
+const getDatabaseSummary = (databaseUrl) => {
+    try {
+        const url = new URL(databaseUrl);
+        const protocol = url.protocol.replace(/:$/, '');
+        const host = url.hostname;
+        const port = url.port || '5432';
+        const databaseName = url.pathname.replace(/^\//, '') || 'postgres';
+        return `${protocol}://${host}:${port}/${databaseName}`;
+    } catch (error) {
+        console.warn('⚠️ No se pudo generar resumen de la base de datos:', error.message);
+        return 'postgresql://localhost:5432/pase_lista';
+    }
+};
+
 const config = {
     // Configuración del servidor
     DEFAULT_PORT: 3000,
@@ -30,11 +53,12 @@ const config = {
     },
 
     DATABASE: {
-        FILE: process.env.DATABASE_FILE || resolveDataPath('system.sqlite'),
-        BACKUP_DIR: resolveDataPath('backups'),
-        PRAGMA: {
-            foreign_keys: 'ON'
-        }
+        URL: DEFAULT_DATABASE_URL,
+        SUMMARY: getDatabaseSummary(DEFAULT_DATABASE_URL),
+        SSL: shouldUseSSL(process.env.DATABASE_SSL),
+        MAX_POOL_SIZE: parseNumber(process.env.DATABASE_MAX_POOL_SIZE, 10),
+        IDLE_TIMEOUT_MS: parseNumber(process.env.DATABASE_IDLE_TIMEOUT_MS, 30000),
+        CONNECTION_TIMEOUT_MS: parseNumber(process.env.DATABASE_CONNECTION_TIMEOUT_MS, 2000)
     },
 
     // Configuración de CSV

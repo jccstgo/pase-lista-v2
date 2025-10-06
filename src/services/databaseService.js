@@ -1,94 +1,91 @@
-const fs = require('fs');
-const path = require('path');
-const Database = require('better-sqlite3');
+const { Pool } = require('pg');
 
 const config = require('../config/server');
 
 class DatabaseService {
     constructor() {
-        this.dbPath = config.DATABASE.FILE;
         this.allowedTables = new Set(['students']);
-        this.ensureDirectories();
-        this.db = new Database(this.dbPath);
-        this.configure();
-        this.initializeTables();
+        this.pool = new Pool({
+            connectionString: config.DATABASE.URL,
+            ssl: config.DATABASE.SSL ? { rejectUnauthorized: false } : undefined,
+            max: config.DATABASE.MAX_POOL_SIZE,
+            idleTimeoutMillis: config.DATABASE.IDLE_TIMEOUT_MS,
+            connectionTimeoutMillis: config.DATABASE.CONNECTION_TIMEOUT_MS
+        });
+
+        this.pool.on('error', (error) => {
+            console.error('❌ Error inesperado en la conexión de PostgreSQL:', error);
+        });
+
+        this.ready = this.initialize();
     }
 
-    ensureDirectories() {
-        const dataDir = path.dirname(this.dbPath);
-        fs.mkdirSync(dataDir, { recursive: true });
-
-        if (config.DATABASE.BACKUP_DIR) {
-            fs.mkdirSync(config.DATABASE.BACKUP_DIR, { recursive: true });
+    async initialize() {
+        try {
+            await this.initializeTables();
+            console.log('✅ Conexión a PostgreSQL verificada');
+        } catch (error) {
+            console.error('❌ Error inicializando la base de datos PostgreSQL:', error);
+            throw error;
         }
     }
 
-    configure() {
-        const pragmas = {
-            journal_mode: 'WAL',
-            synchronous: 'NORMAL',
-            cache_size: -16000,
-            foreign_keys: 'ON',
-            ...config.DATABASE.PRAGMA
-        };
-
-        Object.entries(pragmas).forEach(([key, value]) => {
-            this.db.pragma(`${key} = ${value}`);
-        });
-    }
-
-    initializeTables() {
-        this.db.exec(`
+    async initializeTables() {
+        await this.pool.query(`
             CREATE TABLE IF NOT EXISTS students (
                 matricula TEXT PRIMARY KEY,
                 nombre TEXT NOT NULL,
                 grupo TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_students_grupo ON students (grupo);
-            CREATE INDEX IF NOT EXISTS idx_students_nombre ON students (nombre);
+                created_at TIMESTAMPTZ NOT NULL,
+                updated_at TIMESTAMPTZ NOT NULL
+            )
         `);
+
+        await this.pool.query('CREATE INDEX IF NOT EXISTS idx_students_grupo ON students (grupo)');
+        await this.pool.query('CREATE INDEX IF NOT EXISTS idx_students_nombre ON students (LOWER(nombre))');
     }
 
-    prepare(sql) {
-        return this.db.prepare(sql);
+    async query(text, params = []) {
+        await this.ready;
+        return this.pool.query(text, params);
     }
 
-    run(sql, params = {}) {
-        return this.prepare(sql).run(params);
+    async run(text, params = []) {
+        return this.query(text, params);
     }
 
-    get(sql, params = {}) {
-        return this.prepare(sql).get(params);
+    async get(text, params = []) {
+        const result = await this.query(text, params);
+        return result.rows[0] || null;
     }
 
-    all(sql, params = {}) {
-        return this.prepare(sql).all(params);
+    async all(text, params = []) {
+        const result = await this.query(text, params);
+        return result.rows;
     }
 
-    transaction(fn) {
-        return this.db.transaction(fn);
-    }
-
-    backupDatabase(label = 'backup') {
-        if (!config.DATABASE.BACKUP_DIR) {
-            return null;
+    async transaction(fn) {
+        await this.ready;
+        const client = await this.pool.connect();
+        try {
+            await client.query('BEGIN');
+            const result = await fn(client);
+            await client.query('COMMIT');
+            return result;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
         }
-
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const sanitizedLabel = label.replace(/[^a-zA-Z0-9_-]/g, '_');
-        const backupFile = path.join(
-            config.DATABASE.BACKUP_DIR,
-            `${sanitizedLabel}-${timestamp}.sqlite`
-        );
-
-        fs.copyFileSync(this.dbPath, backupFile);
-        return backupFile;
     }
 
-    clearTable(tableName) {
+    async backupDatabase(label = 'backup') {
+        console.warn(`⚠️ Respaldo manual no disponible para PostgreSQL (${label})`);
+        return null;
+    }
+
+    async clearTable(tableName) {
         if (!this.allowedTables.has(tableName)) {
             throw new Error(`Operación no permitida en la tabla ${tableName}`);
         }
