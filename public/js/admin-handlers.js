@@ -239,12 +239,27 @@ async function deactivateAdminKey(key) {
 async function previewCSV() {
     const fileInput = document.getElementById('csvFile');
     const file = fileInput.files[0];
-    
+
     if (!file) return;
-    
-    const text = await file.text();
-    const lines = text.split('\n').filter(line => line.trim());
-    
+
+    let textContent = '';
+
+    try {
+        textContent = typeof readFileAsTextWithEncoding === 'function'
+            ? await readFileAsTextWithEncoding(file)
+            : await file.text();
+    } catch (error) {
+        console.error('❌ Error leyendo archivo CSV:', error);
+        showMessage('uploadMessage', 'No se pudo leer el archivo seleccionado', 'error');
+        return;
+    }
+
+    const normalizedText = textContent.replace(/\uFEFF/g, '');
+    const lines = normalizedText
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
     if (lines.length === 0) {
         showMessage('uploadMessage', 'El archivo está vacío', 'error');
         return;
@@ -274,12 +289,13 @@ async function previewCSV() {
         const student = {};
         headers.forEach((header, index) => {
             const cleanHeader = (header || '').toString().toLowerCase().trim();
-            const cleanValue = (row[index] || '').toString().trim();
+            const rawValue = (row[index] || '').toString().trim();
+            const cleanValue = decodeSpecialChars(rawValue);
             student[cleanHeader] = cleanValue;
         });
         return student;
-    }).filter(student => 
-        student.matricula && 
+    }).filter(student =>
+        student.matricula &&
         student.matricula.trim() !== '' && 
         student.nombre && 
         student.nombre.trim() !== ''
