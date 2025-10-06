@@ -485,27 +485,17 @@ class SystemService {
      */
     static async getStudentsStorageStatus() {
         try {
-            const stats = await fsp.stat(config.DATABASE.FILE);
             const studentStats = await StudentService.getStudentStats();
 
             return {
-                path: path.resolve(config.DATABASE.FILE),
+                connection: config.DATABASE.SUMMARY,
                 exists: true,
-                size: stats.size,
-                lastModified: stats.mtime.toISOString(),
                 records: studentStats.total,
+                groups: studentStats.groups,
+                lastSync: studentStats.timestamp,
                 type: 'database'
             };
         } catch (error) {
-            if (error.code === 'ENOENT') {
-                return {
-                    path: path.resolve(config.DATABASE.FILE),
-                    exists: false,
-                    records: 0,
-                    type: 'database'
-                };
-            }
-
             console.error('❌ Error obteniendo estado de la base de datos de estudiantes:', error);
             throw error instanceof AppError
                 ? error
