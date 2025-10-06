@@ -102,18 +102,63 @@ function showMessage(elementId, message, type) {
     }, 5000);
 }
 
+function hasEncodingArtifacts(text) {
+    if (!text || typeof text !== 'string') {
+        return false;
+    }
+
+    return text.includes('\uFFFD') || /Ã.|Â./.test(text);
+}
+
+function decodeText(bytes, encoding) {
+    try {
+        return new TextDecoder(encoding, { fatal: false }).decode(bytes);
+    } catch (error) {
+        return null;
+    }
+}
+
 function decodeSpecialChars(text) {
     if (!text || typeof text !== 'string') {
         return text;
     }
 
-    try {
-        const bytes = new Uint8Array(Array.from(text, char => char.charCodeAt(0)));
-        const decoder = new TextDecoder('utf-8', { fatal: false });
-        return decoder.decode(bytes);
-    } catch (error) {
+    if (!/Ã.|Â./.test(text)) {
         return text;
     }
+
+    const bytes = new Uint8Array(Array.from(text, char => char.charCodeAt(0)));
+    const preferredEncodings = ['utf-8', 'windows-1252', 'iso-8859-1'];
+
+    for (const encoding of preferredEncodings) {
+        const decoded = decodeText(bytes, encoding);
+        if (decoded && !hasEncodingArtifacts(decoded)) {
+            return decoded;
+        }
+    }
+
+    return text;
+}
+
+async function readFileAsTextWithEncoding(file) {
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const encodingsToTry = ['utf-8', 'windows-1252', 'iso-8859-1'];
+
+    for (let index = 0; index < encodingsToTry.length; index++) {
+        const encoding = encodingsToTry[index];
+        const decoded = decodeText(bytes, encoding);
+
+        if (!decoded) {
+            continue;
+        }
+
+        if (!hasEncodingArtifacts(decoded) || index === encodingsToTry.length - 1) {
+            return decoded;
+        }
+    }
+
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
 }
 
 function populateRestrictionsForm() {
@@ -188,6 +233,7 @@ window.showAdminSection = showAdminSection;
 window.updateSystemInfo = updateSystemInfo;
 window.showMessage = showMessage;
 window.decodeSpecialChars = decodeSpecialChars;
+window.readFileAsTextWithEncoding = readFileAsTextWithEncoding;
 window.populateRestrictionsForm = populateRestrictionsForm;
 window.handleLocationRestrictionChange = handleLocationRestrictionChange;
 window.getCurrentLocation = getCurrentLocation;
