@@ -32,6 +32,10 @@ async function handleLogin(e) {
             showAdminSection();
             await loadDashboard();
             updateSystemInfo();
+            const overviewTab = document.querySelector('.tab[data-tab="overview"]');
+            if (overviewTab) {
+                showTab('overview', overviewTab);
+            }
         } else {
             const errorMessage = data.error || data.message || 'Error de autenticación';
             showMessage('loginMessage', errorMessage, 'error');
@@ -135,10 +139,11 @@ async function handleRestrictionsSubmit(e) {
         });
         
         const data = await response.json();
-        
+
         if (response.ok) {
             showMessage('restrictionsMessage', 'Configuración guardada exitosamente', 'success');
             systemConfig = config;
+            populateRestrictionsForm();
         } else {
             showMessage('restrictionsMessage', data.error, 'error');
         }
@@ -352,18 +357,14 @@ async function uploadStudents() {
 }
 
 // ================================
-// EVENTOS DE RESTRICCIÓN DE UBICACIÓN
+// EXPONER FUNCIONES NECESARIAS
 // ================================
-
-function handleLocationRestrictionChange() {
-    const locationSettings = document.getElementById('locationSettings');
-    const checkbox = document.getElementById('locationRestrictionEnabled');
-    
-    if (checkbox.checked) {
-        locationSettings.style.opacity = '1';
-        locationSettings.querySelectorAll('input').forEach(input => input.disabled = false);
-    } else {
-        locationSettings.style.opacity = '0.5';
-        locationSettings.querySelectorAll('input').forEach(input => input.disabled = true);
-    }
-}
+window.handleLogin = handleLogin;
+window.handleChangePassword = handleChangePassword;
+window.handleRestrictionsSubmit = handleRestrictionsSubmit;
+window.showCreateKeyForm = showCreateKeyForm;
+window.hideCreateKeyForm = hideCreateKeyForm;
+window.createAdminKey = createAdminKey;
+window.deactivateAdminKey = deactivateAdminKey;
+window.previewCSV = previewCSV;
+window.uploadStudents = uploadStudents;
