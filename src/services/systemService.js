@@ -4,6 +4,7 @@ const os = require('os');
 
 const Admin = require('../models/Admin');
 const CSVService = require('./csvService');
+const StudentService = require('./studentService');
 const config = require('../config/server');
 const ConfigService = require('./configService');
 const AdminKeyService = require('./adminKeyService');
@@ -22,7 +23,7 @@ class SystemService {
             await this.createDataDirectory();
 
             // Inicializar archivos CSV
-            await this.initializeCSVFiles();
+            await this.initializeStorage();
 
             // Crear administrador por defecto si no existe
             await this.createDefaultAdmin();
@@ -51,39 +52,35 @@ class SystemService {
     /**
      * Inicializar todos los archivos CSV necesarios
      */
-    static async initializeCSVFiles() {
+    static async initializeStorage() {
         try {
-            await this.initializeStudentsFile();
+            await this.initializeStudentsStorage();
             await this.initializeAttendanceFile();
             await this.initializeAdminFile();
             await this.initializeConfigFile();
             await this.initializeAdminKeysFile();
             await this.initializeDevicesFile();
-            console.log('✅ Archivos CSV inicializados');
+            console.log('✅ Almacenamiento del sistema verificado');
         } catch (error) {
-            console.error('❌ Error inicializando archivos CSV:', error);
-            throw new AppError('Error inicializando archivos del sistema', 500, 'CSV_INIT_ERROR');
+            console.error('❌ Error inicializando almacenamiento del sistema:', error);
+            throw new AppError('Error inicializando almacenamiento del sistema', 500, 'STORAGE_INIT_ERROR');
         }
     }
 
     /**
-     * Inicializar archivo de estudiantes
+     * Inicializar almacenamiento de estudiantes en base de datos
      */
-    static async initializeStudentsFile() {
+    static async initializeStudentsStorage() {
         try {
-            if (!(await CSVService.fileExists(config.FILES.STUDENTS))) {
-                console.log('📁 Creando archivo de estudiantes...');
-                await CSVService.writeEmptyCSV(config.FILES.STUDENTS, config.CSV_HEADERS.STUDENTS);
-                console.log('✅ Archivo students.csv creado con formato: matricula, nombre, grupo');
-            } else {
-                console.log('✅ Archivo students.csv existe');
-
-                // Verificar integridad del archivo
-                await this.verifyFileIntegrity(config.FILES.STUDENTS, config.CSV_HEADERS.STUDENTS);
-            }
+            // Forzar inicialización de la base de datos de estudiantes
+            await StudentService.validateDataIntegrity();
+            console.log('✅ Base de datos de estudiantes verificada');
         } catch (error) {
-            console.error('❌ Error inicializando archivo de estudiantes:', error);
-            throw error;
+            console.error('❌ Error inicializando base de datos de estudiantes:', error);
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw new AppError('No se pudo inicializar la base de datos de estudiantes', 500, 'STUDENTS_DB_INIT_ERROR');
         }
     }
 
@@ -280,7 +277,7 @@ class SystemService {
                 adminKeysStatus,
                 devicesStatus
             ] = await Promise.all([
-                this.getFileStatus(config.FILES.STUDENTS, config.CSV_HEADERS.STUDENTS),
+                this.getStudentsStorageStatus(),
                 this.getFileStatus(config.FILES.ATTENDANCE, config.CSV_HEADERS.ATTENDANCE),
                 this.getFileStatus(config.FILES.ADMIN, config.CSV_HEADERS.ADMIN),
                 this.getFileStatus(config.FILES.CONFIG, config.CSV_HEADERS.CONFIG),
@@ -366,7 +363,7 @@ class SystemService {
             await CSVService.ensureDirectory(backupDir);
 
             const [students, attendance, admins, systemConfig, adminKeys, devices] = await Promise.all([
-                CSVService.readCSV(config.FILES.STUDENTS),
+                StudentService.getAllStudents().then(list => list.map(student => student.toJSON())),
                 CSVService.readCSV(config.FILES.ATTENDANCE),
                 CSVService.readCSV(config.FILES.ADMIN),
                 ConfigService.getSystemConfig(),
@@ -481,6 +478,39 @@ class SystemService {
             records: records.length,
             headers: headers.map(header => header.title || header.id)
         };
+    }
+
+    /**
+     * Obtener información del almacenamiento de estudiantes (base de datos)
+     */
+    static async getStudentsStorageStatus() {
+        try {
+            const stats = await fsp.stat(config.DATABASE.FILE);
+            const studentStats = await StudentService.getStudentStats();
+
+            return {
+                path: path.resolve(config.DATABASE.FILE),
+                exists: true,
+                size: stats.size,
+                lastModified: stats.mtime.toISOString(),
+                records: studentStats.total,
+                type: 'database'
+            };
+        } catch (error) {
+            if (error.code === 'ENOENT') {
+                return {
+                    path: path.resolve(config.DATABASE.FILE),
+                    exists: false,
+                    records: 0,
+                    type: 'database'
+                };
+            }
+
+            console.error('❌ Error obteniendo estado de la base de datos de estudiantes:', error);
+            throw error instanceof AppError
+                ? error
+                : new AppError('No se pudo obtener el estado de la base de datos de estudiantes', 500, 'STUDENTS_DB_STATUS_ERROR');
+        }
     }
 
     /**

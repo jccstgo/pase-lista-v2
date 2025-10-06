@@ -1,8 +1,13 @@
+const path = require('path');
+
 try {
     require('dotenv').config();
 } catch (error) {
     console.warn('⚠️ dotenv no encontrado, usando configuración por defecto');
 }
+
+const DATA_DIR = process.env.DATA_DIR || 'data';
+const resolveDataPath = (...segments) => path.join(DATA_DIR, ...segments);
 
 const config = {
     // Configuración del servidor
@@ -14,14 +19,22 @@ const config = {
     JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '8h',
     
     // Configuración de archivos
-    DATA_DIR: 'data',
+    DATA_DIR,
     FILES: {
-        STUDENTS: 'data/students.csv',
-        ATTENDANCE: 'data/attendance.csv',
-        ADMIN: 'data/admin.csv',
-        CONFIG: 'data/system_config.csv',
-        ADMIN_KEYS: 'data/admin_keys.csv',
-        DEVICES: 'data/devices.csv'
+        STUDENTS: resolveDataPath('students.csv'),
+        ATTENDANCE: resolveDataPath('attendance.csv'),
+        ADMIN: resolveDataPath('admin.csv'),
+        CONFIG: resolveDataPath('system_config.csv'),
+        ADMIN_KEYS: resolveDataPath('admin_keys.csv'),
+        DEVICES: resolveDataPath('devices.csv')
+    },
+
+    DATABASE: {
+        FILE: process.env.DATABASE_FILE || resolveDataPath('system.sqlite'),
+        BACKUP_DIR: resolveDataPath('backups'),
+        PRAGMA: {
+            foreign_keys: 'ON'
+        }
     },
 
     // Configuración de CSV
