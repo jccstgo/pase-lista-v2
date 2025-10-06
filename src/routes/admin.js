@@ -58,6 +58,9 @@ router.get('/realtime-metrics', AdminController.getRealtimeMetrics);
 // Subir nueva lista de estudiantes
 router.post('/upload-students', validateStudentsList, AdminController.uploadStudents);
 
+// Limpiar todos los estudiantes
+router.delete('/students/clear', AdminController.clearStudents);
+
 // Obtener estadísticas de estudiantes
 router.get('/students/stats', AdminController.getStudentStats);
 

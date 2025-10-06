@@ -356,6 +356,57 @@ async function uploadStudents() {
     }
 }
 
+async function clearStudentsDatabase() {
+    if (!authToken) {
+        showMessage('uploadMessage', 'Debes iniciar sesión para realizar esta acción', 'error');
+        return;
+    }
+
+    const confirmation = confirm('¿Estás seguro de que deseas eliminar todos los registros de personal? Esta acción no se puede deshacer.');
+    if (!confirmation) {
+        return;
+    }
+
+    const clearBtn = document.getElementById('clearStudentsBtn');
+    if (clearBtn) {
+        clearBtn.disabled = true;
+        clearBtn.textContent = 'Limpiando...';
+    }
+
+    try {
+        const response = await fetch('/api/admin/students/clear', {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + authToken
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            showMessage('uploadMessage', data.message || 'Base de datos limpiada correctamente', 'success');
+            document.getElementById('csvFile').value = '';
+            document.getElementById('csvPreview').innerHTML = '';
+            currentStudents = [];
+
+            await Promise.all([
+                loadStats(),
+                loadDetailedList(),
+                loadDevices()
+            ]);
+        } else {
+            showMessage('uploadMessage', data.error || 'No se pudo limpiar la base de datos', 'error');
+        }
+    } catch (error) {
+        showMessage('uploadMessage', 'Error de conexión al limpiar la base de datos', 'error');
+    } finally {
+        if (clearBtn) {
+            clearBtn.disabled = false;
+            clearBtn.textContent = 'Limpiar Base de Datos de Personal';
+        }
+    }
+}
+
 // ================================
 // EXPONER FUNCIONES NECESARIAS
 // ================================
@@ -368,3 +419,4 @@ window.createAdminKey = createAdminKey;
 window.deactivateAdminKey = deactivateAdminKey;
 window.previewCSV = previewCSV;
 window.uploadStudents = uploadStudents;
+window.clearStudentsDatabase = clearStudentsDatabase;

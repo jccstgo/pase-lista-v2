@@ -1,21 +1,44 @@
+const fs = require('fs/promises');
+
 const Student = require('../models/Student');
-const CSVService = require('./csvService');
+const database = require('./databaseService');
 const config = require('../config/server');
 const { AppError } = require('../middleware/errorHandler');
 
 class StudentService {
     /**
+     * Convertir fila de la base de datos a instancia de Student
+     */
+    static mapRowToStudent(row) {
+        if (!row) {
+            return null;
+        }
+
+        return new Student({
+            matricula: row.matricula,
+            nombre: row.nombre,
+            grupo: row.grupo,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at
+        });
+    }
+
+    /**
      * Obtener todos los estudiantes
      */
     static async getAllStudents() {
         try {
-            const csvData = await CSVService.readCSV(config.FILES.STUDENTS);
-            const students = Student.fromCSVArray(csvData);
-            
-            console.log(`📚 Cargados ${students.length} estudiantes`);
+            const rows = database.all(
+                `SELECT matricula, nombre, grupo, created_at, updated_at
+                 FROM students
+                 ORDER BY nombre COLLATE NOCASE`
+            );
+
+            const students = rows.map(row => this.mapRowToStudent(row));
+            console.log(`📚 Cargados ${students.length} estudiantes desde la base de datos`);
             return students;
         } catch (error) {
-            console.error('❌ Error obteniendo estudiantes:', error);
+            console.error('❌ Error obteniendo estudiantes desde la base de datos:', error);
             if (error instanceof AppError) {
                 throw error;
             }
@@ -32,18 +55,24 @@ class StudentService {
                 throw new AppError('Matrícula es requerida', 400, 'MISSING_MATRICULA');
             }
 
-            const students = await this.getAllStudents();
-            const student = Student.findByMatricula(students, matricula);
-            
-            if (!student) {
-                console.log(`⚠️ Estudiante no encontrado: ${matricula}`);
+            const normalizedMatricula = new Student({ matricula }).matricula;
+            const row = database.get(
+                `SELECT matricula, nombre, grupo, created_at, updated_at
+                 FROM students
+                 WHERE matricula = @matricula`,
+                { matricula: normalizedMatricula }
+            );
+
+            if (!row) {
+                console.log(`⚠️ Estudiante no encontrado en base de datos: ${normalizedMatricula}`);
                 return null;
             }
 
-            console.log(`✅ Estudiante encontrado: ${student.nombre}`);
+            const student = this.mapRowToStudent(row);
+            console.log(`✅ Estudiante encontrado en base de datos: ${student.nombre}`);
             return student;
         } catch (error) {
-            console.error('❌ Error buscando estudiante:', error);
+            console.error('❌ Error buscando estudiante por matrícula:', error);
             if (error instanceof AppError) {
                 throw error;
             }
@@ -60,11 +89,18 @@ class StudentService {
                 throw new AppError('Grupo es requerido', 400, 'MISSING_GROUP');
             }
 
-            const students = await this.getAllStudents();
-            const studentsInGroup = Student.findByGroup(students, grupo);
-            
-            console.log(`📊 Encontrados ${studentsInGroup.length} estudiantes en grupo ${grupo}`);
-            return studentsInGroup;
+            const normalizedGroup = new Student({ grupo }).grupo;
+            const rows = database.all(
+                `SELECT matricula, nombre, grupo, created_at, updated_at
+                 FROM students
+                 WHERE grupo = @grupo
+                 ORDER BY nombre COLLATE NOCASE`,
+                { grupo: normalizedGroup }
+            );
+
+            const students = rows.map(row => this.mapRowToStudent(row));
+            console.log(`📊 Encontrados ${students.length} estudiantes en grupo ${normalizedGroup}`);
+            return students;
         } catch (error) {
             console.error('❌ Error buscando estudiantes por grupo:', error);
             if (error instanceof AppError) {
@@ -75,7 +111,7 @@ class StudentService {
     }
 
     /**
-     * Crear/actualizar lista completa de estudiantes
+     * Crear/actualizar lista completa de estudiantes desde carga masiva
      */
     static async updateStudentsList(studentsData) {
         try {
@@ -83,25 +119,32 @@ class StudentService {
                 throw new AppError('Lista de estudiantes inválida o vacía', 400, 'INVALID_STUDENTS_LIST');
             }
 
-            // Crear backup del archivo actual
-            if (await CSVService.fileExists(config.FILES.STUDENTS)) {
-                await CSVService.backupCSV(config.FILES.STUDENTS);
-            }
-
-            // Validar y procesar estudiantes
             const validStudents = [];
             const errors = [];
+            const duplicates = [];
+            const matriculas = new Set();
+            const timestamp = new Date().toISOString();
 
             for (let i = 0; i < studentsData.length; i++) {
                 try {
-                    const student = new Student(studentsData[i]);
+                    const student = new Student({
+                        ...studentsData[i],
+                        createdAt: studentsData[i].createdAt || timestamp,
+                        updatedAt: timestamp
+                    });
+
                     const validation = student.isValid();
-                    
                     if (!validation.isValid) {
                         errors.push(`Estudiante ${i + 1}: ${validation.errors.join(', ')}`);
                         continue;
                     }
 
+                    if (matriculas.has(student.matricula)) {
+                        duplicates.push(student.matricula);
+                        continue;
+                    }
+
+                    matriculas.add(student.matricula);
                     validStudents.push(student);
                 } catch (error) {
                     errors.push(`Estudiante ${i + 1}: Error de procesamiento - ${error.message}`);
@@ -110,42 +153,52 @@ class StudentService {
 
             if (validStudents.length === 0) {
                 throw new AppError(
-                    `No hay estudiantes válidos. Errores: ${errors.slice(0, 5).join('; ')}`, 
-                    400, 
+                    `No hay estudiantes válidos. Errores: ${errors.slice(0, 5).join('; ')}`,
+                    400,
                     'NO_VALID_STUDENTS'
                 );
             }
 
-            // Verificar duplicados por matrícula
-            const matriculas = new Set();
-            const duplicates = [];
-            
-            const uniqueStudents = validStudents.filter(student => {
-                if (matriculas.has(student.matricula)) {
-                    duplicates.push(student.matricula);
-                    return false;
-                }
-                matriculas.add(student.matricula);
-                return true;
-            });
-
-            if (duplicates.length > 0) {
-                console.warn(`⚠️ Matrículas duplicadas removidas: ${duplicates.join(', ')}`);
+            try {
+                database.backupDatabase('students');
+            } catch (backupError) {
+                console.warn('⚠️ No se pudo crear respaldo de estudiantes:', backupError.message);
             }
 
-            // Escribir al archivo CSV
-            const csvData = uniqueStudents.map(student => student.toCSV());
-            await CSVService.writeCSV(config.FILES.STUDENTS, csvData, config.CSV_HEADERS.STUDENTS);
+            const insertStatement = database.prepare(`
+                INSERT INTO students (matricula, nombre, grupo, created_at, updated_at)
+                VALUES (@matricula, @nombre, @grupo, @createdAt, @updatedAt)
+                ON CONFLICT(matricula) DO UPDATE SET
+                    nombre = excluded.nombre,
+                    grupo = excluded.grupo,
+                    updated_at = excluded.updated_at
+            `);
 
-            console.log(`✅ Lista de estudiantes actualizada: ${uniqueStudents.length} estudiantes válidos`);
-            
+            const replaceStudents = database.transaction(students => {
+                database.run('DELETE FROM students');
+                students.forEach(student => {
+                    insertStatement.run({
+                        matricula: student.matricula,
+                        nombre: student.nombre,
+                        grupo: student.grupo,
+                        createdAt: student.createdAt,
+                        updatedAt: student.updatedAt
+                    });
+                });
+            });
+
+            replaceStudents(validStudents);
+
+            console.log(`✅ Lista de estudiantes actualizada en base de datos: ${validStudents.length} registros válidos`);
+
             return {
                 success: true,
+                message: config.MESSAGES.SUCCESS.STUDENTS_UPLOADED,
                 totalProcessed: studentsData.length,
-                validStudents: uniqueStudents.length,
+                validStudents: validStudents.length,
                 duplicatesRemoved: duplicates.length,
-                errors: errors.slice(0, 10), // Limitar errores mostrados
-                students: uniqueStudents
+                errors: errors.slice(0, 10),
+                students: validStudents
             };
         } catch (error) {
             console.error('❌ Error actualizando lista de estudiantes:', error);
@@ -161,27 +214,40 @@ class StudentService {
      */
     static async addStudent(studentData) {
         try {
-            const student = new Student(studentData);
+            const timestamp = new Date().toISOString();
+            const student = new Student({
+                ...studentData,
+                createdAt: timestamp,
+                updatedAt: timestamp
+            });
+
             const validation = student.isValid();
-            
             if (!validation.isValid) {
                 throw new AppError(`Datos de estudiante inválidos: ${validation.errors.join(', ')}`, 400, 'INVALID_STUDENT_DATA');
             }
 
-            // Verificar que no exista ya
-            const existingStudent = await this.findByMatricula(student.matricula);
-            if (existingStudent) {
+            const existing = database.get(
+                'SELECT matricula FROM students WHERE matricula = @matricula',
+                { matricula: student.matricula }
+            );
+
+            if (existing) {
                 throw new AppError(`Ya existe un estudiante con matrícula ${student.matricula}`, 409, 'STUDENT_ALREADY_EXISTS');
             }
 
-            // Agregar al archivo CSV
-            await CSVService.appendToCSV(
-                config.FILES.STUDENTS, 
-                student.toCSV(), 
-                config.CSV_HEADERS.STUDENTS
+            database.run(
+                `INSERT INTO students (matricula, nombre, grupo, created_at, updated_at)
+                 VALUES (@matricula, @nombre, @grupo, @createdAt, @updatedAt)`,
+                {
+                    matricula: student.matricula,
+                    nombre: student.nombre,
+                    grupo: student.grupo,
+                    createdAt: student.createdAt,
+                    updatedAt: student.updatedAt
+                }
             );
 
-            console.log(`✅ Estudiante agregado: ${student.nombre} (${student.matricula})`);
+            console.log(`✅ Estudiante agregado a la base de datos: ${student.nombre} (${student.matricula})`);
             return student;
         } catch (error) {
             console.error('❌ Error agregando estudiante:', error);
@@ -197,17 +263,18 @@ class StudentService {
      */
     static async updateStudent(matricula, updateData) {
         try {
-            // Verificar que el estudiante existe
             const existingStudent = await this.findByMatricula(matricula);
             if (!existingStudent) {
                 throw new AppError('Estudiante no encontrado', 404, 'STUDENT_NOT_FOUND');
             }
 
-            // Crear estudiante actualizado
+            const timestamp = new Date().toISOString();
             const updatedStudent = new Student({
                 ...existingStudent.toJSON(),
                 ...updateData,
-                matricula: existingStudent.matricula // No permitir cambiar matrícula
+                matricula: existingStudent.matricula,
+                createdAt: existingStudent.createdAt,
+                updatedAt: timestamp
             });
 
             const validation = updatedStudent.isValid();
@@ -215,19 +282,25 @@ class StudentService {
                 throw new AppError(`Datos actualizados inválidos: ${validation.errors.join(', ')}`, 400, 'INVALID_UPDATE_DATA');
             }
 
-            // Actualizar en CSV
-            const updated = await CSVService.updateInCSV(
-                config.FILES.STUDENTS,
-                { matricula: existingStudent.matricula },
-                updatedStudent.toCSV(),
-                config.CSV_HEADERS.STUDENTS
+            const result = database.run(
+                `UPDATE students
+                 SET nombre = @nombre,
+                     grupo = @grupo,
+                     updated_at = @updatedAt
+                 WHERE matricula = @matricula`,
+                {
+                    matricula: updatedStudent.matricula,
+                    nombre: updatedStudent.nombre,
+                    grupo: updatedStudent.grupo,
+                    updatedAt: updatedStudent.updatedAt
+                }
             );
 
-            if (!updated) {
+            if (result.changes === 0) {
                 throw new AppError('No se pudo actualizar el estudiante', 500, 'UPDATE_FAILED');
             }
 
-            console.log(`✅ Estudiante actualizado: ${updatedStudent.nombre} (${updatedStudent.matricula})`);
+            console.log(`✅ Estudiante actualizado en base de datos: ${updatedStudent.nombre} (${updatedStudent.matricula})`);
             return updatedStudent;
         } catch (error) {
             console.error('❌ Error actualizando estudiante:', error);
@@ -243,24 +316,21 @@ class StudentService {
      */
     static async deleteStudent(matricula) {
         try {
-            // Verificar que el estudiante existe
             const existingStudent = await this.findByMatricula(matricula);
             if (!existingStudent) {
                 throw new AppError('Estudiante no encontrado', 404, 'STUDENT_NOT_FOUND');
             }
 
-            // Eliminar del CSV
-            const deletedCount = await CSVService.deleteFromCSV(
-                config.FILES.STUDENTS,
-                { matricula: existingStudent.matricula },
-                config.CSV_HEADERS.STUDENTS
+            const result = database.run(
+                'DELETE FROM students WHERE matricula = @matricula',
+                { matricula: existingStudent.matricula }
             );
 
-            if (deletedCount === 0) {
+            if (result.changes === 0) {
                 throw new AppError('No se pudo eliminar el estudiante', 500, 'DELETE_FAILED');
             }
 
-            console.log(`🗑️ Estudiante eliminado: ${existingStudent.nombre} (${existingStudent.matricula})`);
+            console.log(`🗑️ Estudiante eliminado de la base de datos: ${existingStudent.nombre} (${existingStudent.matricula})`);
             return true;
         } catch (error) {
             console.error('❌ Error eliminando estudiante:', error);
@@ -272,22 +342,66 @@ class StudentService {
     }
 
     /**
+     * Limpiar todos los estudiantes de la base de datos
+     */
+    static async clearAllStudents() {
+        try {
+            try {
+                database.backupDatabase('students-clear');
+            } catch (backupError) {
+                console.warn('⚠️ No se pudo crear respaldo antes de limpiar estudiantes:', backupError.message);
+            }
+
+            const result = database.clearTable('students');
+            console.log(`🧹 Base de datos de estudiantes limpiada. Registros eliminados: ${result.changes}`);
+
+            return {
+                deleted: result.changes,
+                timestamp: new Date().toISOString()
+            };
+        } catch (error) {
+            console.error('❌ Error limpiando estudiantes:', error);
+            if (error instanceof AppError) {
+                throw error;
+            }
+            throw new AppError('Error al limpiar estudiantes', 500, 'STUDENTS_CLEAR_ERROR');
+        }
+    }
+
+    /**
      * Obtener estadísticas de estudiantes
      */
     static async getStudentStats() {
         try {
-            const students = await this.getAllStudents();
-            const stats = Student.getStats(students);
-            
-            // Información adicional del archivo
-            const fileStats = await CSVService.getCSVStats(config.FILES.STUDENTS);
-            
+            const totals = database.get('SELECT COUNT(*) AS total FROM students');
+            const groupRows = database.all(
+                `SELECT grupo, COUNT(*) AS total
+                 FROM students
+                 GROUP BY grupo
+                 ORDER BY grupo`
+            );
+
+            const groups = {};
+            groupRows.forEach(row => {
+                groups[row.grupo] = row.total;
+            });
+
+            let fileInfo = {};
+            try {
+                const stats = await fs.stat(config.DATABASE.FILE);
+                fileInfo = {
+                    lastModified: stats.mtime.toISOString(),
+                    fileSize: stats.size
+                };
+            } catch (statError) {
+                console.warn('⚠️ No se pudo obtener información del archivo de base de datos:', statError.message);
+            }
+
             return {
-                ...stats,
-                fileInfo: {
-                    lastModified: fileStats.lastModified,
-                    fileSize: fileStats.fileSize
-                },
+                total: totals?.total || 0,
+                groups,
+                groupCount: Object.keys(groups).length,
+                fileInfo,
                 timestamp: new Date().toISOString()
             };
         } catch (error) {
@@ -304,73 +418,85 @@ class StudentService {
      */
     static async searchStudents(filters = {}) {
         try {
-            const students = await this.getAllStudents();
-            
-            let filteredStudents = students;
-            
-            // Filtro por matrícula (búsqueda parcial)
+            const conditions = [];
+            const params = {};
+
             if (filters.matricula) {
-                const searchMatricula = filters.matricula.toUpperCase();
-                filteredStudents = filteredStudents.filter(student => 
-                    student.matricula.includes(searchMatricula)
-                );
+                conditions.push('matricula LIKE @matricula');
+                params.matricula = `%${filters.matricula.toString().trim().toUpperCase()}%`;
             }
-            
-            // Filtro por nombre (búsqueda parcial, case-insensitive)
+
             if (filters.nombre) {
-                const searchNombre = filters.nombre.toLowerCase();
-                filteredStudents = filteredStudents.filter(student => 
-                    student.nombre.toLowerCase().includes(searchNombre)
-                );
+                conditions.push('LOWER(nombre) LIKE @nombre');
+                params.nombre = `%${filters.nombre.toString().trim().toLowerCase()}%`;
             }
-            
-            // Filtro por grupo
+
             if (filters.grupo) {
-                const searchGrupo = filters.grupo.toUpperCase();
-                filteredStudents = filteredStudents.filter(student => 
-                    student.grupo === searchGrupo
-                );
+                conditions.push('grupo = @grupo');
+                params.grupo = filters.grupo.toString().trim().toUpperCase();
             }
-            
-            // Ordenamiento
-            if (filters.sortBy) {
-                const sortField = filters.sortBy;
-                const sortOrder = filters.sortOrder === 'desc' ? -1 : 1;
-                
-                filteredStudents.sort((a, b) => {
-                    const valueA = a[sortField] || '';
-                    const valueB = b[sortField] || '';
-                    
-                    return valueA.localeCompare(valueB) * sortOrder;
-                });
-            }
-            
-            // Paginación
+
+            const whereClause = conditions.length > 0
+                ? `WHERE ${conditions.join(' AND ')}`
+                : '';
+
+            const allowedSortFields = {
+                matricula: 'matricula',
+                nombre: 'nombre',
+                grupo: 'grupo'
+            };
+
+            const sortField = allowedSortFields[filters.sortBy] || 'nombre';
+            const sortOrder = filters.sortOrder === 'desc' ? 'DESC' : 'ASC';
+            const orderClause = `ORDER BY ${sortField} COLLATE NOCASE ${sortOrder}`;
+
             if (filters.page && filters.limit) {
-                const page = parseInt(filters.page);
-                const limit = parseInt(filters.limit);
-                const startIndex = (page - 1) * limit;
-                const endIndex = startIndex + limit;
-                
-                const total = filteredStudents.length;
-                const paginatedStudents = filteredStudents.slice(startIndex, endIndex);
-                
+                const page = Math.max(parseInt(filters.page, 10) || 1, 1);
+                const limit = Math.max(parseInt(filters.limit, 10) || 10, 1);
+                const offset = (page - 1) * limit;
+
+                const totalRow = database.get(
+                    `SELECT COUNT(*) AS total FROM students ${whereClause}`,
+                    params
+                );
+
+                const rows = database.all(
+                    `SELECT matricula, nombre, grupo, created_at, updated_at
+                     FROM students
+                     ${whereClause}
+                     ${orderClause}
+                     LIMIT @limit OFFSET @offset`,
+                    { ...params, limit, offset }
+                );
+
+                const students = rows.map(row => this.mapRowToStudent(row));
+
                 return {
-                    students: paginatedStudents,
+                    students,
                     pagination: {
                         page,
                         limit,
-                        total,
-                        totalPages: Math.ceil(total / limit),
-                        hasNext: endIndex < total,
+                        total: totalRow?.total || 0,
+                        totalPages: Math.ceil((totalRow?.total || 0) / limit) || 1,
+                        hasNext: offset + students.length < (totalRow?.total || 0),
                         hasPrev: page > 1
                     }
                 };
             }
-            
+
+            const rows = database.all(
+                `SELECT matricula, nombre, grupo, created_at, updated_at
+                 FROM students
+                 ${whereClause}
+                 ${orderClause}`,
+                params
+            );
+
+            const students = rows.map(row => this.mapRowToStudent(row));
+
             return {
-                students: filteredStudents,
-                total: filteredStudents.length
+                students,
+                total: students.length
             };
         } catch (error) {
             console.error('❌ Error buscando estudiantes:', error);
@@ -388,22 +514,7 @@ class StudentService {
         try {
             const students = await this.getAllStudents();
             const issues = [];
-            
-            // Verificar duplicados
-            const matriculas = new Map();
-            students.forEach((student, index) => {
-                if (matriculas.has(student.matricula)) {
-                    issues.push({
-                        type: 'DUPLICATE_MATRICULA',
-                        message: `Matrícula duplicada: ${student.matricula}`,
-                        indices: [matriculas.get(student.matricula), index]
-                    });
-                } else {
-                    matriculas.set(student.matricula, index);
-                }
-            });
-            
-            // Verificar datos faltantes o inválidos
+
             students.forEach((student, index) => {
                 const validation = student.isValid();
                 if (!validation.isValid) {
@@ -414,7 +525,7 @@ class StudentService {
                     });
                 }
             });
-            
+
             return {
                 isValid: issues.length === 0,
                 totalStudents: students.length,
@@ -422,7 +533,7 @@ class StudentService {
                 timestamp: new Date().toISOString()
             };
         } catch (error) {
-            console.error('❌ Error validando integridad:', error);
+            console.error('❌ Error validando integridad de estudiantes:', error);
             throw new AppError('Error al validar integridad de datos', 500, 'INTEGRITY_CHECK_ERROR');
         }
     }

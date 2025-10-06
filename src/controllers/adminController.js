@@ -48,9 +48,9 @@ class AdminController {
      */
     static uploadStudents = asyncHandler(async (req, res) => {
         console.log('📤 Petición de subida de estudiantes');
-        
+
         const { students } = req.body;
-        
+
         const result = await StudentService.updateStudentsList(students);
 
         // Limpiar registros de asistencia al subir nueva lista
@@ -67,6 +67,24 @@ class AdminController {
                 errorsCount: result.errors.length,
                 errors: result.errors
             }
+        });
+    });
+
+    /**
+     * Limpiar todos los estudiantes de la base de datos
+     * DELETE /api/admin/students/clear
+     */
+    static clearStudents = asyncHandler(async (req, res) => {
+        console.log('🧹 Petición de limpieza de estudiantes');
+
+        const result = await StudentService.clearAllStudents();
+        await AttendanceService.clearAttendanceRecords();
+        await DeviceService.clearAllDevices();
+
+        res.status(200).json({
+            success: true,
+            message: 'Base de datos de estudiantes limpiada exitosamente. Registros relacionados fueron reiniciados.',
+            data: result
         });
     });
 
