@@ -1,7 +1,10 @@
 const fs = require('fs').promises;
+const fsSync = require('fs');
+const { Readable } = require('stream');
 const csv = require('csv-parser');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const { AppError } = require('../middleware/errorHandler');
+const { decodePotentiallyMisencodedText, decodeBufferToText } = require('../utils/encoding');
 
 class CSVService {
     /**
@@ -34,30 +37,52 @@ class CSVService {
      * Leer archivo CSV
      */
     static async readCSV(filePath) {
+        if (!fsSync.existsSync(filePath)) {
+            console.log(`⚠️ Archivo no encontrado: ${filePath}, retornando array vacío`);
+            return [];
+        }
+
+        let decodedContent = '';
+
+        try {
+            const fileBuffer = await fs.readFile(filePath);
+            decodedContent = decodeBufferToText(fileBuffer);
+        } catch (error) {
+            console.error(`❌ Error leyendo ${filePath}:`, error);
+            throw new AppError(`Error leyendo CSV: ${error.message}`, 500, 'CSV_READ_ERROR');
+        }
+
         return new Promise((resolve, reject) => {
             const results = [];
-            
-            // Verificar si el archivo existe
-            if (!require('fs').existsSync(filePath)) {
-                console.log(`⚠️ Archivo no encontrado: ${filePath}, retornando array vacío`);
-                resolve([]);
-                return;
-            }
-            
-            require('fs').createReadStream(filePath, { encoding: 'utf8' })
+
+            Readable.from([decodedContent])
                 .pipe(csv({
                     skipEmptyLines: true,
-                    mapHeaders: ({ header }) => header.trim() // Limpiar headers
+                    mapHeaders: ({ header }) => {
+                        if (typeof header !== 'string') {
+                            return header;
+                        }
+
+                        const trimmed = header.replace(/^\uFEFF/, '').trim();
+                        return decodePotentiallyMisencodedText(trimmed);
+                    }
                 }))
                 .on('data', (data) => {
-                    // Limpiar datos de cada fila
                     const cleanData = {};
                     Object.keys(data).forEach(key => {
-                        const cleanKey = key.replace(/^\uFEFF/, '').trim(); // Remover BOM
-                        cleanData[cleanKey] = typeof data[key] === 'string' ? data[key].trim() : data[key];
+                        const cleanKey = decodePotentiallyMisencodedText(
+                            key.replace(/^\uFEFF/, '').trim()
+                        );
+                        const value = data[key];
+
+                        if (typeof value === 'string') {
+                            const trimmedValue = value.trim();
+                            cleanData[cleanKey] = decodePotentiallyMisencodedText(trimmedValue);
+                        } else {
+                            cleanData[cleanKey] = value;
+                        }
                     });
-                    
-                    // Solo agregar filas que tengan al menos un campo con datos
+
                     const hasData = Object.values(cleanData).some(value => value && value.toString().trim() !== '');
                     if (hasData) {
                         results.push(cleanData);
@@ -68,7 +93,7 @@ class CSVService {
                     resolve(results);
                 })
                 .on('error', (error) => {
-                    console.error(`❌ Error leyendo ${filePath}:`, error);
+                    console.error(`❌ Error procesando CSV ${filePath}:`, error);
                     reject(new AppError(`Error leyendo CSV: ${error.message}`, 500, 'CSV_READ_ERROR'));
                 });
         });

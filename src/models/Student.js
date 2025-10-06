@@ -1,3 +1,5 @@
+const { decodePotentiallyMisencodedText } = require('../utils/encoding');
+
 /**
  * Modelo para representar un estudiante/personal militar
  */
@@ -23,7 +25,9 @@ class Student {
      */
     normalizeName(nombre) {
         if (!nombre) return '';
-        return nombre.toString().trim();
+        const stringValue = nombre.toString();
+        const decoded = decodePotentiallyMisencodedText(stringValue);
+        return decoded.trim();
     }
 
     /**
@@ -31,7 +35,9 @@ class Student {
      */
     normalizeGroup(grupo) {
         if (!grupo) return '';
-        return grupo.toString().trim().toUpperCase();
+        const stringValue = grupo.toString();
+        const decoded = decodePotentiallyMisencodedText(stringValue);
+        return decoded.trim().toUpperCase();
     }
 
     /**
