@@ -27,14 +27,25 @@ function logout() {
     document.getElementById('password').value = '';
 }
 
-function showTab(tabName, tabElement) {
-    document.querySelectorAll('[id$="Tab"]').forEach(tab => {
-        tab.classList.add('hidden');
-    });
+function showTab(tabName, tabElement, group = 'default') {
+    const groupSelector = `.tab-content[data-group="${group}"]`;
+    const groupTabsSelector = `.tab[data-group="${group}"]`;
 
-    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    const contents = document.querySelectorAll(groupSelector);
+    if (contents.length > 0) {
+        contents.forEach(content => content.classList.add('hidden'));
+    } else {
+        document.querySelectorAll('[id$="Tab"]').forEach(tab => tab.classList.add('hidden'));
+    }
 
-    const target = document.getElementById(`${tabName}Tab`);
+    const tabsInGroup = document.querySelectorAll(groupTabsSelector);
+    if (tabsInGroup.length > 0) {
+        tabsInGroup.forEach(tab => tab.classList.remove('active'));
+    } else {
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    }
+
+    const target = document.querySelector(`.tab-content[data-group="${group}"][data-tab="${tabName}"]`) || document.getElementById(`${tabName}Tab`);
     if (target) {
         target.classList.remove('hidden');
     }
@@ -42,7 +53,7 @@ function showTab(tabName, tabElement) {
     if (tabElement) {
         tabElement.classList.add('active');
     } else {
-        const fallback = document.querySelector(`.tab[data-tab="${tabName}"]`);
+        const fallback = document.querySelector(`.tab[data-group="${group}"][data-tab="${tabName}"]`) || document.querySelector(`.tab[data-tab="${tabName}"]`);
         fallback?.classList.add('active');
     }
 

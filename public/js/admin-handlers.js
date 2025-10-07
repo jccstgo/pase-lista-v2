@@ -32,9 +32,14 @@ async function handleLogin(e) {
             showAdminSection();
             await loadDashboard();
             updateSystemInfo();
-            const overviewTab = document.querySelector('.tab[data-tab="overview"]');
+            const overviewTab = document.querySelector('.tab[data-group="results"][data-tab="overview"]');
             if (overviewTab) {
-                showTab('overview', overviewTab);
+                showTab('overview', overviewTab, 'results');
+            }
+            const adminTab = document.querySelector('.tab[data-group="admin"].active') || document.querySelector('.tab[data-group="admin"]');
+            if (adminTab) {
+                const group = adminTab.dataset.group || 'admin';
+                showTab(adminTab.dataset.tab, adminTab, group);
             }
         } else {
             const errorMessage = data.error || data.message || 'Error de autenticación';

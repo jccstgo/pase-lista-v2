@@ -65,6 +65,35 @@ body {
     padding: 0 20px;
 }
 
+.split-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    align-items: flex-start;
+    gap: 30px;
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.panel-header {
+    background: white;
+    border-radius: 15px;
+    padding: 20px 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.panel-header h2 {
+    margin-bottom: 8px;
+}
+
+.panel-header p {
+    color: #666;
+    font-size: 14px;
+}
+
 .login-container {
     max-width: 400px;
     margin: 100px auto;
@@ -468,11 +497,17 @@ tbody tr:hover {
    RESPONSIVE
    ================================ */
 
+@media (max-width: 1024px) {
+    .split-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 768px) {
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .header .container {
         flex-direction: column;
         gap: 15px;
