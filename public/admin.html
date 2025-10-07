@@ -52,278 +52,279 @@
         </div>
 
         <div class="main-container">
-            <!-- Estadísticas -->
-            <div class="stats-grid">
-                <div class="stat-card total">
-                    <span class="stat-number" id="totalStudents">-</span>
-                    <span class="stat-label">Total Personal</span>
-                </div>
-                <div class="stat-card present">
-                    <span class="stat-number" id="presentRegistered">-</span>
-                    <span class="stat-label">Presentes (En Lista)</span>
-                </div>
-                <div class="stat-card present">
-                    <span class="stat-number" id="attendanceRate">-</span>
-                    <span class="stat-label">% Asistencia</span>
-                </div>
-                <div class="stat-card absent">
-                    <span class="stat-number" id="absent">-</span>
-                    <span class="stat-label">Faltistas</span>
-                </div>
-            </div>
+            <div class="split-layout">
+                <!-- Panel de Resultados -->
+                <section class="panel results-panel">
+                    <div class="panel-header">
+                        <h2>📊 Resultados en Tiempo Real</h2>
+                        <p>Visualiza quiénes ya llegaron y quiénes faltan.</p>
+                    </div>
 
-            <!-- Tabs -->
-            <div class="tabs">
-                <div class="tab active" data-tab="overview">📈 Resumen</div>
-                <div class="tab" data-tab="detailed">📋 Lista Detallada</div>
-                <div class="tab" data-tab="restrictions">🛡️ Restricciones</div>
-                <div class="tab" data-tab="upload">📤 Subir Lista</div>
-                <div class="tab" data-tab="devices">📱 Dispositivos</div>
-                <div class="tab" data-tab="settings">⚙️ Configuración</div>
-            </div>
+                    <div class="stats-grid">
+                        <div class="stat-card total">
+                            <span class="stat-number" id="totalStudents">-</span>
+                            <span class="stat-label">Total Personal</span>
+                        </div>
+                        <div class="stat-card present">
+                            <span class="stat-number" id="presentRegistered">-</span>
+                            <span class="stat-label">Presentes (En Lista)</span>
+                        </div>
+                        <div class="stat-card present">
+                            <span class="stat-number" id="attendanceRate">-</span>
+                            <span class="stat-label">% Asistencia</span>
+                        </div>
+                        <div class="stat-card absent">
+                            <span class="stat-number" id="absent">-</span>
+                            <span class="stat-label">Faltistas</span>
+                        </div>
+                    </div>
 
-            <!-- Tab: Overview -->
-            <div id="overviewTab">
-                <div class="card">
-                    <h2>📅 Resumen del Día</h2>
-                    <div id="overviewContent">
-                        <div class="loading" id="overviewLoading">
+                    <div class="tabs" data-group="results">
+                        <div class="tab active" data-group="results" data-tab="overview">📈 Resumen</div>
+                        <div class="tab" data-group="results" data-tab="detailed">📋 Lista Detallada</div>
+                    </div>
+
+                    <div id="overviewTab" class="tab-content card" data-group="results" data-tab="overview">
+                        <h2>📅 Resumen del Día</h2>
+                        <div id="overviewContent">
+                            <div class="loading" id="overviewLoading">
+                                <div class="spinner"></div>
+                                <p>Cargando estadísticas...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="detailedTab" class="tab-content card hidden" data-group="results" data-tab="detailed">
+                        <h2>📋 Lista Detallada de Asistencia</h2>
+                        <div class="loading" id="detailedLoading">
                             <div class="spinner"></div>
-                            <p>Cargando estadísticas...</p>
+                            <p>Cargando lista detallada...</p>
                         </div>
+                        <div id="detailedContent"></div>
                     </div>
-                </div>
-            </div>
+                </section>
 
-            <!-- Tab: Detailed List -->
-            <div id="detailedTab" class="hidden">
-                <div class="card">
-                    <h2>📋 Lista Detallada de Asistencia</h2>
-                    <div class="loading" id="detailedLoading">
-                        <div class="spinner"></div>
-                        <p>Cargando lista detallada...</p>
-                    </div>
-                    <div id="detailedContent"></div>
-                </div>
-            </div>
-
-            <!-- Tab: Restrictions Configuration -->
-            <div id="restrictionsTab" class="hidden">
-                <div class="card">
-                    <h2>🛡️ Configuración de Restricciones</h2>
-
-                    <div class="info-box">
-                        <h4>ℹ️ Información sobre las Restricciones</h4>
-                        <p>Las restricciones permiten controlar dónde y cómo se puede registrar la asistencia. Los supervisores con claves administrativas pueden saltarse estas restricciones.</p>
+                <!-- Panel de Administración -->
+                <section class="panel admin-panel">
+                    <div class="panel-header">
+                        <h2>🛠️ Administración del Sistema</h2>
+                        <p>Gestiona la configuración, usuarios y permisos.</p>
                     </div>
 
-                    <form id="restrictionsForm">
-                        <!-- Restricción de Ubicación -->
-                        <div class="restriction-card location">
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="locationRestrictionEnabled" name="location_restriction_enabled">
-                                <label for="locationRestrictionEnabled"><strong>📍 Restricción por Ubicación</strong></label>
-                            </div>
-                            <p style="margin-bottom: 15px; color: #666;">Solo permite registrar asistencia dentro de un radio específico de una ubicación.</p>
+                    <div class="tabs" data-group="admin">
+                        <div class="tab active" data-group="admin" data-tab="restrictions">🛡️ Restricciones</div>
+                        <div class="tab" data-group="admin" data-tab="upload">📤 Subir Lista</div>
+                        <div class="tab" data-group="admin" data-tab="devices">📱 Dispositivos</div>
+                        <div class="tab" data-group="admin" data-tab="settings">⚙️ Configuración</div>
+                    </div>
 
-                            <div id="locationSettings">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="locationName">Nombre del Lugar:</label>
-                                        <input type="text" id="locationName" name="location_name" placeholder="Ej: Escuela Superior de Guerra">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="locationRadius">Radio (km):</label>
-                                        <input type="number" id="locationRadius" name="location_radius_km" min="0.1" max="10" step="0.1" placeholder="1.0">
-                                    </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="locationLatitude">Latitud:</label>
-                                        <input type="text" id="locationLatitude" name="location_latitude" placeholder="19.4326">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="locationLongitude">Longitud:</label>
-                                        <input type="text" id="locationLongitude" name="location_longitude" placeholder="-99.1332">
-                                    </div>
-                                </div>
-                                <button type="button" class="btn btn-secondary btn-small" onclick="getCurrentLocation()">📍 Obtener mi Ubicación Actual</button>
-                            </div>
+                    <div id="restrictionsTab" class="tab-content card" data-group="admin" data-tab="restrictions">
+                        <h2>🛡️ Configuración de Restricciones</h2>
+
+                        <div class="info-box">
+                            <h4>ℹ️ Información sobre las Restricciones</h4>
+                            <p>Las restricciones permiten controlar dónde y cómo se puede registrar la asistencia. Los supervisores con claves administrativas pueden saltarse estas restricciones.</p>
                         </div>
 
-                        <!-- Restricción de Dispositivo -->
-                        <div class="restriction-card device">
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="deviceRestrictionEnabled" name="device_restriction_enabled">
-                                <label for="deviceRestrictionEnabled"><strong>📱 Restricción por Dispositivo</strong></label>
-                            </div>
-                            <p style="color: #666;">Solo permite un registro por dispositivo/teléfono. Evita que múltiples personas usen el mismo dispositivo.</p>
-                        </div>
-
-                        <!-- Claves Administrativas -->
-                        <div class="restriction-card admin-keys">
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="adminKeyBypassEnabled" name="admin_key_bypass_enabled">
-                                <label for="adminKeyBypassEnabled"><strong>🔑 Permitir Claves de Supervisor</strong></label>
-                            </div>
-                            <p style="color: #666;">Permite que supervisores con claves especiales puedan saltarse las restricciones de ubicación y dispositivo.</p>
-                        </div>
-
-                        <button type="submit" class="btn" id="saveRestrictionsBtn">Guardar Configuración</button>
-                    </form>
-
-                    <div class="message" id="restrictionsMessage"></div>
-
-                    <!-- Gestión de Claves Administrativas -->
-                    <div style="margin-top: 40px;">
-                        <h3>🔑 Gestión de Claves Administrativas</h3>
-                        <div style="background: white; border-radius: 8px; padding: 20px; margin-top: 15px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                                <h4>Claves Activas</h4>
-                                <button class="btn btn-success btn-small" onclick="showCreateKeyForm()">+ Nueva Clave</button>
-                            </div>
-
-                            <div id="createKeyForm" class="hidden" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                                <h4>Crear Nueva Clave</h4>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="newAdminKey">Clave:</label>
-                                        <input type="text" id="newAdminKey" placeholder="Ej: SUPERVISOR2024" maxlength="20">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="keyDescription">Descripción:</label>
-                                        <input type="text" id="keyDescription" placeholder="Ej: Para personal de supervisión">
-                                    </div>
+                        <form id="restrictionsForm">
+                            <!-- Restricción de Ubicación -->
+                            <div class="restriction-card location">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="locationRestrictionEnabled" name="location_restriction_enabled">
+                                    <label for="locationRestrictionEnabled"><strong>📍 Restricción por Ubicación</strong></label>
                                 </div>
-                                <div>
-                                    <button class="btn btn-success btn-small" onclick="createAdminKey()">Crear</button>
-                                    <button class="btn btn-secondary btn-small" onclick="hideCreateKeyForm()">Cancelar</button>
+                                <p style="margin-bottom: 15px; color: #666;">Solo permite registrar asistencia dentro de un radio específico de una ubicación.</p>
+
+                                <div id="locationSettings">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="locationName">Nombre del Lugar:</label>
+                                            <input type="text" id="locationName" name="location_name" placeholder="Ej: Escuela Superior de Guerra">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="locationRadius">Radio (km):</label>
+                                            <input type="number" id="locationRadius" name="location_radius_km" min="0.1" max="10" step="0.1" placeholder="1.0">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="locationLatitude">Latitud:</label>
+                                            <input type="text" id="locationLatitude" name="location_latitude" placeholder="19.4326">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="locationLongitude">Longitud:</label>
+                                            <input type="text" id="locationLongitude" name="location_longitude" placeholder="-99.1332">
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-secondary btn-small" onclick="getCurrentLocation()">📍 Obtener mi Ubicación Actual</button>
                                 </div>
                             </div>
 
-                            <div id="adminKeysList">
-                                <div class="loading">
-                                    <div class="spinner"></div>
-                                    <p>Cargando claves administrativas...</p>
+                            <!-- Restricción de Dispositivo -->
+                            <div class="restriction-card device">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="deviceRestrictionEnabled" name="device_restriction_enabled">
+                                    <label for="deviceRestrictionEnabled"><strong>📱 Restricción por Dispositivo</strong></label>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab: Upload Students -->
-            <div id="uploadTab" class="hidden">
-                <div class="card">
-                    <h2>📤 Subir Lista de Personal</h2>
-                    <p style="margin-bottom: 20px; color: #666;">
-                        Sube un archivo CSV con las columnas: <strong>matricula, nombre, grupo</strong>
-                    </p>
-                    <div style="margin-bottom: 20px; padding: 15px; background: #e9f7ef; border-radius: 8px; border-left: 4px solid #27ae60;">
-                        <h4 style="color: #27ae60; margin-bottom: 10px;">📋 Formato Requerido:</h4>
-                        <code style="background: #f8f9fa; padding: 8px; border-radius: 4px; display: block;">
-                            matricula,nombre,grupo<br>
-                            C123456,Teniente Juan Pérez López,a<br>
-                            A654321,Sargento María García Silva,b<br>
-                            B678904,Capitán 1/o Carlos López Martínez,c
-                        </code>
-                        <p style="margin-top: 10px; color: #27ae60; font-size: 14px;">
-                            <strong>Obligatorios:</strong> matricula, nombre, grupo
-                        </p>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="csvFile">Seleccionar archivo CSV:</label>
-                        <input type="file" id="csvFile" accept=".csv" onchange="previewCSV()">
-                    </div>
-
-                    <div id="csvPreview"></div>
-
-                    <button class="btn" onclick="uploadStudents()" id="uploadBtn" disabled>
-                        Subir Lista de Personal
-                    </button>
-
-                    <div class="message" id="uploadMessage"></div>
-
-                    <div class="danger-zone">
-                        <h3>🧹 Limpiar Base de Datos</h3>
-                        <p>Elimina todos los registros de personal almacenados en la base de datos y reinicia la lista de asistencia y dispositivos registrados.</p>
-                        <button class="btn btn-danger" onclick="clearStudentsDatabase()" id="clearStudentsBtn">
-                            Limpiar Base de Datos de Personal
-                        </button>
-                        <p class="danger-note">Esta acción no se puede deshacer. Asegúrate de contar con un respaldo antes de continuar.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab: Devices -->
-            <div id="devicesTab" class="hidden">
-                <div class="card">
-                    <h2>📱 Dispositivos Registrados</h2>
-                    <p style="margin-bottom: 20px; color: #666;">
-                        Lista de dispositivos que han registrado asistencia. Útil para monitorear el uso del sistema.
-                    </p>
-
-                    <div class="loading" id="devicesLoading">
-                        <div class="spinner"></div>
-                        <p>Cargando dispositivos...</p>
-                    </div>
-
-                    <div id="devicesContent"></div>
-                </div>
-            </div>
-
-            <!-- Tab: Settings -->
-            <div id="settingsTab" class="hidden">
-                <div class="card">
-                    <h2>⚙️ Configuración del Sistema</h2>
-
-                    <!-- Cambiar Contraseña -->
-                    <div style="margin-bottom: 30px;">
-                        <h3 style="color: #333; margin-bottom: 15px;">🔐 Cambiar Contraseña</h3>
-                        <form id="changePasswordForm">
-                            <input type="hidden" name="username" value="admin" autocomplete="username">
-                            <div class="form-group">
-                                <label for="currentPassword">Contraseña Actual:</label>
-                                <input type="password" id="currentPassword" name="currentPassword" autocomplete="current-password" required>
+                                <p style="color: #666;">Solo permite un registro por dispositivo/teléfono. Evita que múltiples personas usen el mismo dispositivo.</p>
                             </div>
 
-                            <div class="form-group">
-                                <label for="newPassword">Nueva Contraseña:</label>
-                                <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" minlength="6" required>
-                                <small style="color: #666; font-size: 12px;">Mínimo 6 caracteres</small>
+                            <!-- Claves Administrativas -->
+                            <div class="restriction-card admin-keys">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="adminKeyBypassEnabled" name="admin_key_bypass_enabled">
+                                    <label for="adminKeyBypassEnabled"><strong>🔑 Permitir Claves de Supervisor</strong></label>
+                                </div>
+                                <p style="color: #666;">Permite que supervisores con claves especiales puedan saltarse las restricciones de ubicación y dispositivo.</p>
                             </div>
 
-                            <div class="form-group">
-                                <label for="confirmPassword">Confirmar Nueva Contraseña:</label>
-                                <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" minlength="6" required>
-                            </div>
-
-                            <button type="submit" class="btn" id="changePasswordBtn">
-                                Cambiar Contraseña
-                            </button>
+                            <button type="submit" class="btn" id="saveRestrictionsBtn">Guardar Configuración</button>
                         </form>
 
-                        <div class="message" id="passwordMessage"></div>
-                    </div>
+                        <div class="message" id="restrictionsMessage"></div>
 
-                    <!-- Información del Sistema -->
-                    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                        <h3 style="color: #333; margin-bottom: 15px;">ℹ️ Información del Sistema</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div>
-                                <strong>Versión:</strong> 2.0.0 (Con Restricciones)<br>
-                                <strong>Usuario actual:</strong> <span id="currentUser">admin</span><br>
-                                <strong>Sesión activa desde:</strong> <span id="sessionTime">-</span>
-                            </div>
-                            <div>
-                                <strong>Última actualización:</strong> <span id="lastUpdate">-</span><br>
-                                <strong>Total personal:</strong> <span id="systemTotalStudents">-</span><br>
-                                <strong>Registros hoy:</strong> <span id="systemTodayRecords">-</span>
+                        <!-- Gestión de Claves Administrativas -->
+                        <div style="margin-top: 40px;">
+                            <h3>🔑 Gestión de Claves Administrativas</h3>
+                            <div style="background: white; border-radius: 8px; padding: 20px; margin-top: 15px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                    <h4>Claves Activas</h4>
+                                    <button class="btn btn-success btn-small" onclick="showCreateKeyForm()">+ Nueva Clave</button>
+                                </div>
+
+                                <div id="createKeyForm" class="hidden" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                    <h4>Crear Nueva Clave</h4>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="newAdminKey">Clave:</label>
+                                            <input type="text" id="newAdminKey" placeholder="Ej: SUPERVISOR2024" maxlength="20">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="keyDescription">Descripción:</label>
+                                            <input type="text" id="keyDescription" placeholder="Ej: Para personal de supervisión">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-success btn-small" onclick="createAdminKey()">Crear</button>
+                                        <button class="btn btn-secondary btn-small" onclick="hideCreateKeyForm()">Cancelar</button>
+                                    </div>
+                                </div>
+
+                                <div id="adminKeysList">
+                                    <div class="loading">
+                                        <div class="spinner"></div>
+                                        <p>Cargando claves administrativas...</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+
+                    <div id="uploadTab" class="tab-content card hidden" data-group="admin" data-tab="upload">
+                        <h2>📤 Subir Lista de Personal</h2>
+                        <p style="margin-bottom: 20px; color: #666;">
+                            Sube un archivo CSV con las columnas: <strong>matricula, nombre, grupo</strong>
+                        </p>
+                        <div style="margin-bottom: 20px; padding: 15px; background: #e9f7ef; border-radius: 8px; border-left: 4px solid #27ae60;">
+                            <h4 style="color: #27ae60; margin-bottom: 10px;">📋 Formato Requerido:</h4>
+                            <code style="background: #f8f9fa; padding: 8px; border-radius: 4px; display: block;">
+                                matricula,nombre,grupo<br>
+                                C123456,Teniente Juan Pérez López,a<br>
+                                A654321,Sargento María García Silva,b<br>
+                                B678904,Capitán 1/o Carlos López Martínez,c
+                            </code>
+                            <p style="margin-top: 10px; color: #27ae60; font-size: 14px;">
+                                <strong>Obligatorios:</strong> matricula, nombre, grupo
+                            </p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="csvFile">Seleccionar archivo CSV:</label>
+                            <input type="file" id="csvFile" accept=".csv" onchange="previewCSV()">
+                        </div>
+
+                        <div id="csvPreview"></div>
+
+                        <button class="btn" onclick="uploadStudents()" id="uploadBtn" disabled>
+                            Subir Lista de Personal
+                        </button>
+
+                        <div class="message" id="uploadMessage"></div>
+
+                        <div class="danger-zone">
+                            <h3>🧹 Limpiar Base de Datos</h3>
+                            <p>Elimina todos los registros de personal almacenados en la base de datos y reinicia la lista de asistencia y dispositivos registrados.</p>
+                            <button class="btn btn-danger" onclick="clearStudentsDatabase()" id="clearStudentsBtn">
+                                Limpiar Base de Datos de Personal
+                            </button>
+                            <p class="danger-note">Esta acción no se puede deshacer. Asegúrate de contar con un respaldo antes de continuar.</p>
+                        </div>
+                    </div>
+
+                    <div id="devicesTab" class="tab-content card hidden" data-group="admin" data-tab="devices">
+                        <h2>📱 Dispositivos Registrados</h2>
+                        <p style="margin-bottom: 20px; color: #666;">
+                            Lista de dispositivos que han registrado asistencia. Útil para monitorear el uso del sistema.
+                        </p>
+
+                        <div class="loading" id="devicesLoading">
+                            <div class="spinner"></div>
+                            <p>Cargando dispositivos...</p>
+                        </div>
+
+                        <div id="devicesContent"></div>
+                    </div>
+
+                    <div id="settingsTab" class="tab-content card hidden" data-group="admin" data-tab="settings">
+                        <h2>⚙️ Configuración del Sistema</h2>
+
+                        <!-- Cambiar Contraseña -->
+                        <div style="margin-bottom: 30px;">
+                            <h3 style="color: #333; margin-bottom: 15px;">🔐 Cambiar Contraseña</h3>
+                            <form id="changePasswordForm">
+                                <input type="hidden" name="username" value="admin" autocomplete="username">
+                                <div class="form-group">
+                                    <label for="currentPassword">Contraseña Actual:</label>
+                                    <input type="password" id="currentPassword" name="currentPassword" autocomplete="current-password" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="newPassword">Nueva Contraseña:</label>
+                                    <input type="password" id="newPassword" name="newPassword" autocomplete="new-password" minlength="6" required>
+                                    <small style="color: #666; font-size: 12px;">Mínimo 6 caracteres</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="confirmPassword">Confirmar Nueva Contraseña:</label>
+                                    <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" minlength="6" required>
+                                </div>
+
+                                <button type="submit" class="btn" id="changePasswordBtn">
+                                    Cambiar Contraseña
+                                </button>
+                            </form>
+
+                            <div class="message" id="passwordMessage"></div>
+                        </div>
+
+                        <!-- Información del Sistema -->
+                        <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                            <h3 style="color: #333; margin-bottom: 15px;">ℹ️ Información del Sistema</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <strong>Versión:</strong> 2.0.0 (Con Restricciones)<br>
+                                    <strong>Usuario actual:</strong> <span id="currentUser">admin</span><br>
+                                    <strong>Sesión activa desde:</strong> <span id="sessionTime">-</span>
+                                </div>
+                                <div>
+                                    <strong>Última actualización:</strong> <span id="lastUpdate">-</span><br>
+                                    <strong>Total personal:</strong> <span id="systemTotalStudents">-</span><br>
+                                    <strong>Registros hoy:</strong> <span id="systemTodayRecords">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
