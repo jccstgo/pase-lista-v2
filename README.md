@@ -39,4 +39,23 @@ Inicia el servidor con:
 npm start
 ```
 
-Si aparece `Error: la autenticación password falló para el usuario "postgres"`, significa que las credenciales de `DATABASE_URL` no coinciden con las configuradas en PostgreSQL. Corrige la contraseña o crea un usuario con esa contraseña.
+## Solución de problemas
+
+### Error: la autenticación password falló para el usuario "postgres"
+Si durante el arranque ves un mensaje como:
+
+```
+❌ Error inicializando la base de datos PostgreSQL: error: la autenticación password falló para el usuario "postgres"
+```
+
+la conexión a PostgreSQL se rechazó porque la contraseña indicada no coincide con la registrada para ese usuario. Para corregirlo:
+
+1. Abre tu archivo `.env` y revisa el valor de `DATABASE_URL`.
+2. Comprueba cuál es la contraseña real del usuario configurado (por defecto `postgres`).
+3. Actualiza `DATABASE_URL` con las credenciales correctas. Por ejemplo:
+   ```
+   DATABASE_URL=postgresql://postgres:tu_contraseña_real@localhost:5432/pase_lista
+   ```
+4. Guarda los cambios y ejecuta de nuevo `npm start`.
+
+Si todavía aparece el error, verifica que el servidor de PostgreSQL esté en ejecución, que la base de datos exista y que el usuario tenga permisos de acceso. En Windows, revisa además el archivo `pg_hba.conf` para confirmar que permite conexiones locales con autenticación por contraseña.
