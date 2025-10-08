@@ -30,6 +30,12 @@ async function handleLogin(e) {
             authToken = data.data.token;
             localStorage.setItem('adminToken', authToken);
             showAdminSection();
+            const resultsDashboardTab = document.querySelector('.dashboard-tab[data-target="resultsSection"]');
+            if (resultsDashboardTab) {
+                showDashboardSection('resultsSection', resultsDashboardTab);
+            } else {
+                showDashboardSection('resultsSection');
+            }
             await loadDashboard();
             updateSystemInfo();
             const overviewTab = document.querySelector('.tab[data-group="results"][data-tab="overview"]');

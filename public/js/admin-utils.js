@@ -27,6 +27,34 @@ function logout() {
     document.getElementById('password').value = '';
 }
 
+function showDashboardSection(sectionId, triggerElement = null) {
+    const sections = document.querySelectorAll('.dashboard-content');
+    sections.forEach(section => section.classList.add('hidden'));
+
+    const tabs = document.querySelectorAll('.dashboard-tab');
+    tabs.forEach(tab => tab.classList.remove('active'));
+
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.classList.remove('hidden');
+    }
+
+    if (triggerElement) {
+        triggerElement.classList.add('active');
+    } else {
+        const fallbackTab = document.querySelector(`.dashboard-tab[data-target="${sectionId}"]`);
+        fallbackTab?.classList.add('active');
+    }
+
+    if (sectionId === 'resultsSection') {
+        loadStats();
+        loadDetailedList();
+    } else if (sectionId === 'managementSection') {
+        loadSystemConfig();
+        updateSystemInfo();
+    }
+}
+
 function showTab(tabName, tabElement, group = 'default') {
     const groupSelector = `.tab-content[data-group="${group}"]`;
     const groupTabsSelector = `.tab[data-group="${group}"]`;
@@ -89,7 +117,8 @@ function updateSystemInfo() {
             headers: { 'Authorization': `Bearer ${authToken}` }
         })
             .then(response => response.json())
-            .then(stats => {
+            .then(payload => {
+                const stats = payload?.data ?? payload ?? {};
                 document.getElementById('systemTotalStudents').textContent = stats.totalStudents ?? '-';
                 document.getElementById('systemTodayRecords').textContent = stats.totalPresent ?? '-';
             })
@@ -229,8 +258,13 @@ function ensureStatsPolling() {
     }
 
     statsIntervalId = setInterval(() => {
-        if (authToken && !document.getElementById('adminSection').classList.contains('hidden')) {
+        const adminSection = document.getElementById('adminSection');
+        if (authToken && adminSection && !adminSection.classList.contains('hidden')) {
             loadStats();
+            const resultsSection = document.getElementById('resultsSection');
+            if (resultsSection && !resultsSection.classList.contains('hidden')) {
+                loadDetailedList();
+            }
         }
     }, 30000);
 }
@@ -249,3 +283,4 @@ window.populateRestrictionsForm = populateRestrictionsForm;
 window.handleLocationRestrictionChange = handleLocationRestrictionChange;
 window.getCurrentLocation = getCurrentLocation;
 window.ensureStatsPolling = ensureStatsPolling;
+window.showDashboardSection = showDashboardSection;

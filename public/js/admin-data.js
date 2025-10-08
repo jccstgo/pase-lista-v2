@@ -44,7 +44,8 @@ async function loadStats() {
             throw new Error('Error al cargar estadísticas');
         }
 
-        const stats = await response.json();
+        const payload = await response.json();
+        const stats = payload?.data ?? payload ?? {};
         const totalStudents = stats.totalStudents ?? 0;
         const presentRegistered = stats.presentRegistered ?? 0;
         const totalPresent = stats.totalPresent ?? presentRegistered;
@@ -121,8 +122,9 @@ async function loadDetailedList() {
             throw new Error('Error al cargar lista detallada');
         }
 
-        const data = await response.json();
-        displayDetailedList(data);
+        const payload = await response.json();
+        const detailedData = payload?.data ?? payload ?? {};
+        displayDetailedList(detailedData);
     } catch (error) {
         console.error('Error loading detailed list:', error);
         if (String(error.message).includes('401') || String(error.message).includes('403')) {
