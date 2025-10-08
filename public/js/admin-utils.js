@@ -117,7 +117,8 @@ function updateSystemInfo() {
             headers: { 'Authorization': `Bearer ${authToken}` }
         })
             .then(response => response.json())
-            .then(stats => {
+            .then(payload => {
+                const stats = payload?.data ?? payload ?? {};
                 document.getElementById('systemTotalStudents').textContent = stats.totalStudents ?? '-';
                 document.getElementById('systemTodayRecords').textContent = stats.totalPresent ?? '-';
             })
