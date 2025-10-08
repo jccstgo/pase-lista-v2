@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const restrictionsForm = document.getElementById('restrictionsForm');
     const locationCheckbox = document.getElementById('locationRestrictionEnabled');
     const tabs = Array.from(document.querySelectorAll('.tab'));
+    const dashboardTabs = Array.from(document.querySelectorAll('.dashboard-tab'));
     const tabGroups = new Map();
 
     if (loginForm) {
@@ -39,6 +40,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const initializeDashboardTabs = () => {
+        dashboardTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                showDashboardSection(tab.dataset.target, tab);
+            });
+        });
+
+        const initialDashboardTab = dashboardTabs.find(tab => tab.classList.contains('active')) || dashboardTabs[0];
+        if (initialDashboardTab) {
+            showDashboardSection(initialDashboardTab.dataset.target, initialDashboardTab);
+        }
+    };
+
     handleLocationRestrictionChange();
 
     const initializeTabs = () => {
@@ -50,6 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     };
+
+    initializeDashboardTabs();
 
     if (authToken) {
         showAdminSection();
