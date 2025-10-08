@@ -274,13 +274,25 @@ class AdminService {
                 throw new AppError('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
             }
 
+            // Combinar datos preservando contraseña y campos críticos
+            const mergedData = {
+                username: existingAdmin.username,
+                password: existingAdmin.password,
+                createdAt: existingAdmin.createdAt,
+                updatedAt: new Date().toISOString(),
+                lastLogin: existingAdmin.lastLogin,
+                loginAttempts: existingAdmin.loginAttempts,
+                lockUntil: existingAdmin.lockUntil,
+                ...updateData
+            };
+
+            // Asegurar que la contraseña solo se sobrescriba cuando se envía explícitamente
+            if (!updateData || typeof updateData.password === 'undefined') {
+                mergedData.password = existingAdmin.password;
+            }
+
             // Crear admin actualizado
-            const updatedAdmin = new Admin({
-                ...existingAdmin.toJSON(),
-                ...updateData,
-                username: existingAdmin.username, // No permitir cambiar username
-                updatedAt: new Date().toISOString()
-            });
+            const updatedAdmin = new Admin(mergedData);
 
             // Actualizar en CSV
             const updated = await CSVService.updateInCSV(
