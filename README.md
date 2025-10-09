@@ -33,6 +33,12 @@ Asegúrate de que:
 - El usuario y contraseña sean válidos.
 - La base de datos `pase_lista` exista (`createdb pase_lista`).
 
+## Persistencia y carga de información
+- Todos los datos de alumnos, asistencias, configuraciones, dispositivos y claves administrativas se almacenan directamente en PostgreSQL.
+- La carpeta `data/` ya no contiene archivos CSV dentro del repositorio; se crea dinámicamente en el servidor únicamente cuando se generan respaldos.
+- Para cargar listas de alumnos utiliza el panel de administración (`/admin`) y sube la información mediante la opción "Subir estudiantes".
+- Los respaldos que exporta el sistema se guardan en `data/backups/`, directorio que está ignorado en Git para evitar subir información sensible.
+
 ## Ejecución
 Inicia el servidor con:
 ```bash
