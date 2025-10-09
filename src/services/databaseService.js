@@ -4,7 +4,14 @@ const config = require('../config/server');
 
 class DatabaseService {
     constructor() {
-        this.allowedTables = new Set(['students']);
+        this.allowedTables = new Set([
+            'students',
+            'attendances',
+            'admins',
+            'system_config',
+            'admin_keys',
+            'devices'
+        ]);
         this.pool = new Pool({
             connectionString: config.DATABASE.URL,
             ssl: config.DATABASE.SSL ? { rejectUnauthorized: false } : undefined,
@@ -43,6 +50,67 @@ class DatabaseService {
 
         await this.pool.query('CREATE INDEX IF NOT EXISTS idx_students_grupo ON students (grupo)');
         await this.pool.query('CREATE INDEX IF NOT EXISTS idx_students_nombre ON students (LOWER(nombre))');
+
+        await this.pool.query(`
+            CREATE TABLE IF NOT EXISTS admins (
+                username TEXT PRIMARY KEY,
+                password TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                last_login TIMESTAMPTZ,
+                login_attempts INTEGER NOT NULL DEFAULT 0,
+                lock_until TIMESTAMPTZ
+            )
+        `);
+
+        await this.pool.query(`
+            CREATE TABLE IF NOT EXISTS attendances (
+                id BIGSERIAL PRIMARY KEY,
+                matricula TEXT NOT NULL,
+                nombre TEXT NOT NULL,
+                grupo TEXT NOT NULL,
+                attendance_date DATE NOT NULL,
+                recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                status TEXT NOT NULL DEFAULT 'registered',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        `);
+
+        await this.pool.query('CREATE INDEX IF NOT EXISTS idx_attendances_matricula ON attendances (matricula)');
+        await this.pool.query('CREATE INDEX IF NOT EXISTS idx_attendances_date ON attendances (attendance_date)');
+        await this.pool.query('CREATE INDEX IF NOT EXISTS idx_attendances_group ON attendances (grupo)');
+        await this.pool.query('CREATE UNIQUE INDEX IF NOT EXISTS uniq_attendance_daily ON attendances (matricula, attendance_date)');
+
+        await this.pool.query(`
+            CREATE TABLE IF NOT EXISTS system_config (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL DEFAULT '',
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        `);
+
+        await this.pool.query(`
+            CREATE TABLE IF NOT EXISTS admin_keys (
+                key TEXT PRIMARY KEY,
+                description TEXT NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                deactivated_at TIMESTAMPTZ
+            )
+        `);
+
+        await this.pool.query(`
+            CREATE TABLE IF NOT EXISTS devices (
+                device_fingerprint TEXT PRIMARY KEY,
+                matricula TEXT,
+                first_registration TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                last_used TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                user_agent TEXT
+            )
+        `);
+
+        await this.pool.query('CREATE INDEX IF NOT EXISTS idx_devices_matricula ON devices (matricula)');
     }
 
     async query(text, params = []) {

@@ -1,55 +1,53 @@
-const CSVService = require('./csvService');
+const database = require('./databaseService');
 const config = require('../config/server');
 const { AppError } = require('../middleware/errorHandler');
 
 class ConfigService {
-    /**
-     * Asegurar que el archivo de configuración exista con formato correcto
-     */
     static async ensureInitialized() {
         try {
-            const exists = await CSVService.fileExists(config.FILES.CONFIG);
+            const rows = await database.all('SELECT key FROM system_config');
+            const existingKeys = new Set(rows.map(row => row.key));
+            const timestamp = new Date().toISOString();
 
-            if (!exists) {
-                await this.saveSystemConfig(config.DEFAULT_SYSTEM_CONFIG);
-                return;
-            }
+            const operations = [];
+            Object.entries(config.DEFAULT_SYSTEM_CONFIG).forEach(([key, value]) => {
+                if (!existingKeys.has(key)) {
+                    operations.push(
+                        database.run(
+                            `INSERT INTO system_config (key, value, updated_at)
+                             VALUES ($1, $2, $3)
+                             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
+                            [key, value, timestamp]
+                        )
+                    );
+                }
+            });
 
-            // Reescribir para asegurar estructura y valores por defecto
-            const currentConfig = await this.getSystemConfig();
-            await this.saveSystemConfig(currentConfig);
+            await Promise.all(operations);
         } catch (error) {
-            console.error('❌ Error asegurando archivo de configuración:', error);
+            console.error('❌ Error asegurando configuración del sistema:', error);
             throw error instanceof AppError ? error : new AppError('No se pudo inicializar la configuración', 500, 'CONFIG_INIT_ERROR');
         }
     }
 
-    /**
-     * Obtener configuración del sistema (valores en texto)
-     */
     static async getSystemConfig() {
         try {
-            await this.ensureFile();
+            await this.ensureInitialized();
 
-            const rows = await CSVService.readCSV(config.FILES.CONFIG);
+            const rows = await database.all('SELECT key, value, updated_at FROM system_config');
             const baseConfig = { ...config.DEFAULT_SYSTEM_CONFIG };
             let updatedAt = null;
 
             rows.forEach(row => {
                 if (!row.key) return;
-
                 const key = row.key.trim();
                 const value = row.value ?? '';
-
-                if (Object.prototype.hasOwnProperty.call(baseConfig, key)) {
-                    baseConfig[key] = value;
-                } else {
-                    baseConfig[key] = value;
-                }
+                baseConfig[key] = value;
 
                 if (row.updated_at) {
-                    if (!updatedAt || new Date(row.updated_at) > new Date(updatedAt)) {
-                        updatedAt = row.updated_at;
+                    const rowDate = row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at;
+                    if (!updatedAt || new Date(rowDate) > new Date(updatedAt)) {
+                        updatedAt = rowDate;
                     }
                 }
             });
@@ -65,12 +63,9 @@ class ConfigService {
         }
     }
 
-    /**
-     * Guardar configuración del sistema
-     */
     static async saveSystemConfig(newConfig = {}) {
         try {
-            await this.ensureFile();
+            await this.ensureInitialized();
 
             const sanitizedConfig = { ...config.DEFAULT_SYSTEM_CONFIG };
             const allowedKeys = new Set(Object.keys(config.DEFAULT_SYSTEM_CONFIG));
@@ -101,13 +96,17 @@ class ConfigService {
             }
 
             const timestamp = new Date().toISOString();
-            const records = Object.entries(sanitizedConfig).map(([key, value]) => ({
-                key,
-                value: value == null ? '' : value.toString(),
-                updated_at: timestamp
-            }));
 
-            await CSVService.writeCSV(config.FILES.CONFIG, records, config.CSV_HEADERS.CONFIG);
+            await database.transaction(async (client) => {
+                for (const [key, value] of Object.entries(sanitizedConfig)) {
+                    await client.query(
+                        `INSERT INTO system_config (key, value, updated_at)
+                         VALUES ($1, $2, $3)
+                         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
+                        [key, value == null ? '' : value.toString(), timestamp]
+                    );
+                }
+            });
 
             return { ...sanitizedConfig, updated_at: timestamp };
         } catch (error) {
@@ -116,9 +115,6 @@ class ConfigService {
         }
     }
 
-    /**
-     * Obtener configuración formateada para consumo público (valores booleanos)
-     */
     static async getPublicConfig() {
         const configData = await this.getSystemConfig();
 
@@ -134,9 +130,6 @@ class ConfigService {
         };
     }
 
-    /**
-     * Normalizar valores booleanos a texto
-     */
     static normalizeBoolean(value) {
         if (typeof value === 'boolean') {
             return value ? 'true' : 'false';
@@ -144,24 +137,6 @@ class ConfigService {
 
         const normalized = value ? value.toString().trim().toLowerCase() : 'false';
         return ['true', '1', 'yes', 'on'].includes(normalized) ? 'true' : 'false';
-    }
-
-    /**
-     * Asegurar que el archivo existe (sin sobrescribir datos)
-     */
-    static async ensureFile() {
-        const exists = await CSVService.fileExists(config.FILES.CONFIG);
-
-        if (!exists) {
-            const timestamp = new Date().toISOString();
-            const records = Object.entries(config.DEFAULT_SYSTEM_CONFIG).map(([key, value]) => ({
-                key,
-                value,
-                updated_at: timestamp
-            }));
-
-            await CSVService.writeCSV(config.FILES.CONFIG, records, config.CSV_HEADERS.CONFIG);
-        }
     }
 }
 
