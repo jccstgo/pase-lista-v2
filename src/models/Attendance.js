@@ -6,9 +6,9 @@ class Attendance {
         this.matricula = this.normalizeMatricula(data.matricula);
         this.nombre = data.nombre || '';
         this.grupo = this.normalizeGroup(data.grupo);
-        this.timestamp = data.timestamp || new Date().toISOString();
+        this.timestamp = data.timestamp || data.recorded_at || new Date().toISOString();
         this.status = data.status || 'registered';
-        this.date = this.extractDate(this.timestamp);
+        this.date = data.date || data.attendance_date || this.extractDate(this.timestamp);
     }
 
     /**
@@ -128,16 +128,34 @@ class Attendance {
      */
     static fromCSV(csvData) {
         // Manejo de BOM y diferentes formatos de claves
-        const matriculaKey = Object.keys(csvData).find(key => 
+        const matriculaKey = Object.keys(csvData).find(key =>
             key.includes('matricula')
         );
-        
+
         return new Attendance({
             matricula: csvData.matricula || csvData[matriculaKey] || '',
             nombre: csvData.nombre || '',
             grupo: csvData.grupo || '',
             timestamp: csvData.timestamp || '',
             status: csvData.status || 'registered'
+        });
+    }
+
+    /**
+     * Crear asistencia desde una fila de base de datos
+     */
+    static fromDatabaseRow(row) {
+        if (!row) {
+            return null;
+        }
+
+        return new Attendance({
+            matricula: row.matricula,
+            nombre: row.nombre,
+            grupo: row.grupo,
+            timestamp: row.timestamp || row.recorded_at,
+            status: row.status,
+            date: row.date || row.attendance_date
         });
     }
 
