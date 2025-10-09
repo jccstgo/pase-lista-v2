@@ -1,5 +1,3 @@
-const path = require('path');
-
 try {
     require('dotenv').config();
 } catch (error) {
@@ -7,7 +5,6 @@ try {
 }
 
 const DATA_DIR = process.env.DATA_DIR || 'data';
-const resolveDataPath = (...segments) => path.join(DATA_DIR, ...segments);
 
 const DEFAULT_DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/pase_lista';
 
@@ -41,16 +38,8 @@ const config = {
     JWT_SECRET: process.env.JWT_SECRET || 'sistema-militar-pase-lista-2024-clave-temporal-cambiar-en-produccion',
     JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '8h',
     
-    // Configuración de archivos
+    // Configuración del almacenamiento local utilizado para respaldos
     DATA_DIR,
-    FILES: {
-        STUDENTS: resolveDataPath('students.csv'),
-        ATTENDANCE: resolveDataPath('attendance.csv'),
-        ADMIN: resolveDataPath('admin.csv'),
-        CONFIG: resolveDataPath('system_config.csv'),
-        ADMIN_KEYS: resolveDataPath('admin_keys.csv'),
-        DEVICES: resolveDataPath('devices.csv')
-    },
 
     DATABASE: {
         URL: DEFAULT_DATABASE_URL,
@@ -59,45 +48,6 @@ const config = {
         MAX_POOL_SIZE: parseNumber(process.env.DATABASE_MAX_POOL_SIZE, 10),
         IDLE_TIMEOUT_MS: parseNumber(process.env.DATABASE_IDLE_TIMEOUT_MS, 30000),
         CONNECTION_TIMEOUT_MS: parseNumber(process.env.DATABASE_CONNECTION_TIMEOUT_MS, 2000)
-    },
-
-    // Configuración de CSV
-    CSV_HEADERS: {
-        STUDENTS: [
-            { id: 'matricula', title: 'matricula' },
-            { id: 'nombre', title: 'nombre' },
-            { id: 'grupo', title: 'grupo' }
-        ],
-        ATTENDANCE: [
-            { id: 'matricula', title: 'matricula' },
-            { id: 'nombre', title: 'nombre' },
-            { id: 'grupo', title: 'grupo' },
-            { id: 'timestamp', title: 'timestamp' },
-            { id: 'status', title: 'status' }
-        ],
-        ADMIN: [
-            { id: 'username', title: 'username' },
-            { id: 'password', title: 'password' }
-        ],
-        CONFIG: [
-            { id: 'key', title: 'key' },
-            { id: 'value', title: 'value' },
-            { id: 'updated_at', title: 'updated_at' }
-        ],
-        ADMIN_KEYS: [
-            { id: 'key', title: 'key' },
-            { id: 'description', title: 'description' },
-            { id: 'is_active', title: 'is_active' },
-            { id: 'created_at', title: 'created_at' },
-            { id: 'deactivated_at', title: 'deactivated_at' }
-        ],
-        DEVICES: [
-            { id: 'device_fingerprint', title: 'device_fingerprint' },
-            { id: 'matricula', title: 'matricula' },
-            { id: 'first_registration', title: 'first_registration' },
-            { id: 'last_used', title: 'last_used' },
-            { id: 'user_agent', title: 'user_agent' }
-        ]
     },
 
     // Configuración del sistema (restricciones y comportamiento)
