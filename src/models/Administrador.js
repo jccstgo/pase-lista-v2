@@ -4,7 +4,7 @@ const config = require('../config/server');
 /**
  * Modelo para representar un administrador
  */
-class Admin {
+class Administrador {
     constructor(data) {
         this.username = this.normalizeUsername(data.username);
         this.password = data.password || '';
@@ -148,7 +148,7 @@ class Admin {
      * Crear admin desde datos de CSV
      */
     static fromCSV(csvData) {
-        return new Admin({
+        return new Administrador({
             username: csvData.username || '',
             password: csvData.password || ''
         });
@@ -159,7 +159,7 @@ class Admin {
      */
     static fromCSVArray(csvArray) {
         return csvArray
-            .map(data => Admin.fromCSV(data))
+            .map(data => Administrador.fromCSV(data))
             .filter(admin => {
                 const validation = admin.isValid();
                 return validation.isValid;
@@ -170,7 +170,7 @@ class Admin {
      * Buscar admin por username
      */
     static findByUsername(admins, username) {
-        const normalizedUsername = new Admin({ username }).username;
+        const normalizedUsername = new Administrador({ username }).username;
         return admins.find(admin => admin.username === normalizedUsername);
     }
 
@@ -178,7 +178,7 @@ class Admin {
      * Crear admin por defecto
      */
     static async createDefault() {
-        const admin = new Admin({
+        const admin = new Administrador({
             username: 'admin',
             createdAt: new Date().toISOString()
         });
@@ -227,4 +227,4 @@ class Admin {
     }
 }
 
-module.exports = Admin;
+module.exports = Administrador;

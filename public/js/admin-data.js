@@ -94,7 +94,7 @@ async function loadStats() {
             `;
         }
     } catch (error) {
-        console.error('Error loading stats:', error);
+        console.error('Error al cargar estadísticas:', error);
         if (String(error.message).includes('401') || String(error.message).includes('403')) {
             logout();
         }
@@ -126,7 +126,7 @@ async function loadDetailedList() {
         const detailedData = payload?.data ?? payload ?? {};
         displayDetailedList(detailedData);
     } catch (error) {
-        console.error('Error loading detailed list:', error);
+        console.error('Error al cargar la lista detallada:', error);
         if (String(error.message).includes('401') || String(error.message).includes('403')) {
             logout();
         }
@@ -185,8 +185,8 @@ function createDetailedTable(students) {
                 <td>${decodeSpecialChars((student.grupo || '-')).toUpperCase()}</td>
                 <td><span class="status-badge ${statusClass}">${student.status || '-'}</span></td>
                 <td>${timeString}</td>
-                <td style="font-size: 12px;">${student.location || 'N/A'}</td>
-                <td style="font-size: 12px; font-family: monospace;">${student.device || 'N/A'}</td>
+                <td style="font-size: 12px;">${student.location || 'N/D'}</td>
+                <td style="font-size: 12px; font-family: monospace;">${student.device || 'N/D'}</td>
             </tr>
         `;
     });
@@ -215,7 +215,7 @@ async function loadDevices() {
         const devices = await response.json();
         displayDevices(devices);
     } catch (error) {
-        console.error('Error loading devices:', error);
+        console.error('Error al cargar dispositivos:', error);
         document.getElementById('devicesContent').innerHTML = '<p style="color: #e74c3c;">Error cargando dispositivos</p>';
         if (String(error.message).includes('401') || String(error.message).includes('403')) {
             logout();
@@ -284,7 +284,7 @@ async function loadAdminKeys() {
         const adminKeys = await response.json();
         displayAdminKeys(adminKeys);
     } catch (error) {
-        console.error('Error loading admin keys:', error);
+        console.error('Error al cargar claves administrativas:', error);
         if (container) {
             container.innerHTML = '<p style="color: #e74c3c;">Error cargando claves administrativas</p>';
         }
