@@ -376,34 +376,34 @@ class ControladorAdministracion {
         const { format = 'json' } = req.query;
         
         // Obtener todos los datos
-        const students = await ServicioEstudiantes.getAllStudents();
-        const attendances = await ServicioAsistencias.obtenerTodasLasAsistencias();
-        const systemStatus = await ServicioSistema.getSystemStatus();
-        
-        const exportData = {
+        const estudiantes = await ServicioEstudiantes.getAllStudents();
+        const asistencias = await ServicioAsistencias.obtenerTodasLasAsistencias();
+        const estadoSistema = await ServicioSistema.getSystemStatus();
+
+        const datosExportacion = {
             exportInfo: {
                 timestamp: new Date().toISOString(),
                 format,
                 version: '1.0.0'
             },
             systemStatus: {
-                environment: systemStatus.environment,
-                uptime: systemStatus.uptime
+                environment: estadoSistema.environment,
+                uptime: estadoSistema.uptime
             },
             data: {
-                students: students.map(s => s.toJSON()),
-                attendances: attendances.map(a => a.toJSON()),
+                students: estudiantes.map(estudiante => estudiante.toJSON()),
+                attendances: asistencias.map(asistencia => asistencia.toJSON()),
                 totals: {
-                    students: students.length,
-                    attendances: attendances.length
+                    students: estudiantes.length,
+                    attendances: asistencias.length
                 }
             }
         };
-        
+
         if (format.toLowerCase() === 'json') {
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Content-Disposition', `attachment; filename=sistema_completo_${new Date().toISOString().split('T')[0]}.json`);
-            res.json(exportData);
+            res.json(datosExportacion);
         } else {
             res.status(400).json({
                 success: false,
@@ -420,41 +420,41 @@ class ControladorAdministracion {
         console.log('📈 Petición de resumen ejecutivo');
         
         const { period = '7' } = req.query; // Días hacia atrás
-        const days = parseInt(period);
-        
-        if (days < 1 || days > 90) {
+        const dias = parseInt(period);
+
+        if (dias < 1 || dias > 90) {
             return res.status(400).json({
                 success: false,
                 error: 'El período debe estar entre 1 y 90 días'
             });
         }
-        
-        const endDate = new Date().toISOString().split('T')[0];
-        const startDate = new Date(Date.now() - (days - 1) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        
+
+        const fechaFin = new Date().toISOString().split('T')[0];
+        const fechaInicio = new Date(Date.now() - (dias - 1) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
         // Obtener datos
-        const [studentStats, attendanceReport, systemStatus] = await Promise.all([
+        const [estadisticasEstudiantes, reporteAsistencias, estadoSistema] = await Promise.all([
             ServicioEstudiantes.getStudentStats(),
-            ServicioAsistencias.obtenerReporteAsistencias(startDate, endDate),
+            ServicioAsistencias.obtenerReporteAsistencias(fechaInicio, fechaFin),
             ServicioSistema.getSystemStatus()
         ]);
-        
-        const summary = {
+
+        const resumen = {
             period: {
-                days,
-                startDate,
-                endDate
+                days: dias,
+                startDate: fechaInicio,
+                endDate: fechaFin
             },
             overview: {
-                totalStudents: studentStats.total,
-                avgDailyAttendance: attendanceReport.summary.avgDailyAttendance,
-                avgAttendanceRate: `${attendanceReport.summary.avgAttendanceRate}%`,
-                systemUptime: `${Math.round(systemStatus.uptime / 3600)}h`
+                totalStudents: estadisticasEstudiantes.total,
+                avgDailyAttendance: reporteAsistencias.summary.avgDailyAttendance,
+                avgAttendanceRate: `${reporteAsistencias.summary.avgAttendanceRate}%`,
+                systemUptime: `${Math.round(estadoSistema.uptime / 3600)}h`
             },
             trends: {
-                attendanceByDay: attendanceReport.dailyStats,
-                groupDistribution: studentStats.groups,
-                topAttenders: attendanceReport.studentAttendance
+                attendanceByDay: reporteAsistencias.dailyStats,
+                groupDistribution: estadisticasEstudiantes.groups,
+                topAttenders: reporteAsistencias.studentAttendance
                     .filter(s => s.daysPresent > 0)
                     .slice(0, 10)
                     .map(s => ({
@@ -469,21 +469,21 @@ class ControladorAdministracion {
         };
         
         // Generar alertas
-        if (parseFloat(attendanceReport.summary.avgAttendanceRate) < 80) {
-            summary.alerts.push({
+        if (parseFloat(reporteAsistencias.summary.avgAttendanceRate) < 80) {
+            resumen.alerts.push({
                 type: 'warning',
-                message: `Tasa de asistencia promedio baja: ${attendanceReport.summary.avgAttendanceRate}%`
+                message: `Tasa de asistencia promedio baja: ${reporteAsistencias.summary.avgAttendanceRate}%`
             });
-            summary.recommendations.push('Revisar posibles causas de ausentismo');
+            resumen.recommendations.push('Revisar posibles causas de ausentismo');
         }
-        
-        if (systemStatus.uptime > 7 * 24 * 3600) { // 7 días
-            summary.recommendations.push('Considere reinicio programado del sistema');
+
+        if (estadoSistema.uptime > 7 * 24 * 3600) { // 7 días
+            resumen.recommendations.push('Considere reinicio programado del sistema');
         }
-        
+
         res.status(200).json({
             success: true,
-            data: summary
+            data: resumen
         });
     });
 
@@ -494,31 +494,31 @@ class ControladorAdministracion {
     static obtenerMetricasTiempoReal = manejadorAsincrono(async (req, res) => {
         console.log('⚡ Petición de métricas en tiempo real');
         
-        const [todayStats, systemStatus] = await Promise.all([
+        const [estadisticasHoy, estadoSistema] = await Promise.all([
             ServicioAsistencias.obtenerEstadisticasAsistencias(),
             ServicioSistema.getSystemStatus()
         ]);
-        
-        const metrics = {
+
+        const metricas = {
             timestamp: new Date().toISOString(),
             attendance: {
                 today: {
-                    present: todayStats.presentRegistered,
-                    total: todayStats.totalStudents,
-                    rate: parseFloat(todayStats.attendanceRate),
-                    lastUpdate: todayStats.lastUpdate
+                    present: estadisticasHoy.presentRegistered,
+                    total: estadisticasHoy.totalStudents,
+                    rate: parseFloat(estadisticasHoy.attendanceRate),
+                    lastUpdate: estadisticasHoy.lastUpdate
                 }
             },
             system: {
-                uptime: Math.round(systemStatus.uptime),
-                memoryUsage: Math.round(systemStatus.memory.rss / 1024 / 1024), // MB
-                filesStatus: Object.values(systemStatus.files).every(f => f.exists)
+                uptime: Math.round(estadoSistema.uptime),
+                memoryUsage: Math.round(estadoSistema.memory.rss / 1024 / 1024), // MB
+                filesStatus: Object.values(estadoSistema.files).every(f => f.exists)
             }
         };
-        
+
         res.status(200).json({
             success: true,
-            data: metrics
+            data: metricas
         });
     });
 }
