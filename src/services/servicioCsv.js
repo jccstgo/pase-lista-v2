@@ -6,7 +6,7 @@ const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 const { AppError } = require('../middleware/errorHandler');
 const { decodePotentiallyMisencodedText, decodeBufferToText } = require('../utils/encoding');
 
-class CSVService {
+class ServicioCsv {
     /**
      * Verificar si un archivo existe
      */
@@ -317,4 +317,4 @@ class CSVService {
     }
 }
 
-module.exports = CSVService;
+module.exports = ServicioCsv;

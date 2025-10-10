@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 const { decodePotentiallyMisencodedText, hasEncodingArtifacts } = require('../src/utils/encoding');
-const Student = require('../src/models/Student');
-const CSVService = require('../src/services/csvService');
+const Estudiante = require('../src/models/Estudiante');
+const ServicioCsv = require('../src/services/servicioCsv');
 
 describe('encoding utilities', () => {
     test('detects encoding artifacts', () => {
@@ -30,7 +30,7 @@ describe('Student encoding normalization', () => {
             grupo: Buffer.from('Información', 'utf8').toString('latin1')
         };
 
-        const student = new Student(data);
+        const student = new Estudiante(data);
 
         expect(student.matricula).toBe('ABC123');
         expect(student.nombre).toBe('María-José');
@@ -58,7 +58,7 @@ describe('CSVService encoding handling', () => {
         const latin1Buffer = Buffer.from(csvContent, 'latin1');
         await fs.promises.writeFile(tempFile, latin1Buffer);
 
-        const rows = await CSVService.readCSV(tempFile);
+        const rows = await ServicioCsv.readCSV(tempFile);
 
         expect(rows).toHaveLength(2);
         expect(rows[0].nombre).toBe('José');

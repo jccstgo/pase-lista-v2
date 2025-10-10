@@ -1,7 +1,7 @@
 /**
  * Modelo para representar un registro de asistencia
  */
-class Attendance {
+class Asistencia {
     constructor(data) {
         this.matricula = this.normalizeMatricula(data.matricula);
         this.nombre = data.nombre || '';
@@ -132,7 +132,7 @@ class Attendance {
             key.includes('matricula')
         );
 
-        return new Attendance({
+        return new Asistencia({
             matricula: csvData.matricula || csvData[matriculaKey] || '',
             nombre: csvData.nombre || '',
             grupo: csvData.grupo || '',
@@ -149,7 +149,7 @@ class Attendance {
             return null;
         }
 
-        return new Attendance({
+        return new Asistencia({
             matricula: row.matricula,
             nombre: row.nombre,
             grupo: row.grupo,
@@ -164,7 +164,7 @@ class Attendance {
      */
     static fromCSVArray(csvArray) {
         return csvArray
-            .map(data => Attendance.fromCSV(data))
+            .map(data => Asistencia.fromCSV(data))
             .filter(attendance => {
                 const validation = attendance.isValid();
                 return validation.isValid;
@@ -184,14 +184,14 @@ class Attendance {
      */
     static filterToday(attendances) {
         const today = new Date().toISOString().split('T')[0];
-        return Attendance.filterByDate(attendances, today);
+        return Asistencia.filterByDate(attendances, today);
     }
 
     /**
      * Buscar asistencia por matrícula y fecha
      */
     static findByMatriculaAndDate(attendances, matricula, date = null) {
-        const normalizedMatricula = new Attendance({ matricula }).matricula;
+        const normalizedMatricula = new Asistencia({ matricula }).matricula;
         const targetDate = date || new Date().toISOString().split('T')[0];
         
         return attendances.find(attendance => 
@@ -205,8 +205,8 @@ class Attendance {
      */
     static getStats(attendances, date = null) {
         const targetAttendances = date ? 
-            Attendance.filterByDate(attendances, date) : 
-            Attendance.filterToday(attendances);
+            Asistencia.filterByDate(attendances, date) : 
+            Asistencia.filterToday(attendances);
 
         const stats = {
             total: targetAttendances.length,
@@ -239,8 +239,8 @@ class Attendance {
      */
     static getUniqueAttendees(attendances, date = null) {
         const targetAttendances = date ? 
-            Attendance.filterByDate(attendances, date) : 
-            Attendance.filterToday(attendances);
+            Asistencia.filterByDate(attendances, date) : 
+            Asistencia.filterToday(attendances);
 
         const unique = new Map();
         
@@ -254,4 +254,4 @@ class Attendance {
     }
 }
 
-module.exports = Attendance;
+module.exports = Asistencia;

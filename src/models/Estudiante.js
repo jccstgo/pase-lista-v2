@@ -3,7 +3,7 @@ const { decodePotentiallyMisencodedText } = require('../utils/encoding');
 /**
  * Modelo para representar un estudiante/personal militar
  */
-class Student {
+class Estudiante {
     constructor(data) {
         this.matricula = this.normalizeMatricula(data.matricula);
         this.nombre = this.normalizeName(data.nombre);
@@ -103,7 +103,7 @@ class Student {
             key.includes('matricula') || key === 'matricula'
         );
         
-        return new Student({
+        return new Estudiante({
             matricula: csvData.matricula || csvData[matriculaKey] || '',
             nombre: csvData.nombre || '',
             grupo: csvData.grupo || ''
@@ -115,7 +115,7 @@ class Student {
      */
     static fromCSVArray(csvArray) {
         return csvArray
-            .map(data => Student.fromCSV(data))
+            .map(data => Estudiante.fromCSV(data))
             .filter(student => {
                 const validation = student.isValid();
                 return validation.isValid;
@@ -126,7 +126,7 @@ class Student {
      * Buscar estudiante por matrícula
      */
     static findByMatricula(students, matricula) {
-        const normalizedMatricula = new Student({ matricula }).matricula;
+        const normalizedMatricula = new Estudiante({ matricula }).matricula;
         return students.find(student => student.matricula === normalizedMatricula);
     }
 
@@ -134,7 +134,7 @@ class Student {
      * Buscar estudiantes por grupo
      */
     static findByGroup(students, grupo) {
-        const normalizedGroup = new Student({ grupo }).grupo;
+        const normalizedGroup = new Estudiante({ grupo }).grupo;
         return students.filter(student => student.grupo === normalizedGroup);
     }
 
@@ -159,4 +159,4 @@ class Student {
     }
 }
 
-module.exports = Student;
+module.exports = Estudiante;

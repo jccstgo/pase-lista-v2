@@ -1,17 +1,17 @@
-const AttendanceService = require('../services/attendanceService');
+const ServicioAsistencias = require('../services/servicioAsistencias');
 const { asyncHandler } = require('../middleware/errorHandler');
 
-class AttendanceController {
+class ControladorAsistencias {
     /**
      * Registrar asistencia de un estudiante
      * POST /api/attendance
      */
-    static registerAttendance = asyncHandler(async (req, res) => {
+    static registrarAsistencia = asyncHandler(async (req, res) => {
         console.log('📝 Petición de registro de asistencia recibida');
         
         const { matricula, deviceFingerprint } = req.body;
 
-        const result = await AttendanceService.registerAttendance({
+        const result = await ServicioAsistencias.registerAttendance({
             matricula,
             deviceFingerprint,
             userAgent: req.headers['user-agent'] || ''
@@ -32,10 +32,10 @@ class AttendanceController {
      * Obtener asistencias del día actual
      * GET /api/attendance/today
      */
-    static getTodayAttendances = asyncHandler(async (req, res) => {
+    static obtenerAsistenciasDeHoy = asyncHandler(async (req, res) => {
         console.log('📋 Petición de asistencias del día');
         
-        const attendances = await AttendanceService.getAttendancesByDate();
+        const attendances = await ServicioAsistencias.getAttendancesByDate();
         
         res.status(200).json({
             success: true,
@@ -51,7 +51,7 @@ class AttendanceController {
      * Obtener asistencias por fecha específica
      * GET /api/attendance/date/:date
      */
-    static getAttendancesByDate = asyncHandler(async (req, res) => {
+    static obtenerAsistenciasPorFecha = asyncHandler(async (req, res) => {
         const { date } = req.params;
         
         console.log(`📋 Petición de asistencias para fecha: ${date}`);
@@ -64,7 +64,7 @@ class AttendanceController {
             });
         }
         
-        const attendances = await AttendanceService.getAttendancesByDate(date);
+        const attendances = await ServicioAsistencias.getAttendancesByDate(date);
         
         res.status(200).json({
             success: true,
@@ -80,12 +80,12 @@ class AttendanceController {
      * Verificar si un estudiante ya registró asistencia hoy
      * GET /api/attendance/check/:matricula
      */
-    static checkTodayAttendance = asyncHandler(async (req, res) => {
+    static verificarAsistenciaDeHoy = asyncHandler(async (req, res) => {
         const { matricula } = req.params;
         
         console.log(`🔍 Verificando asistencia del día para: ${matricula}`);
         
-        const attendance = await AttendanceService.findTodayAttendance(matricula);
+        const attendance = await ServicioAsistencias.findTodayAttendance(matricula);
         
         res.status(200).json({
             success: true,
@@ -103,7 +103,7 @@ class AttendanceController {
      * GET /api/attendance/stats
      * GET /api/attendance/stats?date=YYYY-MM-DD
      */
-    static getAttendanceStats = asyncHandler(async (req, res) => {
+    static obtenerEstadisticasAsistencia = asyncHandler(async (req, res) => {
         const { date } = req.query;
         
         console.log(`📊 Petición de estadísticas${date ? ` para fecha: ${date}` : ' del día'}`);
@@ -116,7 +116,7 @@ class AttendanceController {
             });
         }
         
-        const stats = await AttendanceService.getAttendanceStats(date);
+        const stats = await ServicioAsistencias.getAttendanceStats(date);
         
         res.status(200).json({
             success: true,
@@ -129,7 +129,7 @@ class AttendanceController {
      * GET /api/attendance/history/:matricula
      * GET /api/attendance/history/:matricula?limit=30
      */
-    static getStudentHistory = asyncHandler(async (req, res) => {
+    static obtenerHistorialEstudiante = asyncHandler(async (req, res) => {
         const { matricula } = req.params;
         const { limit } = req.query;
         
@@ -143,7 +143,7 @@ class AttendanceController {
             });
         }
         
-        const history = await AttendanceService.getStudentAttendanceHistory(matricula, parsedLimit);
+        const history = await ServicioAsistencias.getStudentAttendanceHistory(matricula, parsedLimit);
         
         res.status(200).json({
             success: true,
@@ -155,7 +155,7 @@ class AttendanceController {
      * Obtener reporte de asistencia por rango de fechas
      * GET /api/attendance/report?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
      */
-    static getAttendanceReport = asyncHandler(async (req, res) => {
+    static obtenerReporteAsistencia = asyncHandler(async (req, res) => {
         const { startDate, endDate } = req.query;
         
         console.log(`📈 Petición de reporte desde ${startDate} hasta ${endDate}`);
@@ -192,7 +192,7 @@ class AttendanceController {
             });
         }
         
-        const report = await AttendanceService.getAttendanceReport(startDate, endDate);
+        const report = await ServicioAsistencias.getAttendanceReport(startDate, endDate);
         
         res.status(200).json({
             success: true,
@@ -204,7 +204,7 @@ class AttendanceController {
      * Exportar datos de asistencia
      * GET /api/attendance/export?format=json&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
      */
-    static exportAttendanceData = asyncHandler(async (req, res) => {
+    static exportarDatosAsistencia = asyncHandler(async (req, res) => {
         const { format = 'json', startDate, endDate } = req.query;
         
         console.log(`📤 Petición de exportación en formato: ${format}`);
@@ -233,7 +233,7 @@ class AttendanceController {
             });
         }
         
-        const exportData = await AttendanceService.exportAttendanceData(format, startDate, endDate);
+        const exportData = await ServicioAsistencias.exportAttendanceData(format, startDate, endDate);
         
         // Configurar headers de respuesta según el formato
         if (format.toLowerCase() === 'csv') {
@@ -251,10 +251,10 @@ class AttendanceController {
      * Validar integridad de registros de asistencia
      * GET /api/attendance/validate
      */
-    static validateIntegrity = asyncHandler(async (req, res) => {
+    static validarIntegridad = asyncHandler(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de asistencias');
         
-        const validation = await AttendanceService.validateAttendanceIntegrity();
+        const validation = await ServicioAsistencias.validateAttendanceIntegrity();
         
         res.status(200).json({
             success: true,
@@ -267,7 +267,7 @@ class AttendanceController {
      * POST /api/attendance/summary
      * Body: { dates: ["2024-01-01", "2024-01-02"] }
      */
-    static getMultipleDatesSummary = asyncHandler(async (req, res) => {
+    static obtenerResumenMultiplesFechas = asyncHandler(async (req, res) => {
         const { dates } = req.body;
         
         console.log(`📊 Petición de resumen para ${dates?.length || 0} fechas`);
@@ -299,7 +299,7 @@ class AttendanceController {
         
         for (const date of dates) {
             try {
-                const stats = await AttendanceService.getAttendanceStats(date);
+                const stats = await ServicioAsistencias.getAttendanceStats(date);
                 summaries[date] = stats;
             } catch (error) {
                 summaries[date] = {
@@ -320,4 +320,4 @@ class AttendanceController {
     });
 }
 
-module.exports = AttendanceController;
+module.exports = ControladorAsistencias;
