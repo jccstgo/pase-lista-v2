@@ -2,7 +2,7 @@ const { Pool } = require('pg');
 
 const config = require('../config/server');
 
-class DatabaseService {
+class ServicioBaseDatos {
     constructor() {
         this.allowedTables = new Set([
             'students',
@@ -162,4 +162,4 @@ class DatabaseService {
     }
 }
 
-module.exports = new DatabaseService();
+module.exports = new ServicioBaseDatos();

@@ -1,13 +1,13 @@
-const Attendance = require('../models/Attendance');
-const StudentService = require('./studentService');
-const database = require('./databaseService');
+const Asistencia = require('../models/Asistencia');
+const ServicioEstudiantes = require('./servicioEstudiantes');
+const servicioBaseDatos = require('./servicioBaseDatos');
 const config = require('../config/server');
-const DeviceService = require('./deviceService');
-const { AppError } = require('../middleware/errorHandler');
+const ServicioDispositivos = require('./servicioDispositivos');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
-class AttendanceService {
+class ServicioAsistencias {
     static mapRowToAttendance(row) {
-        return Attendance.fromDatabaseRow({
+        return Asistencia.fromDatabaseRow({
             ...row,
             timestamp: row?.recorded_at,
             date: row?.attendance_date
@@ -16,7 +16,7 @@ class AttendanceService {
 
     static async getAllAttendances() {
         try {
-            const rows = await database.all(`
+            const rows = await servicioBaseDatos.all(`
                 SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
                 FROM attendances
                 ORDER BY recorded_at DESC
@@ -27,10 +27,10 @@ class AttendanceService {
             return attendances;
         } catch (error) {
             console.error('❌ Error obteniendo asistencias:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al obtener asistencias', 500, 'ATTENDANCES_LOAD_ERROR');
+            throw new ErrorAplicacion('Error al obtener asistencias', 500, 'ATTENDANCES_LOAD_ERROR');
         }
     }
 
@@ -41,16 +41,16 @@ class AttendanceService {
                 : { matricula: attendanceRequest };
 
             if (!request.matricula) {
-                throw new AppError('Matrícula es requerida', 400, 'MISSING_MATRICULA');
+                throw new ErrorAplicacion('Matrícula es requerida', 400, 'MISSING_MATRICULA');
             }
 
             const cleanMatricula = request.matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
             console.log(`📝 Registrando asistencia para: ${cleanMatricula}`);
 
-            const student = await StudentService.findByMatricula(cleanMatricula);
+            const student = await ServicioEstudiantes.findByMatricula(cleanMatricula);
 
             if (!student) {
-                throw new AppError(
+                throw new ErrorAplicacion(
                     config.MESSAGES.ERROR.STUDENT_NOT_FOUND,
                     404,
                     'STUDENT_NOT_REGISTERED'
@@ -58,7 +58,7 @@ class AttendanceService {
             }
 
             const attendanceDate = new Date().toISOString().split('T')[0];
-            const existingAttendance = await database.get(
+            const existingAttendance = await servicioBaseDatos.get(
                 `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE matricula = $1 AND attendance_date = $2`,
@@ -68,7 +68,7 @@ class AttendanceService {
             if (existingAttendance) {
                 const attendance = this.mapRowToAttendance(existingAttendance);
                 const timeStr = attendance.getFormattedTime();
-                throw new AppError(
+                throw new ErrorAplicacion(
                     `Ya se registró su asistencia hoy a las ${timeStr}`,
                     409,
                     'ALREADY_REGISTERED_TODAY'
@@ -76,7 +76,7 @@ class AttendanceService {
             }
 
             const timestamp = new Date().toISOString();
-            const inserted = await database.get(
+            const inserted = await servicioBaseDatos.get(
                 `INSERT INTO attendances (matricula, nombre, grupo, attendance_date, recorded_at, status, created_at, updated_at)
                  VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
                  RETURNING id, matricula, nombre, grupo, attendance_date, recorded_at, status`,
@@ -92,7 +92,7 @@ class AttendanceService {
 
             const attendance = this.mapRowToAttendance(inserted);
 
-            await DeviceService.registerDeviceUsage({
+            await ServicioDispositivos.registerDeviceUsage({
                 matricula: student.matricula,
                 deviceFingerprint: request.deviceFingerprint,
                 userAgent: request.userAgent
@@ -109,16 +109,16 @@ class AttendanceService {
         } catch (error) {
             console.error('❌ Error registrando asistencia:', error);
             if (error?.code === '23505') {
-                throw new AppError(
+                throw new ErrorAplicacion(
                     config.MESSAGES.ERROR.ALREADY_REGISTERED,
                     409,
                     'ALREADY_REGISTERED_TODAY'
                 );
             }
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al registrar asistencia', 500, 'ATTENDANCE_REGISTER_ERROR');
+            throw new ErrorAplicacion('Error al registrar asistencia', 500, 'ATTENDANCE_REGISTER_ERROR');
         }
     }
 
@@ -127,7 +127,7 @@ class AttendanceService {
             const cleanMatricula = matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
             const today = new Date().toISOString().split('T')[0];
 
-            const row = await database.get(
+            const row = await servicioBaseDatos.get(
                 `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE matricula = $1 AND attendance_date = $2`,
@@ -137,14 +137,14 @@ class AttendanceService {
             return row ? this.mapRowToAttendance(row) : null;
         } catch (error) {
             console.error('❌ Error buscando asistencia del día:', error);
-            throw new AppError('Error al buscar asistencia', 500, 'ATTENDANCE_SEARCH_ERROR');
+            throw new ErrorAplicacion('Error al buscar asistencia', 500, 'ATTENDANCE_SEARCH_ERROR');
         }
     }
 
     static async getAttendancesByDate(date = null) {
         try {
             const targetDate = date || new Date().toISOString().split('T')[0];
-            const rows = await database.all(
+            const rows = await servicioBaseDatos.all(
                 `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE attendance_date = $1
@@ -155,16 +155,16 @@ class AttendanceService {
             return rows.map(row => this.mapRowToAttendance(row));
         } catch (error) {
             console.error('❌ Error obteniendo asistencias por fecha:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al obtener asistencias por fecha', 500, 'ATTENDANCE_DATE_ERROR');
+            throw new ErrorAplicacion('Error al obtener asistencias por fecha', 500, 'ATTENDANCE_DATE_ERROR');
         }
     }
 
     static async getAttendanceStats(date = null) {
         try {
-            const students = await StudentService.getAllStudents();
+            const students = await ServicioEstudiantes.getAllStudents();
             const targetDate = date || new Date().toISOString().split('T')[0];
             const attendances = await this.getAttendancesByDate(targetDate);
 
@@ -194,10 +194,10 @@ class AttendanceService {
             return stats;
         } catch (error) {
             console.error('❌ Error calculando estadísticas:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al calcular estadísticas', 500, 'STATS_CALCULATION_ERROR');
+            throw new ErrorAplicacion('Error al calcular estadísticas', 500, 'STATS_CALCULATION_ERROR');
         }
     }
 
@@ -233,7 +233,7 @@ class AttendanceService {
 
     static async getDetailedAttendanceList(date = null) {
         try {
-            const students = await StudentService.getAllStudents();
+            const students = await ServicioEstudiantes.getAllStudents();
             const targetDate = date || new Date().toISOString().split('T')[0];
             const attendances = await this.getAttendancesByDate(targetDate);
 
@@ -279,27 +279,27 @@ class AttendanceService {
             };
         } catch (error) {
             console.error('❌ Error obteniendo lista detallada:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al obtener lista detallada', 500, 'DETAILED_LIST_ERROR');
+            throw new ErrorAplicacion('Error al obtener lista detallada', 500, 'DETAILED_LIST_ERROR');
         }
     }
 
     static async clearAttendanceRecords() {
         try {
-            const result = await database.run('DELETE FROM attendances');
+            const result = await servicioBaseDatos.run('DELETE FROM attendances');
             console.log('🧹 Registros de asistencia limpiados en la base de datos');
             return result.rowCount;
         } catch (error) {
             console.error('❌ Error limpiando registros:', error);
-            throw new AppError('Error al limpiar registros de asistencia', 500, 'CLEAR_RECORDS_ERROR');
+            throw new ErrorAplicacion('Error al limpiar registros de asistencia', 500, 'CLEAR_RECORDS_ERROR');
         }
     }
 
     static async getAttendanceReport(startDate, endDate) {
         try {
-            const rows = await database.all(
+            const rows = await servicioBaseDatos.all(
                 `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE attendance_date BETWEEN $1 AND $2
@@ -308,7 +308,7 @@ class AttendanceService {
             );
 
             const attendances = rows.map(row => this.mapRowToAttendance(row));
-            const students = await StudentService.getAllStudents();
+            const students = await ServicioEstudiantes.getAllStudents();
 
             const reportAttendances = attendances;
             const dailyStats = {};
@@ -374,17 +374,17 @@ class AttendanceService {
             };
         } catch (error) {
             console.error('❌ Error generando reporte:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al generar reporte de asistencia', 500, 'REPORT_GENERATION_ERROR');
+            throw new ErrorAplicacion('Error al generar reporte de asistencia', 500, 'REPORT_GENERATION_ERROR');
         }
     }
 
     static async getStudentAttendanceHistory(matricula, limit = 30) {
         try {
             const cleanMatricula = matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
-            const rows = await database.all(
+            const rows = await servicioBaseDatos.all(
                 `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE matricula = $1
@@ -420,10 +420,10 @@ class AttendanceService {
             };
         } catch (error) {
             console.error('❌ Error obteniendo historial de estudiante:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al obtener historial de asistencia', 500, 'STUDENT_HISTORY_ERROR');
+            throw new ErrorAplicacion('Error al obtener historial de asistencia', 500, 'STUDENT_HISTORY_ERROR');
         }
     }
 
@@ -455,7 +455,7 @@ class AttendanceService {
         try {
             const [attendances, students] = await Promise.all([
                 this.getAllAttendances(),
-                StudentService.getAllStudents()
+                ServicioEstudiantes.getAllStudents()
             ]);
             const issues = [];
 
@@ -519,7 +519,7 @@ class AttendanceService {
             };
         } catch (error) {
             console.error('❌ Error validando integridad de asistencias:', error);
-            throw new AppError('Error al validar integridad de asistencias', 500, 'INTEGRITY_CHECK_ERROR');
+            throw new ErrorAplicacion('Error al validar integridad de asistencias', 500, 'INTEGRITY_CHECK_ERROR');
         }
     }
 
@@ -545,7 +545,7 @@ class AttendanceService {
 
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-            const rows = await database.all(
+            const rows = await servicioBaseDatos.all(
                 `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  ${whereClause}
@@ -586,12 +586,12 @@ class AttendanceService {
             }
         } catch (error) {
             console.error('❌ Error exportando datos:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al exportar datos de asistencia', 500, 'EXPORT_ERROR');
+            throw new ErrorAplicacion('Error al exportar datos de asistencia', 500, 'EXPORT_ERROR');
         }
     }
 }
 
-module.exports = AttendanceService;
+module.exports = ServicioAsistencias;

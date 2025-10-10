@@ -1,14 +1,14 @@
-const database = require('./databaseService');
-const { AppError } = require('../middleware/errorHandler');
+const servicioBaseDatos = require('./servicioBaseDatos');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
-class DeviceService {
+class ServicioDispositivos {
     static async ensureInitialized() {
         return true;
     }
 
     static async getAllDevices() {
         try {
-            const rows = await database.all(
+            const rows = await servicioBaseDatos.all(
                 `SELECT device_fingerprint, matricula, first_registration, last_used, user_agent
                  FROM devices
                  ORDER BY last_used DESC`
@@ -23,7 +23,7 @@ class DeviceService {
             }));
         } catch (error) {
             console.error('❌ Error obteniendo dispositivos registrados:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudieron obtener los dispositivos registrados', 500, 'DEVICES_LOAD_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudieron obtener los dispositivos registrados', 500, 'DEVICES_LOAD_ERROR');
         }
     }
 
@@ -38,7 +38,7 @@ class DeviceService {
             const userAgentValue = (userAgent || '').toString().trim();
             const timestamp = new Date().toISOString();
 
-            const row = await database.get(
+            const row = await servicioBaseDatos.get(
                 `INSERT INTO devices (device_fingerprint, matricula, first_registration, last_used, user_agent)
                  VALUES ($1, $2, $3, $3, $4)
                  ON CONFLICT (device_fingerprint) DO UPDATE SET
@@ -58,13 +58,13 @@ class DeviceService {
             };
         } catch (error) {
             console.error('❌ Error registrando dispositivo:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo registrar el dispositivo', 500, 'DEVICE_REGISTER_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo registrar el dispositivo', 500, 'DEVICE_REGISTER_ERROR');
         }
     }
 
     static async clearAllDevices() {
-        await database.run('DELETE FROM devices');
+        await servicioBaseDatos.run('DELETE FROM devices');
     }
 }
 
-module.exports = DeviceService;
+module.exports = ServicioDispositivos;

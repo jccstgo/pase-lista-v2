@@ -3,9 +3,9 @@ const path = require('path');
 const config = require('./config/server');
 
 // Middlewares
-const { securityHeaders } = require('./middleware/security');
-const { globalErrorHandler } = require('./middleware/errorHandler');
-const { requestLogger } = require('./middleware/logger');
+const { encabezadosSeguridad } = require('./middleware/seguridad');
+const { manejadorErroresGlobal } = require('./middleware/manejadorErrores');
+const { registradorSolicitudes } = require('./middleware/registro');
 
 // Routes
 const attendanceRoutes = require('./routes/attendance');
@@ -21,13 +21,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Middlewares de seguridad
 if (process.env.NODE_ENV === 'production') {
-    app.use(securityHeaders);
+    app.use(encabezadosSeguridad);
     console.log('🛡️ Headers de seguridad activados para producción');
 }
 
 // Logger de requests
 if (process.env.NODE_ENV === 'development') {
-    app.use(requestLogger);
+    app.use(registradorSolicitudes);
 }
 
 // Servir archivos estáticos
@@ -80,6 +80,6 @@ app.use('*', (req, res) => {
 });
 
 // Middleware de manejo de errores (debe ir al final)
-app.use(globalErrorHandler);
+app.use(manejadorErroresGlobal);
 
 module.exports = app;
