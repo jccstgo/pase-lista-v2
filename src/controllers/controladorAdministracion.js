@@ -51,7 +51,7 @@ class ControladorAdministracion {
 
         const { students } = req.body;
 
-        const result = await ServicioEstudiantes.updateStudentsList(students);
+        const result = await ServicioEstudiantes.actualizarListaEstudiantes(students);
 
         // Limpiar registros de asistencia al subir nueva lista
         await ServicioAsistencias.limpiarRegistrosAsistencias();
@@ -77,7 +77,7 @@ class ControladorAdministracion {
     static limpiarEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('🧹 Petición de limpieza de estudiantes');
 
-        const result = await ServicioEstudiantes.clearAllStudents();
+        const result = await ServicioEstudiantes.limpiarTodosLosEstudiantes();
         await ServicioAsistencias.limpiarRegistrosAsistencias();
         await ServicioDispositivos.clearAllDevices();
 
@@ -268,7 +268,7 @@ class ControladorAdministracion {
     static obtenerEstadisticasEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('📚 Petición de estadísticas de estudiantes');
         
-        const stats = await ServicioEstudiantes.getStudentStats();
+        const stats = await ServicioEstudiantes.obtenerEstadisticasEstudiantes();
         
         res.status(200).json({
             success: true,
@@ -298,7 +298,7 @@ class ControladorAdministracion {
             if (!filters[key]) delete filters[key];
         });
         
-        const results = await ServicioEstudiantes.searchStudents(filters);
+        const results = await ServicioEstudiantes.buscarEstudiantes(filters);
         
         res.status(200).json({
             success: true,
@@ -313,7 +313,7 @@ class ControladorAdministracion {
     static validarIntegridadEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de estudiantes');
         
-        const validation = await ServicioEstudiantes.validateDataIntegrity();
+        const validation = await ServicioEstudiantes.validarIntegridadDatos();
         
         res.status(200).json({
             success: true,
@@ -376,7 +376,7 @@ class ControladorAdministracion {
         const { format = 'json' } = req.query;
         
         // Obtener todos los datos
-        const estudiantes = await ServicioEstudiantes.getAllStudents();
+        const estudiantes = await ServicioEstudiantes.obtenerTodosLosEstudiantes();
         const asistencias = await ServicioAsistencias.obtenerTodasLasAsistencias();
         const estadoSistema = await ServicioSistema.getSystemStatus();
 
@@ -434,7 +434,7 @@ class ControladorAdministracion {
 
         // Obtener datos
         const [estadisticasEstudiantes, reporteAsistencias, estadoSistema] = await Promise.all([
-            ServicioEstudiantes.getStudentStats(),
+            ServicioEstudiantes.obtenerEstadisticasEstudiantes(),
             ServicioAsistencias.obtenerReporteAsistencias(fechaInicio, fechaFin),
             ServicioSistema.getSystemStatus()
         ]);

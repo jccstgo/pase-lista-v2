@@ -42,7 +42,7 @@ class ServicioSistema {
     static async initializeDatabaseResources() {
         try {
             await Promise.all([
-                ServicioEstudiantes.validateDataIntegrity().catch(() => ServicioEstudiantes.getStudentStats()),
+                ServicioEstudiantes.validarIntegridadDatos().catch(() => ServicioEstudiantes.obtenerEstadisticasEstudiantes()),
                 ServicioConfiguracion.ensureInitialized(),
                 ServicioClavesAdministrativas.ensureInitialized(),
                 ServicioDispositivos.ensureInitialized()
@@ -83,8 +83,8 @@ class ServicioSistema {
 
     static async getSystemStatus() {
         try {
-            const [studentStats, adminStats, configData, adminKeys, devices, adminInfo] = await Promise.all([
-                ServicioEstudiantes.getStudentStats(),
+            const [estadisticasEstudiantes, estadisticasAdministradores, configuracionSistema, clavesAdministrativas, dispositivos, infoAdministrador] = await Promise.all([
+                ServicioEstudiantes.obtenerEstadisticasEstudiantes(),
                 ServicioAdministracion.getAdminStats(),
                 ServicioConfiguracion.getSystemConfig(),
                 ServicioClavesAdministrativas.getAllKeys(),
@@ -92,9 +92,9 @@ class ServicioSistema {
                 this.checkAdminExists()
             ]);
 
-            const dataDirectory = path.resolve(config.DATA_DIR);
-            const backupsDirectory = path.join(dataDirectory, 'backups');
-            const backupsExists = await this.directoryExists(backupsDirectory);
+            const directorioDatos = path.resolve(config.DATA_DIR);
+            const directorioRespaldos = path.join(directorioDatos, 'backups');
+            const existenRespaldos = await this.directoryExists(directorioRespaldos);
 
             return {
                 timestamp: new Date().toISOString(),
@@ -102,7 +102,7 @@ class ServicioSistema {
                     node: process.version,
                     mode: config.NODE_ENV,
                     hostname: os.hostname(),
-                    dataDirectory,
+                    dataDirectory: directorioDatos,
                     database: config.DATABASE.SUMMARY
                 },
                 uptime: process.uptime(),
@@ -110,22 +110,22 @@ class ServicioSistema {
                 storage: {
                     database: {
                         summary: config.DATABASE.SUMMARY,
-                        students: studentStats.total,
-                        admins: adminStats.totalAdmins,
-                        adminKeys: adminKeys.length,
-                        devices: devices.length
+                        students: estadisticasEstudiantes.total,
+                        admins: estadisticasAdministradores.totalAdmins,
+                        adminKeys: clavesAdministrativas.length,
+                        devices: dispositivos.length
                     },
                     dataDirectory: {
-                        path: dataDirectory,
+                        path: directorioDatos,
                         exists: true
                     },
                     backups: {
-                        path: backupsDirectory,
-                        exists: backupsExists
+                        path: directorioRespaldos,
+                        exists: existenRespaldos
                     }
                 },
-                admin: adminInfo,
-                configuration: configData
+                admin: infoAdministrador,
+                configuration: configuracionSistema
             };
         } catch (error) {
             console.error('❌ Error obteniendo estado del sistema:', error);
@@ -169,10 +169,10 @@ class ServicioSistema {
             const backupDir = path.join(config.DATA_DIR, 'backups');
             await fsp.mkdir(backupDir, { recursive: true });
 
-            const [students, attendances, admins, systemConfig, adminKeys, devices] = await Promise.all([
-                ServicioEstudiantes.getAllStudents().then(list => list.map(student => student.toJSON())),
-                ServicioAsistencias.obtenerTodasLasAsistencias().then(list => list.map(asistencia => asistencia.toJSON())),
-                ServicioAdministracion.getAllAdmins().then(list => list.map(admin => admin.toJSON())),
+            const [estudiantes, asistencias, administradores, configuracion, claves, dispositivos] = await Promise.all([
+                ServicioEstudiantes.obtenerTodosLosEstudiantes().then(lista => lista.map(estudiante => estudiante.toJSON())),
+                ServicioAsistencias.obtenerTodasLasAsistencias().then(lista => lista.map(asistencia => asistencia.toJSON())),
+                ServicioAdministracion.getAllAdmins().then(lista => lista.map(admin => admin.toJSON())),
                 ServicioConfiguracion.getSystemConfig(),
                 ServicioClavesAdministrativas.getAllKeys(),
                 ServicioDispositivos.getAllDevices()
@@ -185,12 +185,12 @@ class ServicioSistema {
                     mode: config.NODE_ENV
                 },
                 data: {
-                    students,
-                    attendance: attendances,
-                    admins,
-                    systemConfig,
-                    adminKeys,
-                    devices
+                    students: estudiantes,
+                    attendance: asistencias,
+                    admins: administradores,
+                    systemConfig: configuracion,
+                    adminKeys: claves,
+                    devices: dispositivos
                 }
             };
 
@@ -205,9 +205,9 @@ class ServicioSistema {
                 file: backupFile,
                 size: Buffer.byteLength(backupJson, 'utf8'),
                 records: {
-                    students: students.length,
-                    attendance: attendances.length,
-                    admins: admins.length
+                    students: estudiantes.length,
+                    attendance: asistencias.length,
+                    admins: administradores.length
                 }
             };
         } catch (error) {

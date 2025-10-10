@@ -5,38 +5,38 @@ const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
 class ServicioEstudiantes {
     /**
-     * Convertir fila de la base de datos a instancia de Student
+     * Convertir fila de la base de datos a instancia de Estudiante
      */
-    static mapRowToStudent(row) {
-        if (!row) {
+    static mapearFilaAEstudiante(fila) {
+        if (!fila) {
             return null;
         }
 
         const normalizeDate = (value) => (value instanceof Date ? value.toISOString() : value);
 
         return new Estudiante({
-            matricula: row.matricula,
-            nombre: row.nombre,
-            grupo: row.grupo,
-            createdAt: normalizeDate(row.created_at),
-            updatedAt: normalizeDate(row.updated_at)
+            matricula: fila.matricula,
+            nombre: fila.nombre,
+            grupo: fila.grupo,
+            createdAt: normalizeDate(fila.created_at),
+            updatedAt: normalizeDate(fila.updated_at)
         });
     }
 
     /**
      * Obtener todos los estudiantes
      */
-    static async getAllStudents() {
+    static async obtenerTodosLosEstudiantes() {
         try {
-            const rows = await servicioBaseDatos.all(
+            const filas = await servicioBaseDatos.all(
                 `SELECT matricula, nombre, grupo, created_at, updated_at
                  FROM students
                  ORDER BY LOWER(nombre) ASC, nombre ASC`
             );
 
-            const students = rows.map(row => this.mapRowToStudent(row));
-            console.log(`📚 Cargados ${students.length} estudiantes desde la base de datos`);
-            return students;
+            const estudiantes = filas.map(fila => this.mapearFilaAEstudiante(fila));
+            console.log(`📚 Cargados ${estudiantes.length} estudiantes desde la base de datos`);
+            return estudiantes;
         } catch (error) {
             console.error('❌ Error obteniendo estudiantes desde la base de datos:', error);
             if (error instanceof ErrorAplicacion) {
@@ -49,28 +49,28 @@ class ServicioEstudiantes {
     /**
      * Buscar estudiante por matrícula
      */
-    static async findByMatricula(matricula) {
+    static async buscarPorMatricula(matricula) {
         try {
             if (!matricula) {
                 throw new ErrorAplicacion('Matrícula es requerida', 400, 'MISSING_MATRICULA');
             }
 
-            const normalizedMatricula = new Estudiante({ matricula }).matricula;
-            const row = await servicioBaseDatos.get(
+            const matriculaNormalizada = new Estudiante({ matricula }).matricula;
+            const fila = await servicioBaseDatos.get(
                 `SELECT matricula, nombre, grupo, created_at, updated_at
                  FROM students
                  WHERE matricula = $1`,
-                [normalizedMatricula]
+                [matriculaNormalizada]
             );
 
-            if (!row) {
-                console.log(`⚠️ Estudiante no encontrado en base de datos: ${normalizedMatricula}`);
+            if (!fila) {
+                console.log(`⚠️ Estudiante no encontrado en base de datos: ${matriculaNormalizada}`);
                 return null;
             }
 
-            const student = this.mapRowToStudent(row);
-            console.log(`✅ Estudiante encontrado en base de datos: ${student.nombre}`);
-            return student;
+            const estudiante = this.mapearFilaAEstudiante(fila);
+            console.log(`✅ Estudiante encontrado en base de datos: ${estudiante.nombre}`);
+            return estudiante;
         } catch (error) {
             console.error('❌ Error buscando estudiante por matrícula:', error);
             if (error instanceof ErrorAplicacion) {
@@ -83,24 +83,24 @@ class ServicioEstudiantes {
     /**
      * Buscar estudiantes por grupo
      */
-    static async findByGroup(grupo) {
+    static async buscarPorGrupo(grupo) {
         try {
             if (!grupo) {
                 throw new ErrorAplicacion('Grupo es requerido', 400, 'MISSING_GROUP');
             }
 
-            const normalizedGroup = new Estudiante({ grupo }).grupo;
-            const rows = await servicioBaseDatos.all(
+            const grupoNormalizado = new Estudiante({ grupo }).grupo;
+            const filas = await servicioBaseDatos.all(
                 `SELECT matricula, nombre, grupo, created_at, updated_at
                  FROM students
                  WHERE grupo = $1
                  ORDER BY LOWER(nombre) ASC, nombre ASC`,
-                [normalizedGroup]
+                [grupoNormalizado]
             );
 
-            const students = rows.map(row => this.mapRowToStudent(row));
-            console.log(`📊 Encontrados ${students.length} estudiantes en grupo ${normalizedGroup}`);
-            return students;
+            const estudiantes = filas.map(fila => this.mapearFilaAEstudiante(fila));
+            console.log(`📊 Encontrados ${estudiantes.length} estudiantes en grupo ${grupoNormalizado}`);
+            return estudiantes;
         } catch (error) {
             console.error('❌ Error buscando estudiantes por grupo:', error);
             if (error instanceof ErrorAplicacion) {
@@ -113,47 +113,47 @@ class ServicioEstudiantes {
     /**
      * Crear/actualizar lista completa de estudiantes desde carga masiva
      */
-    static async updateStudentsList(studentsData) {
+    static async actualizarListaEstudiantes(datosEstudiantes) {
         try {
-            if (!Array.isArray(studentsData) || studentsData.length === 0) {
+            if (!Array.isArray(datosEstudiantes) || datosEstudiantes.length === 0) {
                 throw new ErrorAplicacion('Lista de estudiantes inválida o vacía', 400, 'INVALID_STUDENTS_LIST');
             }
 
-            const validStudents = [];
-            const errors = [];
-            const duplicates = [];
+            const estudiantesValidos = [];
+            const errores = [];
+            const duplicados = [];
             const matriculas = new Set();
-            const timestamp = new Date().toISOString();
+            const marcaTiempo = new Date().toISOString();
 
-            for (let i = 0; i < studentsData.length; i++) {
+            for (let i = 0; i < datosEstudiantes.length; i++) {
                 try {
-                    const student = new Estudiante({
-                        ...studentsData[i],
-                        createdAt: studentsData[i].createdAt || timestamp,
-                        updatedAt: timestamp
+                    const estudiante = new Estudiante({
+                        ...datosEstudiantes[i],
+                        createdAt: datosEstudiantes[i].createdAt || marcaTiempo,
+                        updatedAt: marcaTiempo
                     });
 
-                    const validation = student.isValid();
-                    if (!validation.isValid) {
-                        errors.push(`Estudiante ${i + 1}: ${validation.errors.join(', ')}`);
+                    const validacion = estudiante.isValid();
+                    if (!validacion.isValid) {
+                        errores.push(`Estudiante ${i + 1}: ${validacion.errors.join(', ')}`);
                         continue;
                     }
 
-                    if (matriculas.has(student.matricula)) {
-                        duplicates.push(student.matricula);
+                    if (matriculas.has(estudiante.matricula)) {
+                        duplicados.push(estudiante.matricula);
                         continue;
                     }
 
-                    matriculas.add(student.matricula);
-                    validStudents.push(student);
+                    matriculas.add(estudiante.matricula);
+                    estudiantesValidos.push(estudiante);
                 } catch (error) {
-                    errors.push(`Estudiante ${i + 1}: Error de procesamiento - ${error.message}`);
+                    errores.push(`Estudiante ${i + 1}: Error de procesamiento - ${error.message}`);
                 }
             }
 
-            if (validStudents.length === 0) {
+            if (estudiantesValidos.length === 0) {
                 throw new ErrorAplicacion(
-                    `No hay estudiantes válidos. Errores: ${errors.slice(0, 5).join('; ')}`,
+                    `No hay estudiantes válidos. Errores: ${errores.slice(0, 5).join('; ')}`,
                     400,
                     'NO_VALID_STUDENTS'
                 );
@@ -165,11 +165,11 @@ class ServicioEstudiantes {
                 console.warn('⚠️ No se pudo crear respaldo de estudiantes:', backupError.message);
             }
 
-            await servicioBaseDatos.transaction(async (client) => {
-                await client.query('DELETE FROM students');
+            await servicioBaseDatos.transaction(async (cliente) => {
+                await cliente.query('DELETE FROM students');
 
-                for (const student of validStudents) {
-                    await client.query(
+                for (const estudiante of estudiantesValidos) {
+                    await cliente.query(
                         `INSERT INTO students (matricula, nombre, grupo, created_at, updated_at)
                          VALUES ($1, $2, $3, $4, $5)
                          ON CONFLICT (matricula) DO UPDATE SET
@@ -177,26 +177,26 @@ class ServicioEstudiantes {
                              grupo = EXCLUDED.grupo,
                              updated_at = EXCLUDED.updated_at`,
                         [
-                            student.matricula,
-                            student.nombre,
-                            student.grupo,
-                            student.createdAt,
-                            student.updatedAt
+                            estudiante.matricula,
+                            estudiante.nombre,
+                            estudiante.grupo,
+                            estudiante.createdAt,
+                            estudiante.updatedAt
                         ]
                     );
                 }
             });
 
-            console.log(`✅ Lista de estudiantes actualizada en base de datos: ${validStudents.length} registros válidos`);
+            console.log(`✅ Lista de estudiantes actualizada en base de datos: ${estudiantesValidos.length} registros válidos`);
 
             return {
                 success: true,
                 message: config.MESSAGES.SUCCESS.STUDENTS_UPLOADED,
-                totalProcessed: studentsData.length,
-                validStudents: validStudents.length,
-                duplicatesRemoved: duplicates.length,
-                errors: errors.slice(0, 10),
-                students: validStudents
+                totalProcessed: datosEstudiantes.length,
+                validStudents: estudiantesValidos.length,
+                duplicatesRemoved: duplicados.length,
+                errors: errores.slice(0, 10),
+                students: estudiantesValidos
             };
         } catch (error) {
             console.error('❌ Error actualizando lista de estudiantes:', error);
@@ -210,43 +210,43 @@ class ServicioEstudiantes {
     /**
      * Agregar estudiante individual
      */
-    static async addStudent(studentData) {
+    static async agregarEstudiante(datosEstudiante) {
         try {
-            const timestamp = new Date().toISOString();
-            const student = new Estudiante({
-                ...studentData,
-                createdAt: timestamp,
-                updatedAt: timestamp
+            const marcaTiempo = new Date().toISOString();
+            const estudiante = new Estudiante({
+                ...datosEstudiante,
+                createdAt: marcaTiempo,
+                updatedAt: marcaTiempo
             });
 
-            const validation = student.isValid();
-            if (!validation.isValid) {
-                throw new ErrorAplicacion(`Datos de estudiante inválidos: ${validation.errors.join(', ')}`, 400, 'INVALID_STUDENT_DATA');
+            const validacion = estudiante.isValid();
+            if (!validacion.isValid) {
+                throw new ErrorAplicacion(`Datos de estudiante inválidos: ${validacion.errors.join(', ')}`, 400, 'INVALID_STUDENT_DATA');
             }
 
             const existing = await servicioBaseDatos.get(
                 'SELECT matricula FROM students WHERE matricula = $1',
-                [student.matricula]
+                [estudiante.matricula]
             );
 
             if (existing) {
-                throw new ErrorAplicacion(`Ya existe un estudiante con matrícula ${student.matricula}`, 409, 'STUDENT_ALREADY_EXISTS');
+                throw new ErrorAplicacion(`Ya existe un estudiante con matrícula ${estudiante.matricula}`, 409, 'STUDENT_ALREADY_EXISTS');
             }
 
             await servicioBaseDatos.run(
                 `INSERT INTO students (matricula, nombre, grupo, created_at, updated_at)
                  VALUES ($1, $2, $3, $4, $5)`,
                 [
-                    student.matricula,
-                    student.nombre,
-                    student.grupo,
-                    student.createdAt,
-                    student.updatedAt
+                    estudiante.matricula,
+                    estudiante.nombre,
+                    estudiante.grupo,
+                    estudiante.createdAt,
+                    estudiante.updatedAt
                 ]
             );
 
-            console.log(`✅ Estudiante agregado a la base de datos: ${student.nombre} (${student.matricula})`);
-            return student;
+            console.log(`✅ Estudiante agregado a la base de datos: ${estudiante.nombre} (${estudiante.matricula})`);
+            return estudiante;
         } catch (error) {
             console.error('❌ Error agregando estudiante:', error);
             if (error instanceof ErrorAplicacion) {
@@ -259,47 +259,51 @@ class ServicioEstudiantes {
     /**
      * Actualizar datos de estudiante
      */
-    static async updateStudent(matricula, updateData) {
+    static async actualizarEstudiante(matricula, datosActualizacion) {
         try {
-            const existingStudent = await this.findByMatricula(matricula);
-            if (!existingStudent) {
+            const estudianteExistente = await this.buscarPorMatricula(matricula);
+            if (!estudianteExistente) {
                 throw new ErrorAplicacion('Estudiante no encontrado', 404, 'STUDENT_NOT_FOUND');
             }
 
-            const timestamp = new Date().toISOString();
-            const updatedStudent = new Estudiante({
-                ...existingStudent.toJSON(),
-                ...updateData,
-                matricula: existingStudent.matricula,
-                createdAt: existingStudent.createdAt,
-                updatedAt: timestamp
+            const marcaTiempo = new Date().toISOString();
+            const estudianteActualizado = new Estudiante({
+                ...estudianteExistente.toJSON(),
+                ...datosActualizacion,
+                matricula: estudianteExistente.matricula,
+                createdAt: estudianteExistente.createdAt,
+                updatedAt: marcaTiempo
             });
 
-            const validation = updatedStudent.isValid();
-            if (!validation.isValid) {
-                throw new ErrorAplicacion(`Datos actualizados inválidos: ${validation.errors.join(', ')}`, 400, 'INVALID_UPDATE_DATA');
+            const validacion = estudianteActualizado.isValid();
+            if (!validacion.isValid) {
+                throw new ErrorAplicacion(
+                    `Datos actualizados inválidos: ${validacion.errors.join(', ')}`,
+                    400,
+                    'INVALID_UPDATE_DATA'
+                );
             }
 
-            const result = await servicioBaseDatos.run(
+            const resultado = await servicioBaseDatos.run(
                 `UPDATE students
                  SET nombre = $1,
                      grupo = $2,
                      updated_at = $3
                  WHERE matricula = $4`,
                 [
-                    updatedStudent.nombre,
-                    updatedStudent.grupo,
-                    updatedStudent.updatedAt,
-                    updatedStudent.matricula
+                    estudianteActualizado.nombre,
+                    estudianteActualizado.grupo,
+                    estudianteActualizado.updatedAt,
+                    estudianteActualizado.matricula
                 ]
             );
 
-            if (result.rowCount === 0) {
+            if (resultado.rowCount === 0) {
                 throw new ErrorAplicacion('No se pudo actualizar el estudiante', 500, 'UPDATE_FAILED');
             }
 
-            console.log(`✅ Estudiante actualizado en base de datos: ${updatedStudent.nombre} (${updatedStudent.matricula})`);
-            return updatedStudent;
+            console.log(`✅ Estudiante actualizado en base de datos: ${estudianteActualizado.nombre} (${estudianteActualizado.matricula})`);
+            return estudianteActualizado;
         } catch (error) {
             console.error('❌ Error actualizando estudiante:', error);
             if (error instanceof ErrorAplicacion) {
@@ -312,23 +316,23 @@ class ServicioEstudiantes {
     /**
      * Eliminar estudiante
      */
-    static async deleteStudent(matricula) {
+    static async eliminarEstudiante(matricula) {
         try {
-            const existingStudent = await this.findByMatricula(matricula);
-            if (!existingStudent) {
+            const estudianteExistente = await this.buscarPorMatricula(matricula);
+            if (!estudianteExistente) {
                 throw new ErrorAplicacion('Estudiante no encontrado', 404, 'STUDENT_NOT_FOUND');
             }
 
-            const result = await servicioBaseDatos.run(
+            const resultado = await servicioBaseDatos.run(
                 'DELETE FROM students WHERE matricula = $1',
-                [existingStudent.matricula]
+                [estudianteExistente.matricula]
             );
 
-            if (result.rowCount === 0) {
+            if (resultado.rowCount === 0) {
                 throw new ErrorAplicacion('No se pudo eliminar el estudiante', 500, 'DELETE_FAILED');
             }
 
-            console.log(`🗑️ Estudiante eliminado de la base de datos: ${existingStudent.nombre} (${existingStudent.matricula})`);
+            console.log(`🗑️ Estudiante eliminado de la base de datos: ${estudianteExistente.nombre} (${estudianteExistente.matricula})`);
             return true;
         } catch (error) {
             console.error('❌ Error eliminando estudiante:', error);
@@ -342,19 +346,19 @@ class ServicioEstudiantes {
     /**
      * Limpiar todos los estudiantes de la base de datos
      */
-    static async clearAllStudents() {
+    static async limpiarTodosLosEstudiantes() {
         try {
             try {
                 await servicioBaseDatos.backupDatabase('students-clear');
-            } catch (backupError) {
-                console.warn('⚠️ No se pudo crear respaldo antes de limpiar estudiantes:', backupError.message);
+            } catch (errorRespaldo) {
+                console.warn('⚠️ No se pudo crear respaldo antes de limpiar estudiantes:', errorRespaldo.message);
             }
 
-            const result = await servicioBaseDatos.clearTable('students');
-            console.log(`🧹 Base de datos de estudiantes limpiada. Registros eliminados: ${result.rowCount}`);
+            const resultado = await servicioBaseDatos.clearTable('students');
+            console.log(`🧹 Base de datos de estudiantes limpiada. Registros eliminados: ${resultado.rowCount}`);
 
             return {
-                deleted: result.rowCount,
+                deleted: resultado.rowCount,
                 timestamp: new Date().toISOString()
             };
         } catch (error) {
@@ -369,25 +373,25 @@ class ServicioEstudiantes {
     /**
      * Obtener estadísticas de estudiantes
      */
-    static async getStudentStats() {
+    static async obtenerEstadisticasEstudiantes() {
         try {
-            const totals = await servicioBaseDatos.get('SELECT COUNT(*) AS total FROM students');
-            const groupRows = await servicioBaseDatos.all(
+            const totales = await servicioBaseDatos.get('SELECT COUNT(*) AS total FROM students');
+            const filasPorGrupo = await servicioBaseDatos.all(
                 `SELECT grupo, COUNT(*) AS total
                  FROM students
                  GROUP BY grupo
                  ORDER BY grupo`
             );
 
-            const groups = {};
-            groupRows.forEach(row => {
-                groups[row.grupo] = Number.parseInt(row.total, 10);
+            const grupos = {};
+            filasPorGrupo.forEach(fila => {
+                grupos[fila.grupo] = Number.parseInt(fila.total, 10);
             });
 
             return {
-                total: Number.parseInt(totals?.total, 10) || 0,
-                groups,
-                groupCount: Object.keys(groups).length,
+                total: Number.parseInt(totales?.total, 10) || 0,
+                groups: grupos,
+                groupCount: Object.keys(grupos).length,
                 storage: {
                     connection: config.DATABASE.SUMMARY
                 },
@@ -405,94 +409,94 @@ class ServicioEstudiantes {
     /**
      * Buscar estudiantes con filtros avanzados
      */
-    static async searchStudents(filters = {}) {
+    static async buscarEstudiantes(filtros = {}) {
         try {
-            const conditions = [];
-            const values = [];
-            let paramIndex = 1;
+            const condiciones = [];
+            const valores = [];
+            let indiceParametro = 1;
 
-            if (filters.matricula) {
-                conditions.push(`matricula ILIKE $${paramIndex}`);
-                values.push(`%${filters.matricula.toString().trim().toUpperCase()}%`);
-                paramIndex += 1;
+            if (filtros.matricula) {
+                condiciones.push(`matricula ILIKE $${indiceParametro}`);
+                valores.push(`%${filtros.matricula.toString().trim().toUpperCase()}%`);
+                indiceParametro += 1;
             }
 
-            if (filters.nombre) {
-                conditions.push(`nombre ILIKE $${paramIndex}`);
-                values.push(`%${filters.nombre.toString().trim()}%`);
-                paramIndex += 1;
+            if (filtros.nombre) {
+                condiciones.push(`nombre ILIKE $${indiceParametro}`);
+                valores.push(`%${filtros.nombre.toString().trim()}%`);
+                indiceParametro += 1;
             }
 
-            if (filters.grupo) {
-                conditions.push(`grupo = $${paramIndex}`);
-                values.push(filters.grupo.toString().trim().toUpperCase());
-                paramIndex += 1;
+            if (filtros.grupo) {
+                condiciones.push(`grupo = $${indiceParametro}`);
+                valores.push(filtros.grupo.toString().trim().toUpperCase());
+                indiceParametro += 1;
             }
 
-            const whereClause = conditions.length > 0
-                ? `WHERE ${conditions.join(' AND ')}`
+            const clausulaWhere = condiciones.length > 0
+                ? `WHERE ${condiciones.join(' AND ')}`
                 : '';
 
-            const allowedSortFields = {
+            const camposOrdenamientoPermitidos = {
                 matricula: 'matricula',
                 nombre: 'LOWER(nombre)',
                 grupo: 'grupo'
             };
 
-            const sortField = allowedSortFields[filters.sortBy] || 'LOWER(nombre)';
-            const sortOrder = filters.sortOrder === 'desc' ? 'DESC' : 'ASC';
-            const orderClause = sortField === 'LOWER(nombre)'
-                ? `ORDER BY LOWER(nombre) ${sortOrder}, nombre ${sortOrder}`
-                : `ORDER BY ${sortField} ${sortOrder}`;
+            const campoOrden = camposOrdenamientoPermitidos[filtros.sortBy] || 'LOWER(nombre)';
+            const orden = filtros.sortOrder === 'desc' ? 'DESC' : 'ASC';
+            const clausulaOrden = campoOrden === 'LOWER(nombre)'
+                ? `ORDER BY LOWER(nombre) ${orden}, nombre ${orden}`
+                : `ORDER BY ${campoOrden} ${orden}`;
 
-            if (filters.page && filters.limit) {
-                const page = Math.max(parseInt(filters.page, 10) || 1, 1);
-                const limit = Math.max(parseInt(filters.limit, 10) || 10, 1);
-                const offset = (page - 1) * limit;
+            if (filtros.page && filtros.limit) {
+                const pagina = Math.max(parseInt(filtros.page, 10) || 1, 1);
+                const limite = Math.max(parseInt(filtros.limit, 10) || 10, 1);
+                const desplazamiento = (pagina - 1) * limite;
 
-                const totalRow = await servicioBaseDatos.get(
-                    `SELECT COUNT(*) AS total FROM students ${whereClause}`,
-                    values
+                const filaTotal = await servicioBaseDatos.get(
+                    `SELECT COUNT(*) AS total FROM students ${clausulaWhere}`,
+                    valores
                 );
 
-                const paginatedRows = await servicioBaseDatos.all(
+                const filasPaginadas = await servicioBaseDatos.all(
                     `SELECT matricula, nombre, grupo, created_at, updated_at
                      FROM students
-                     ${whereClause}
-                     ${orderClause}
-                     LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-                    [...values, limit, offset]
+                     ${clausulaWhere}
+                     ${clausulaOrden}
+                     LIMIT $${indiceParametro} OFFSET $${indiceParametro + 1}`,
+                    [...valores, limite, desplazamiento]
                 );
 
-                const students = paginatedRows.map(row => this.mapRowToStudent(row));
-                const total = Number.parseInt(totalRow?.total, 10) || 0;
+                const estudiantes = filasPaginadas.map(fila => this.mapearFilaAEstudiante(fila));
+                const total = Number.parseInt(filaTotal?.total, 10) || 0;
 
                 return {
-                    students,
+                    students: estudiantes,
                     pagination: {
-                        page,
-                        limit,
+                        page: pagina,
+                        limit: limite,
                         total,
-                        totalPages: Math.ceil(total / limit) || 1,
-                        hasNext: offset + students.length < total,
-                        hasPrev: page > 1
+                        totalPages: Math.ceil(total / limite) || 1,
+                        hasNext: desplazamiento + estudiantes.length < total,
+                        hasPrev: pagina > 1
                     }
                 };
             }
 
-            const rows = await servicioBaseDatos.all(
+            const filas = await servicioBaseDatos.all(
                 `SELECT matricula, nombre, grupo, created_at, updated_at
                  FROM students
-                 ${whereClause}
-                 ${orderClause}`,
-                values
+                 ${clausulaWhere}
+                 ${clausulaOrden}`,
+                valores
             );
 
-            const students = rows.map(row => this.mapRowToStudent(row));
+            const estudiantes = filas.map(fila => this.mapearFilaAEstudiante(fila));
 
             return {
-                students,
-                total: students.length
+                students: estudiantes,
+                total: estudiantes.length
             };
         } catch (error) {
             console.error('❌ Error buscando estudiantes:', error);
@@ -506,26 +510,26 @@ class ServicioEstudiantes {
     /**
      * Validar integridad de datos
      */
-    static async validateDataIntegrity() {
+    static async validarIntegridadDatos() {
         try {
-            const students = await this.getAllStudents();
-            const issues = [];
+            const estudiantes = await this.obtenerTodosLosEstudiantes();
+            const incidencias = [];
 
-            students.forEach((student, index) => {
-                const validation = student.isValid();
-                if (!validation.isValid) {
-                    issues.push({
+            estudiantes.forEach((estudiante, indice) => {
+                const validacion = estudiante.isValid();
+                if (!validacion.isValid) {
+                    incidencias.push({
                         type: 'INVALID_DATA',
-                        message: `Estudiante ${index + 1}: ${validation.errors.join(', ')}`,
-                        student: student.toJSON()
+                        message: `Estudiante ${indice + 1}: ${validacion.errors.join(', ')}`,
+                        student: estudiante.toJSON()
                     });
                 }
             });
 
             return {
-                isValid: issues.length === 0,
-                totalStudents: students.length,
-                issues,
+                isValid: incidencias.length === 0,
+                totalStudents: estudiantes.length,
+                issues: incidencias,
                 timestamp: new Date().toISOString()
             };
         } catch (error) {

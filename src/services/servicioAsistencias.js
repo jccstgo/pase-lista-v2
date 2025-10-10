@@ -47,7 +47,7 @@ class ServicioAsistencias {
             const matriculaNormalizada = solicitud.matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
             console.log(`📝 Registrando asistencia para: ${matriculaNormalizada}`);
 
-            const estudiante = await ServicioEstudiantes.findByMatricula(matriculaNormalizada);
+            const estudiante = await ServicioEstudiantes.buscarPorMatricula(matriculaNormalizada);
 
             if (!estudiante) {
                 throw new ErrorAplicacion(
@@ -164,7 +164,7 @@ class ServicioAsistencias {
 
     static async obtenerEstadisticasAsistencias(fecha = null) {
         try {
-            const estudiantes = await ServicioEstudiantes.getAllStudents();
+            const estudiantes = await ServicioEstudiantes.obtenerTodosLosEstudiantes();
             const fechaObjetivo = fecha || new Date().toISOString().split('T')[0];
             const asistencias = await this.obtenerAsistenciasPorFecha(fechaObjetivo);
 
@@ -235,7 +235,7 @@ class ServicioAsistencias {
 
     static async obtenerListaDetalladaAsistencias(fecha = null) {
         try {
-            const estudiantes = await ServicioEstudiantes.getAllStudents();
+            const estudiantes = await ServicioEstudiantes.obtenerTodosLosEstudiantes();
             const fechaObjetivo = fecha || new Date().toISOString().split('T')[0];
             const asistencias = await this.obtenerAsistenciasPorFecha(fechaObjetivo);
 
@@ -310,7 +310,7 @@ class ServicioAsistencias {
             );
 
             const asistencias = rows.map(row => this.mapearFilaAAsistencia(row));
-            const estudiantes = await ServicioEstudiantes.getAllStudents();
+            const estudiantes = await ServicioEstudiantes.obtenerTodosLosEstudiantes();
 
             const asistenciasReporte = asistencias;
             const estadisticasDiarias = {};
@@ -457,7 +457,7 @@ class ServicioAsistencias {
         try {
             const [asistencias, estudiantes] = await Promise.all([
                 this.obtenerTodasLasAsistencias(),
-                ServicioEstudiantes.getAllStudents()
+                ServicioEstudiantes.obtenerTodosLosEstudiantes()
             ]);
             const incidencias = [];
 
