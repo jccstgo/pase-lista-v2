@@ -7,12 +7,12 @@ const AdminKeyService = require('../services/adminKeyService');
 const DeviceService = require('../services/deviceService');
 const { asyncHandler } = require('../middleware/errorHandler');
 
-class AdminController {
+class ControladorAdministracion {
     /**
      * Obtener estadísticas generales del sistema
      * GET /api/admin/stats
      */
-    static getSystemStats = asyncHandler(async (req, res) => {
+    static obtenerEstadisticasSistema = asyncHandler(async (req, res) => {
         console.log('📊 Petición de estadísticas del sistema');
         
         const { date } = req.query;
@@ -29,7 +29,7 @@ class AdminController {
      * Obtener lista detallada de asistencia
      * GET /api/admin/detailed-list
      */
-    static getDetailedList = asyncHandler(async (req, res) => {
+    static obtenerListaDetallada = asyncHandler(async (req, res) => {
         console.log('📋 Petición de lista detallada');
         
         const { date } = req.query;
@@ -46,7 +46,7 @@ class AdminController {
      * Subir lista de estudiantes
      * POST /api/admin/upload-students
      */
-    static uploadStudents = asyncHandler(async (req, res) => {
+    static subirEstudiantes = asyncHandler(async (req, res) => {
         console.log('📤 Petición de subida de estudiantes');
 
         const { students } = req.body;
@@ -74,7 +74,7 @@ class AdminController {
      * Limpiar todos los estudiantes de la base de datos
      * DELETE /api/admin/students/clear
      */
-    static clearStudents = asyncHandler(async (req, res) => {
+    static limpiarEstudiantes = asyncHandler(async (req, res) => {
         console.log('🧹 Petición de limpieza de estudiantes');
 
         const result = await StudentService.clearAllStudents();
@@ -92,7 +92,7 @@ class AdminController {
      * Cambiar contraseña de administrador
      * POST /api/admin/change-password
      */
-    static changePassword = asyncHandler(async (req, res) => {
+    static cambiarContrasena = asyncHandler(async (req, res) => {
         console.log('🔐 Petición de cambio de contraseña');
         
         const { currentPassword, newPassword } = req.body;
@@ -111,7 +111,7 @@ class AdminController {
      * Obtener información del administrador actual
      * GET /api/admin/profile
      */
-    static getProfile = asyncHandler(async (req, res) => {
+    static obtenerPerfil = asyncHandler(async (req, res) => {
         console.log('👤 Petición de perfil de administrador');
         
         const username = req.admin.username;
@@ -134,7 +134,7 @@ class AdminController {
      * Obtener estado del sistema
      * GET /api/admin/system-status
      */
-    static getSystemStatus = asyncHandler(async (req, res) => {
+    static obtenerEstadoSistema = asyncHandler(async (req, res) => {
         console.log('🏥 Petición de estado del sistema');
         
         const status = await SystemService.getSystemStatus();
@@ -149,7 +149,7 @@ class AdminController {
      * Ejecutar diagnósticos del sistema
      * POST /api/admin/diagnostics
      */
-    static runDiagnostics = asyncHandler(async (req, res) => {
+    static ejecutarDiagnosticos = asyncHandler(async (req, res) => {
         console.log('🔍 Petición de diagnósticos del sistema');
         
         const diagnostics = await SystemService.runSystemDiagnostics();
@@ -164,7 +164,7 @@ class AdminController {
      * Crear backup del sistema
      * POST /api/admin/backup
      */
-    static createBackup = asyncHandler(async (req, res) => {
+    static crearRespaldo = asyncHandler(async (req, res) => {
         console.log('💾 Petición de backup del sistema');
         
         const backup = await SystemService.createSystemBackup();
@@ -180,7 +180,7 @@ class AdminController {
      * Limpiar sistema (archivos temporales, backups antiguos)
      * POST /api/admin/cleanup
      */
-    static cleanupSystem = asyncHandler(async (req, res) => {
+    static limpiarSistema = asyncHandler(async (req, res) => {
         console.log('🧹 Petición de limpieza del sistema');
 
         const cleanup = await SystemService.cleanupSystem();
@@ -196,7 +196,7 @@ class AdminController {
      * Obtener configuración del sistema (restricciones)
      * GET /api/admin/config
      */
-    static getSystemConfig = asyncHandler(async (req, res) => {
+    static obtenerConfiguracionSistema = asyncHandler(async (req, res) => {
         console.log('⚙️ Petición de configuración del sistema');
 
         const systemConfig = await ConfigService.getSystemConfig();
@@ -207,7 +207,7 @@ class AdminController {
      * Actualizar configuración del sistema (restricciones)
      * POST /api/admin/config
      */
-    static updateSystemConfig = asyncHandler(async (req, res) => {
+    static actualizarConfiguracionSistema = asyncHandler(async (req, res) => {
         console.log('💾 Petición de guardado de configuración');
 
         const updatedConfig = await ConfigService.saveSystemConfig(req.body || {});
@@ -218,7 +218,7 @@ class AdminController {
      * Obtener claves administrativas
      * GET /api/admin/admin-keys
      */
-    static getAdminKeys = asyncHandler(async (req, res) => {
+    static obtenerClavesAdministrativas = asyncHandler(async (req, res) => {
         console.log('🔑 Petición de listado de claves administrativas');
 
         const keys = await AdminKeyService.getAllKeys();
@@ -229,7 +229,7 @@ class AdminController {
      * Crear nueva clave administrativa
      * POST /api/admin/admin-keys
      */
-    static createAdminKey = asyncHandler(async (req, res) => {
+    static crearClaveAdministrativa = asyncHandler(async (req, res) => {
         console.log('➕ Petición de creación de clave administrativa');
 
         const { key, description } = req.body || {};
@@ -242,7 +242,7 @@ class AdminController {
      * Desactivar clave administrativa
      * DELETE /api/admin/admin-keys/:key
      */
-    static deactivateAdminKey = asyncHandler(async (req, res) => {
+    static desactivarClaveAdministrativa = asyncHandler(async (req, res) => {
         const { key } = req.params;
         console.log(`🗝️ Petición de desactivación de clave: ${key}`);
 
@@ -254,7 +254,7 @@ class AdminController {
      * Obtener dispositivos registrados
      * GET /api/admin/devices
      */
-    static getRegisteredDevices = asyncHandler(async (req, res) => {
+    static obtenerDispositivosRegistrados = asyncHandler(async (req, res) => {
         console.log('📱 Petición de dispositivos registrados');
 
         const devices = await DeviceService.getAllDevices();
@@ -265,7 +265,7 @@ class AdminController {
      * Obtener estadísticas de estudiantes
      * GET /api/admin/students/stats
      */
-    static getStudentStats = asyncHandler(async (req, res) => {
+    static obtenerEstadisticasEstudiantes = asyncHandler(async (req, res) => {
         console.log('📚 Petición de estadísticas de estudiantes');
         
         const stats = await StudentService.getStudentStats();
@@ -280,7 +280,7 @@ class AdminController {
      * Buscar estudiantes con filtros
      * GET /api/admin/students/search
      */
-    static searchStudents = asyncHandler(async (req, res) => {
+    static buscarEstudiantes = asyncHandler(async (req, res) => {
         console.log('🔍 Petición de búsqueda de estudiantes');
         
         const filters = {
@@ -310,7 +310,7 @@ class AdminController {
      * Validar integridad de datos de estudiantes
      * GET /api/admin/students/validate
      */
-    static validateStudentsIntegrity = asyncHandler(async (req, res) => {
+    static validarIntegridadEstudiantes = asyncHandler(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de estudiantes');
         
         const validation = await StudentService.validateDataIntegrity();
@@ -325,7 +325,7 @@ class AdminController {
      * Validar integridad de datos de asistencias
      * GET /api/admin/attendance/validate
      */
-    static validateAttendanceIntegrity = asyncHandler(async (req, res) => {
+    static validarIntegridadAsistencias = asyncHandler(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de asistencias');
         
         const validation = await AttendanceService.validateAttendanceIntegrity();
@@ -340,7 +340,7 @@ class AdminController {
      * Obtener estadísticas de administradores
      * GET /api/admin/admins/stats
      */
-    static getAdminStats = asyncHandler(async (req, res) => {
+    static obtenerEstadisticasAdministradores = asyncHandler(async (req, res) => {
         console.log('👥 Petición de estadísticas de administradores');
         
         const stats = await AdminService.getAdminStats();
@@ -355,7 +355,7 @@ class AdminController {
      * Limpiar registros de asistencia
      * DELETE /api/admin/attendance/clear
      */
-    static clearAttendanceRecords = asyncHandler(async (req, res) => {
+    static limpiarRegistrosAsistencia = asyncHandler(async (req, res) => {
         console.log('🧹 Petición de limpieza de registros de asistencia');
         
         await AttendanceService.clearAttendanceRecords();
@@ -370,7 +370,7 @@ class AdminController {
      * Exportar todos los datos del sistema
      * GET /api/admin/export-all
      */
-    static exportAllData = asyncHandler(async (req, res) => {
+    static exportarTodosLosDatos = asyncHandler(async (req, res) => {
         console.log('📤 Petición de exportación completa de datos');
         
         const { format = 'json' } = req.query;
@@ -416,7 +416,7 @@ class AdminController {
      * Obtener resumen ejecutivo
      * GET /api/admin/executive-summary
      */
-    static getExecutiveSummary = asyncHandler(async (req, res) => {
+    static obtenerResumenEjecutivo = asyncHandler(async (req, res) => {
         console.log('📈 Petición de resumen ejecutivo');
         
         const { period = '7' } = req.query; // Días hacia atrás
@@ -491,7 +491,7 @@ class AdminController {
      * Obtener métricas en tiempo real
      * GET /api/admin/realtime-metrics
      */
-    static getRealtimeMetrics = asyncHandler(async (req, res) => {
+    static obtenerMetricasTiempoReal = asyncHandler(async (req, res) => {
         console.log('⚡ Petición de métricas en tiempo real');
         
         const [todayStats, systemStatus] = await Promise.all([
@@ -523,4 +523,4 @@ class AdminController {
     });
 }
 
-module.exports = AdminController;
+module.exports = ControladorAdministracion;
