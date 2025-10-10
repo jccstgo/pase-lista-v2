@@ -8,21 +8,21 @@ const DATA_DIR = process.env.DATA_DIR || 'data';
 
 const DEFAULT_DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/pase_lista';
 
-const parseNumber = (value, defaultValue) => {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isFinite(parsed) ? parsed : defaultValue;
+const parsearNumero = (valor, valorPorDefecto) => {
+    const numeroParseado = Number.parseInt(valor, 10);
+    return Number.isFinite(numeroParseado) ? numeroParseado : valorPorDefecto;
 };
 
-const shouldUseSSL = (value) => value === true || (typeof value === 'string' && value.toLowerCase() === 'true');
+const deberiaUsarSSL = (valor) => valor === true || (typeof valor === 'string' && valor.toLowerCase() === 'true');
 
-const getDatabaseSummary = (databaseUrl) => {
+const obtenerResumenBaseDatos = (urlBaseDatos) => {
     try {
-        const url = new URL(databaseUrl);
-        const protocol = url.protocol.replace(/:$/, '');
+        const url = new URL(urlBaseDatos);
+        const protocolo = url.protocol.replace(/:$/, '');
         const host = url.hostname;
-        const port = url.port || '5432';
-        const databaseName = url.pathname.replace(/^\//, '') || 'postgres';
-        return `${protocol}://${host}:${port}/${databaseName}`;
+        const puerto = url.port || '5432';
+        const nombreBaseDatos = url.pathname.replace(/^\//, '') || 'postgres';
+        return `${protocolo}://${host}:${puerto}/${nombreBaseDatos}`;
     } catch (error) {
         console.warn('⚠️ No se pudo generar resumen de la base de datos:', error.message);
         return 'postgresql://localhost:5432/pase_lista';
@@ -43,11 +43,11 @@ const config = {
 
     DATABASE: {
         URL: DEFAULT_DATABASE_URL,
-        SUMMARY: getDatabaseSummary(DEFAULT_DATABASE_URL),
-        SSL: shouldUseSSL(process.env.DATABASE_SSL),
-        MAX_POOL_SIZE: parseNumber(process.env.DATABASE_MAX_POOL_SIZE, 10),
-        IDLE_TIMEOUT_MS: parseNumber(process.env.DATABASE_IDLE_TIMEOUT_MS, 30000),
-        CONNECTION_TIMEOUT_MS: parseNumber(process.env.DATABASE_CONNECTION_TIMEOUT_MS, 2000)
+        SUMMARY: obtenerResumenBaseDatos(DEFAULT_DATABASE_URL),
+        SSL: deberiaUsarSSL(process.env.DATABASE_SSL),
+        MAX_POOL_SIZE: parsearNumero(process.env.DATABASE_MAX_POOL_SIZE, 10),
+        IDLE_TIMEOUT_MS: parsearNumero(process.env.DATABASE_IDLE_TIMEOUT_MS, 30000),
+        CONNECTION_TIMEOUT_MS: parsearNumero(process.env.DATABASE_CONNECTION_TIMEOUT_MS, 2000)
     },
 
     // Configuración del sistema (restricciones y comportamiento)

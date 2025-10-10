@@ -1,6 +1,6 @@
 const servicioBaseDatos = require('./servicioBaseDatos');
 const config = require('../config/server');
-const { AppError } = require('../middleware/errorHandler');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
 class ServicioConfiguracion {
     static async ensureInitialized() {
@@ -26,7 +26,7 @@ class ServicioConfiguracion {
             await Promise.all(operations);
         } catch (error) {
             console.error('❌ Error asegurando configuración del sistema:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo inicializar la configuración', 500, 'CONFIG_INIT_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo inicializar la configuración', 500, 'CONFIG_INIT_ERROR');
         }
     }
 
@@ -59,7 +59,7 @@ class ServicioConfiguracion {
             return baseConfig;
         } catch (error) {
             console.error('❌ Error obteniendo configuración del sistema:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo obtener la configuración del sistema', 500, 'CONFIG_LOAD_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo obtener la configuración del sistema', 500, 'CONFIG_LOAD_ERROR');
         }
     }
 
@@ -111,7 +111,7 @@ class ServicioConfiguracion {
             return { ...sanitizedConfig, updated_at: timestamp };
         } catch (error) {
             console.error('❌ Error guardando configuración del sistema:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo guardar la configuración del sistema', 500, 'CONFIG_SAVE_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo guardar la configuración del sistema', 500, 'CONFIG_SAVE_ERROR');
         }
     }
 

@@ -1,5 +1,5 @@
 const servicioBaseDatos = require('./servicioBaseDatos');
-const { AppError } = require('../middleware/errorHandler');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
 class ServicioDispositivos {
     static async ensureInitialized() {
@@ -23,7 +23,7 @@ class ServicioDispositivos {
             }));
         } catch (error) {
             console.error('❌ Error obteniendo dispositivos registrados:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudieron obtener los dispositivos registrados', 500, 'DEVICES_LOAD_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudieron obtener los dispositivos registrados', 500, 'DEVICES_LOAD_ERROR');
         }
     }
 
@@ -58,7 +58,7 @@ class ServicioDispositivos {
             };
         } catch (error) {
             console.error('❌ Error registrando dispositivo:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo registrar el dispositivo', 500, 'DEVICE_REGISTER_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo registrar el dispositivo', 500, 'DEVICE_REGISTER_ERROR');
         }
     }
 

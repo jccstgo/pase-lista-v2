@@ -1,13 +1,13 @@
 const ServicioAdministracion = require('../services/servicioAdministracion');
-const { asyncHandler } = require('../middleware/errorHandler');
-const { verifyToken } = require('../middleware/auth');
+const { manejadorAsincrono } = require('../middleware/manejadorErrores');
+const { verificarToken, generarToken } = require('../middleware/autenticacion');
 
 class ControladorAutenticacion {
     /**
      * Login de administrador
      * POST /api/auth/login
      */
-    static iniciarSesion = asyncHandler(async (req, res) => {
+    static iniciarSesion = manejadorAsincrono(async (req, res) => {
         console.log('🔐 Intento de login de administrador');
         
         const { username, password } = req.body;
@@ -30,7 +30,7 @@ class ControladorAutenticacion {
      * Verificar token válido
      * POST /api/auth/verify
      */
-    static verificarAutenticacion = asyncHandler(async (req, res) => {
+    static verificarAutenticacion = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Verificación de token');
         
         const authHeader = req.headers.authorization;
@@ -54,7 +54,7 @@ class ControladorAutenticacion {
         }
 
         try {
-            const decoded = verifyToken(token);
+            const decoded = verificarToken(token);
             
             // Verificar que el usuario aún existe
             const admin = await ServicioAdministracion.findByUsername(decoded.username);
@@ -112,7 +112,7 @@ class ControladorAutenticacion {
      * Renovar token
      * POST /api/auth/refresh
      */
-    static renovarToken = asyncHandler(async (req, res) => {
+    static renovarToken = manejadorAsincrono(async (req, res) => {
         console.log('🔄 Renovación de token');
         
         const authHeader = req.headers.authorization;
@@ -135,7 +135,7 @@ class ControladorAutenticacion {
 
         try {
             // Verificar token actual (puede estar expirado)
-            const decoded = verifyToken(token);
+            const decoded = verificarToken(token);
             
             // Verificar que el usuario aún existe
             const admin = await ServicioAdministracion.findByUsername(decoded.username);
@@ -155,8 +155,7 @@ class ControladorAutenticacion {
             }
 
             // Generar nuevo token
-            const { generateToken } = require('../middleware/auth');
-            const newToken = generateToken({ 
+            const newToken = generarToken({
                 username: admin.username,
                 refreshTime: new Date().toISOString()
             });
@@ -182,8 +181,7 @@ class ControladorAutenticacion {
                     const admin = await ServicioAdministracion.findByUsername(expiredDecoded.username);
                     
                     if (admin && !admin.isLocked()) {
-                        const { generateToken } = require('../middleware/auth');
-                        const newToken = generateToken({ 
+                        const newToken = generarToken({
                             username: admin.username,
                             refreshTime: new Date().toISOString()
                         });
@@ -213,7 +211,7 @@ class ControladorAutenticacion {
      * Logout (invalidar token del lado del cliente)
      * POST /api/auth/logout
      */
-    static cerrarSesion = asyncHandler(async (req, res) => {
+    static cerrarSesion = manejadorAsincrono(async (req, res) => {
         console.log('👋 Logout de administrador');
         
         // En un sistema con JWT stateless, el logout se maneja del lado del cliente
@@ -232,7 +230,7 @@ class ControladorAutenticacion {
      * Cambiar contraseña con verificación de autenticación
      * POST /api/auth/change-password
      */
-    static cambiarContrasena = asyncHandler(async (req, res) => {
+    static cambiarContrasena = manejadorAsincrono(async (req, res) => {
         console.log('🔐 Cambio de contraseña vía auth');
         
         const { currentPassword, newPassword } = req.body;
@@ -257,7 +255,7 @@ class ControladorAutenticacion {
      * Obtener información de la sesión actual
      * GET /api/auth/session
      */
-    static obtenerSesion = asyncHandler(async (req, res) => {
+    static obtenerSesion = manejadorAsincrono(async (req, res) => {
         console.log('📋 Información de sesión');
         
         const username = req.admin.username;
@@ -302,7 +300,7 @@ class ControladorAutenticacion {
      * Validar fuerza de contraseña
      * POST /api/auth/validate-password
      */
-    static validarContrasena = asyncHandler(async (req, res) => {
+    static validarContrasena = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Validación de contraseña');
         
         const { password } = req.body;
@@ -337,7 +335,7 @@ class ControladorAutenticacion {
      * Obtener intentos de login fallidos
      * GET /api/auth/login-attempts
      */
-    static obtenerIntentosInicioSesion = asyncHandler(async (req, res) => {
+    static obtenerIntentosInicioSesion = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Consulta de intentos de login');
         
         const username = req.admin.username;

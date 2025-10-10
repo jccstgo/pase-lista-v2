@@ -1,17 +1,17 @@
 const express = require('express');
 const ControladorAdministracion = require('../controllers/controladorAdministracion');
-const { authenticateAdmin } = require('../middleware/auth');
-const { 
-    validatePasswordChange, 
-    validateStudentsList, 
-    sanitizeInput 
-} = require('../middleware/validation');
+const { autenticarAdministrador } = require('../middleware/autenticacion');
+const {
+    validarCambioContrasena,
+    validarListaEstudiantes,
+    sanitizarEntrada
+} = require('../middleware/validacion');
 
 const router = express.Router();
 
 // Aplicar autenticación y sanitización a todas las rutas de admin
-router.use(authenticateAdmin);
-router.use(sanitizeInput);
+router.use(autenticarAdministrador);
+router.use(sanitizarEntrada);
 
 /**
  * Rutas principales de estadísticas y reportes
@@ -56,7 +56,7 @@ router.get('/realtime-metrics', ControladorAdministracion.obtenerMetricasTiempoR
  */
 
 // Subir nueva lista de estudiantes
-router.post('/upload-students', validateStudentsList, ControladorAdministracion.subirEstudiantes);
+router.post('/upload-students', validarListaEstudiantes, ControladorAdministracion.subirEstudiantes);
 
 // Limpiar todos los estudiantes
 router.delete('/students/clear', ControladorAdministracion.limpiarEstudiantes);
@@ -88,7 +88,7 @@ router.delete('/attendance/clear', ControladorAdministracion.limpiarRegistrosAsi
 router.get('/profile', ControladorAdministracion.obtenerPerfil);
 
 // Cambiar contraseña
-router.post('/change-password', validatePasswordChange, ControladorAdministracion.cambiarContrasena);
+router.post('/change-password', validarCambioContrasena, ControladorAdministracion.cambiarContrasena);
 
 // Obtener estadísticas de administradores
 router.get('/admins/stats', ControladorAdministracion.obtenerEstadisticasAdministradores);

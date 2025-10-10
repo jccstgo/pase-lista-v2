@@ -1,5 +1,5 @@
 const servicioBaseDatos = require('./servicioBaseDatos');
-const { AppError } = require('../middleware/errorHandler');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
 class ServicioClavesAdministrativas {
     static async ensureInitialized() {
@@ -23,7 +23,7 @@ class ServicioClavesAdministrativas {
             }));
         } catch (error) {
             console.error('❌ Error obteniendo claves administrativas:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudieron obtener las claves administrativas', 500, 'ADMIN_KEYS_LOAD_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudieron obtener las claves administrativas', 500, 'ADMIN_KEYS_LOAD_ERROR');
         }
     }
 
@@ -33,15 +33,15 @@ class ServicioClavesAdministrativas {
             const cleanDescription = (description || '').toString().trim();
 
             if (!normalizedKey) {
-                throw new AppError('La clave es requerida', 400, 'ADMIN_KEY_REQUIRED');
+                throw new ErrorAplicacion('La clave es requerida', 400, 'ADMIN_KEY_REQUIRED');
             }
 
             if (normalizedKey.length < 4) {
-                throw new AppError('La clave debe tener al menos 4 caracteres', 400, 'ADMIN_KEY_TOO_SHORT');
+                throw new ErrorAplicacion('La clave debe tener al menos 4 caracteres', 400, 'ADMIN_KEY_TOO_SHORT');
             }
 
             if (!cleanDescription) {
-                throw new AppError('La descripción es requerida', 400, 'ADMIN_KEY_DESCRIPTION_REQUIRED');
+                throw new ErrorAplicacion('La descripción es requerida', 400, 'ADMIN_KEY_DESCRIPTION_REQUIRED');
             }
 
             const existing = await servicioBaseDatos.get(
@@ -50,7 +50,7 @@ class ServicioClavesAdministrativas {
             );
 
             if (existing) {
-                throw new AppError('Ya existe una clave activa con ese nombre', 409, 'ADMIN_KEY_DUPLICATED');
+                throw new ErrorAplicacion('Ya existe una clave activa con ese nombre', 409, 'ADMIN_KEY_DUPLICATED');
             }
 
             const timestamp = new Date().toISOString();
@@ -72,7 +72,7 @@ class ServicioClavesAdministrativas {
             };
         } catch (error) {
             console.error('❌ Error creando clave administrativa:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo crear la clave administrativa', 500, 'ADMIN_KEY_CREATE_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo crear la clave administrativa', 500, 'ADMIN_KEY_CREATE_ERROR');
         }
     }
 
@@ -81,7 +81,7 @@ class ServicioClavesAdministrativas {
             const normalizedKey = this.normalizeKey(key);
 
             if (!normalizedKey) {
-                throw new AppError('La clave es requerida', 400, 'ADMIN_KEY_REQUIRED');
+                throw new ErrorAplicacion('La clave es requerida', 400, 'ADMIN_KEY_REQUIRED');
             }
 
             const existing = await servicioBaseDatos.get(
@@ -92,7 +92,7 @@ class ServicioClavesAdministrativas {
             );
 
             if (!existing) {
-                throw new AppError('Clave administrativa no encontrada', 404, 'ADMIN_KEY_NOT_FOUND');
+                throw new ErrorAplicacion('Clave administrativa no encontrada', 404, 'ADMIN_KEY_NOT_FOUND');
             }
 
             if (existing.is_active === false) {
@@ -125,7 +125,7 @@ class ServicioClavesAdministrativas {
             };
         } catch (error) {
             console.error('❌ Error desactivando clave administrativa:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo desactivar la clave administrativa', 500, 'ADMIN_KEY_DEACTIVATE_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo desactivar la clave administrativa', 500, 'ADMIN_KEY_DEACTIVATE_ERROR');
         }
     }
 

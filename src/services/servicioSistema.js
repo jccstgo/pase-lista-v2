@@ -10,7 +10,7 @@ const ServicioConfiguracion = require('./servicioConfiguracion');
 const ServicioClavesAdministrativas = require('./servicioClavesAdministrativas');
 const ServicioDispositivos = require('./servicioDispositivos');
 const config = require('../config/server');
-const { AppError } = require('../middleware/errorHandler');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
 class ServicioSistema {
     static async initializeSystem() {
@@ -25,7 +25,7 @@ class ServicioSistema {
             return true;
         } catch (error) {
             console.error('❌ Error fatal durante la inicialización:', error);
-            throw new AppError('Error crítico en inicialización del sistema', 500, 'SYSTEM_INIT_ERROR');
+            throw new ErrorAplicacion('Error crítico en inicialización del sistema', 500, 'SYSTEM_INIT_ERROR');
         }
     }
 
@@ -35,7 +35,7 @@ class ServicioSistema {
             console.log('✅ Directorio de datos verificado/creado');
         } catch (error) {
             console.error('❌ Error creando directorio de datos:', error);
-            throw new AppError('No se pudo crear directorio de datos', 500, 'DATA_DIR_ERROR');
+            throw new ErrorAplicacion('No se pudo crear directorio de datos', 500, 'DATA_DIR_ERROR');
         }
     }
 
@@ -50,7 +50,7 @@ class ServicioSistema {
             console.log('✅ Recursos de base de datos verificados');
         } catch (error) {
             console.error('❌ Error inicializando recursos de base de datos:', error);
-            throw error instanceof AppError ? error : new AppError('Error inicializando recursos del sistema', 500, 'DB_INIT_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('Error inicializando recursos del sistema', 500, 'DB_INIT_ERROR');
         }
     }
 
@@ -77,7 +77,7 @@ class ServicioSistema {
             return newAdmin;
         } catch (error) {
             console.error('❌ Error creando administrador por defecto:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo crear administrador por defecto', 500, 'DEFAULT_ADMIN_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo crear administrador por defecto', 500, 'DEFAULT_ADMIN_ERROR');
         }
     }
 
@@ -129,7 +129,7 @@ class ServicioSistema {
             };
         } catch (error) {
             console.error('❌ Error obteniendo estado del sistema:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo obtener estado del sistema', 500, 'SYSTEM_STATUS_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo obtener estado del sistema', 500, 'SYSTEM_STATUS_ERROR');
         }
     }
 
@@ -160,7 +160,7 @@ class ServicioSistema {
             };
         } catch (error) {
             console.error('❌ Error ejecutando diagnósticos:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudieron ejecutar los diagnósticos', 500, 'SYSTEM_DIAGNOSTICS_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudieron ejecutar los diagnósticos', 500, 'SYSTEM_DIAGNOSTICS_ERROR');
         }
     }
 
@@ -212,7 +212,7 @@ class ServicioSistema {
             };
         } catch (error) {
             console.error('❌ Error creando backup del sistema:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo crear el backup del sistema', 500, 'SYSTEM_BACKUP_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo crear el backup del sistema', 500, 'SYSTEM_BACKUP_ERROR');
         }
     }
 
@@ -252,7 +252,7 @@ class ServicioSistema {
             };
         } catch (error) {
             console.error('❌ Error limpiando sistema:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo completar la limpieza del sistema', 500, 'SYSTEM_CLEANUP_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo completar la limpieza del sistema', 500, 'SYSTEM_CLEANUP_ERROR');
         }
     }
 
@@ -268,7 +268,7 @@ class ServicioSistema {
             };
         } catch (error) {
             console.error('❌ Error verificando administradores:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo verificar administradores', 500, 'ADMIN_CHECK_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo verificar administradores', 500, 'ADMIN_CHECK_ERROR');
         }
     }
 

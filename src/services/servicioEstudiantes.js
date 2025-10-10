@@ -1,7 +1,7 @@
 const Estudiante = require('../models/Estudiante');
 const servicioBaseDatos = require('./servicioBaseDatos');
 const config = require('../config/server');
-const { AppError } = require('../middleware/errorHandler');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
 class ServicioEstudiantes {
     /**
@@ -39,10 +39,10 @@ class ServicioEstudiantes {
             return students;
         } catch (error) {
             console.error('❌ Error obteniendo estudiantes desde la base de datos:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al obtener lista de estudiantes', 500, 'STUDENTS_LOAD_ERROR');
+            throw new ErrorAplicacion('Error al obtener lista de estudiantes', 500, 'STUDENTS_LOAD_ERROR');
         }
     }
 
@@ -52,7 +52,7 @@ class ServicioEstudiantes {
     static async findByMatricula(matricula) {
         try {
             if (!matricula) {
-                throw new AppError('Matrícula es requerida', 400, 'MISSING_MATRICULA');
+                throw new ErrorAplicacion('Matrícula es requerida', 400, 'MISSING_MATRICULA');
             }
 
             const normalizedMatricula = new Estudiante({ matricula }).matricula;
@@ -73,10 +73,10 @@ class ServicioEstudiantes {
             return student;
         } catch (error) {
             console.error('❌ Error buscando estudiante por matrícula:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al buscar estudiante', 500, 'STUDENT_SEARCH_ERROR');
+            throw new ErrorAplicacion('Error al buscar estudiante', 500, 'STUDENT_SEARCH_ERROR');
         }
     }
 
@@ -86,7 +86,7 @@ class ServicioEstudiantes {
     static async findByGroup(grupo) {
         try {
             if (!grupo) {
-                throw new AppError('Grupo es requerido', 400, 'MISSING_GROUP');
+                throw new ErrorAplicacion('Grupo es requerido', 400, 'MISSING_GROUP');
             }
 
             const normalizedGroup = new Estudiante({ grupo }).grupo;
@@ -103,10 +103,10 @@ class ServicioEstudiantes {
             return students;
         } catch (error) {
             console.error('❌ Error buscando estudiantes por grupo:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al buscar estudiantes por grupo', 500, 'GROUP_SEARCH_ERROR');
+            throw new ErrorAplicacion('Error al buscar estudiantes por grupo', 500, 'GROUP_SEARCH_ERROR');
         }
     }
 
@@ -116,7 +116,7 @@ class ServicioEstudiantes {
     static async updateStudentsList(studentsData) {
         try {
             if (!Array.isArray(studentsData) || studentsData.length === 0) {
-                throw new AppError('Lista de estudiantes inválida o vacía', 400, 'INVALID_STUDENTS_LIST');
+                throw new ErrorAplicacion('Lista de estudiantes inválida o vacía', 400, 'INVALID_STUDENTS_LIST');
             }
 
             const validStudents = [];
@@ -152,7 +152,7 @@ class ServicioEstudiantes {
             }
 
             if (validStudents.length === 0) {
-                throw new AppError(
+                throw new ErrorAplicacion(
                     `No hay estudiantes válidos. Errores: ${errors.slice(0, 5).join('; ')}`,
                     400,
                     'NO_VALID_STUDENTS'
@@ -200,10 +200,10 @@ class ServicioEstudiantes {
             };
         } catch (error) {
             console.error('❌ Error actualizando lista de estudiantes:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al actualizar lista de estudiantes', 500, 'STUDENTS_UPDATE_ERROR');
+            throw new ErrorAplicacion('Error al actualizar lista de estudiantes', 500, 'STUDENTS_UPDATE_ERROR');
         }
     }
 
@@ -221,7 +221,7 @@ class ServicioEstudiantes {
 
             const validation = student.isValid();
             if (!validation.isValid) {
-                throw new AppError(`Datos de estudiante inválidos: ${validation.errors.join(', ')}`, 400, 'INVALID_STUDENT_DATA');
+                throw new ErrorAplicacion(`Datos de estudiante inválidos: ${validation.errors.join(', ')}`, 400, 'INVALID_STUDENT_DATA');
             }
 
             const existing = await servicioBaseDatos.get(
@@ -230,7 +230,7 @@ class ServicioEstudiantes {
             );
 
             if (existing) {
-                throw new AppError(`Ya existe un estudiante con matrícula ${student.matricula}`, 409, 'STUDENT_ALREADY_EXISTS');
+                throw new ErrorAplicacion(`Ya existe un estudiante con matrícula ${student.matricula}`, 409, 'STUDENT_ALREADY_EXISTS');
             }
 
             await servicioBaseDatos.run(
@@ -249,10 +249,10 @@ class ServicioEstudiantes {
             return student;
         } catch (error) {
             console.error('❌ Error agregando estudiante:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al agregar estudiante', 500, 'STUDENT_ADD_ERROR');
+            throw new ErrorAplicacion('Error al agregar estudiante', 500, 'STUDENT_ADD_ERROR');
         }
     }
 
@@ -263,7 +263,7 @@ class ServicioEstudiantes {
         try {
             const existingStudent = await this.findByMatricula(matricula);
             if (!existingStudent) {
-                throw new AppError('Estudiante no encontrado', 404, 'STUDENT_NOT_FOUND');
+                throw new ErrorAplicacion('Estudiante no encontrado', 404, 'STUDENT_NOT_FOUND');
             }
 
             const timestamp = new Date().toISOString();
@@ -277,7 +277,7 @@ class ServicioEstudiantes {
 
             const validation = updatedStudent.isValid();
             if (!validation.isValid) {
-                throw new AppError(`Datos actualizados inválidos: ${validation.errors.join(', ')}`, 400, 'INVALID_UPDATE_DATA');
+                throw new ErrorAplicacion(`Datos actualizados inválidos: ${validation.errors.join(', ')}`, 400, 'INVALID_UPDATE_DATA');
             }
 
             const result = await servicioBaseDatos.run(
@@ -295,17 +295,17 @@ class ServicioEstudiantes {
             );
 
             if (result.rowCount === 0) {
-                throw new AppError('No se pudo actualizar el estudiante', 500, 'UPDATE_FAILED');
+                throw new ErrorAplicacion('No se pudo actualizar el estudiante', 500, 'UPDATE_FAILED');
             }
 
             console.log(`✅ Estudiante actualizado en base de datos: ${updatedStudent.nombre} (${updatedStudent.matricula})`);
             return updatedStudent;
         } catch (error) {
             console.error('❌ Error actualizando estudiante:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al actualizar estudiante', 500, 'STUDENT_UPDATE_ERROR');
+            throw new ErrorAplicacion('Error al actualizar estudiante', 500, 'STUDENT_UPDATE_ERROR');
         }
     }
 
@@ -316,7 +316,7 @@ class ServicioEstudiantes {
         try {
             const existingStudent = await this.findByMatricula(matricula);
             if (!existingStudent) {
-                throw new AppError('Estudiante no encontrado', 404, 'STUDENT_NOT_FOUND');
+                throw new ErrorAplicacion('Estudiante no encontrado', 404, 'STUDENT_NOT_FOUND');
             }
 
             const result = await servicioBaseDatos.run(
@@ -325,17 +325,17 @@ class ServicioEstudiantes {
             );
 
             if (result.rowCount === 0) {
-                throw new AppError('No se pudo eliminar el estudiante', 500, 'DELETE_FAILED');
+                throw new ErrorAplicacion('No se pudo eliminar el estudiante', 500, 'DELETE_FAILED');
             }
 
             console.log(`🗑️ Estudiante eliminado de la base de datos: ${existingStudent.nombre} (${existingStudent.matricula})`);
             return true;
         } catch (error) {
             console.error('❌ Error eliminando estudiante:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al eliminar estudiante', 500, 'STUDENT_DELETE_ERROR');
+            throw new ErrorAplicacion('Error al eliminar estudiante', 500, 'STUDENT_DELETE_ERROR');
         }
     }
 
@@ -359,10 +359,10 @@ class ServicioEstudiantes {
             };
         } catch (error) {
             console.error('❌ Error limpiando estudiantes:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al limpiar estudiantes', 500, 'STUDENTS_CLEAR_ERROR');
+            throw new ErrorAplicacion('Error al limpiar estudiantes', 500, 'STUDENTS_CLEAR_ERROR');
         }
     }
 
@@ -395,10 +395,10 @@ class ServicioEstudiantes {
             };
         } catch (error) {
             console.error('❌ Error obteniendo estadísticas de estudiantes:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al obtener estadísticas', 500, 'STATS_ERROR');
+            throw new ErrorAplicacion('Error al obtener estadísticas', 500, 'STATS_ERROR');
         }
     }
 
@@ -496,10 +496,10 @@ class ServicioEstudiantes {
             };
         } catch (error) {
             console.error('❌ Error buscando estudiantes:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error en búsqueda de estudiantes', 500, 'SEARCH_ERROR');
+            throw new ErrorAplicacion('Error en búsqueda de estudiantes', 500, 'SEARCH_ERROR');
         }
     }
 
@@ -530,7 +530,7 @@ class ServicioEstudiantes {
             };
         } catch (error) {
             console.error('❌ Error validando integridad de estudiantes:', error);
-            throw new AppError('Error al validar integridad de datos', 500, 'INTEGRITY_CHECK_ERROR');
+            throw new ErrorAplicacion('Error al validar integridad de datos', 500, 'INTEGRITY_CHECK_ERROR');
         }
     }
 }

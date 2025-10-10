@@ -1,12 +1,12 @@
 const ServicioAsistencias = require('../services/servicioAsistencias');
-const { asyncHandler } = require('../middleware/errorHandler');
+const { manejadorAsincrono } = require('../middleware/manejadorErrores');
 
 class ControladorAsistencias {
     /**
      * Registrar asistencia de un estudiante
      * POST /api/attendance
      */
-    static registrarAsistencia = asyncHandler(async (req, res) => {
+    static registrarAsistencia = manejadorAsincrono(async (req, res) => {
         console.log('📝 Petición de registro de asistencia recibida');
         
         const { matricula, deviceFingerprint } = req.body;
@@ -32,7 +32,7 @@ class ControladorAsistencias {
      * Obtener asistencias del día actual
      * GET /api/attendance/today
      */
-    static obtenerAsistenciasDeHoy = asyncHandler(async (req, res) => {
+    static obtenerAsistenciasDeHoy = manejadorAsincrono(async (req, res) => {
         console.log('📋 Petición de asistencias del día');
         
         const attendances = await ServicioAsistencias.getAttendancesByDate();
@@ -51,7 +51,7 @@ class ControladorAsistencias {
      * Obtener asistencias por fecha específica
      * GET /api/attendance/date/:date
      */
-    static obtenerAsistenciasPorFecha = asyncHandler(async (req, res) => {
+    static obtenerAsistenciasPorFecha = manejadorAsincrono(async (req, res) => {
         const { date } = req.params;
         
         console.log(`📋 Petición de asistencias para fecha: ${date}`);
@@ -80,7 +80,7 @@ class ControladorAsistencias {
      * Verificar si un estudiante ya registró asistencia hoy
      * GET /api/attendance/check/:matricula
      */
-    static verificarAsistenciaDeHoy = asyncHandler(async (req, res) => {
+    static verificarAsistenciaDeHoy = manejadorAsincrono(async (req, res) => {
         const { matricula } = req.params;
         
         console.log(`🔍 Verificando asistencia del día para: ${matricula}`);
@@ -103,7 +103,7 @@ class ControladorAsistencias {
      * GET /api/attendance/stats
      * GET /api/attendance/stats?date=YYYY-MM-DD
      */
-    static obtenerEstadisticasAsistencia = asyncHandler(async (req, res) => {
+    static obtenerEstadisticasAsistencia = manejadorAsincrono(async (req, res) => {
         const { date } = req.query;
         
         console.log(`📊 Petición de estadísticas${date ? ` para fecha: ${date}` : ' del día'}`);
@@ -129,7 +129,7 @@ class ControladorAsistencias {
      * GET /api/attendance/history/:matricula
      * GET /api/attendance/history/:matricula?limit=30
      */
-    static obtenerHistorialEstudiante = asyncHandler(async (req, res) => {
+    static obtenerHistorialEstudiante = manejadorAsincrono(async (req, res) => {
         const { matricula } = req.params;
         const { limit } = req.query;
         
@@ -155,7 +155,7 @@ class ControladorAsistencias {
      * Obtener reporte de asistencia por rango de fechas
      * GET /api/attendance/report?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
      */
-    static obtenerReporteAsistencia = asyncHandler(async (req, res) => {
+    static obtenerReporteAsistencia = manejadorAsincrono(async (req, res) => {
         const { startDate, endDate } = req.query;
         
         console.log(`📈 Petición de reporte desde ${startDate} hasta ${endDate}`);
@@ -204,7 +204,7 @@ class ControladorAsistencias {
      * Exportar datos de asistencia
      * GET /api/attendance/export?format=json&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
      */
-    static exportarDatosAsistencia = asyncHandler(async (req, res) => {
+    static exportarDatosAsistencia = manejadorAsincrono(async (req, res) => {
         const { format = 'json', startDate, endDate } = req.query;
         
         console.log(`📤 Petición de exportación en formato: ${format}`);
@@ -251,7 +251,7 @@ class ControladorAsistencias {
      * Validar integridad de registros de asistencia
      * GET /api/attendance/validate
      */
-    static validarIntegridad = asyncHandler(async (req, res) => {
+    static validarIntegridad = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de asistencias');
         
         const validation = await ServicioAsistencias.validateAttendanceIntegrity();
@@ -267,7 +267,7 @@ class ControladorAsistencias {
      * POST /api/attendance/summary
      * Body: { dates: ["2024-01-01", "2024-01-02"] }
      */
-    static obtenerResumenMultiplesFechas = asyncHandler(async (req, res) => {
+    static obtenerResumenMultiplesFechas = manejadorAsincrono(async (req, res) => {
         const { dates } = req.body;
         
         console.log(`📊 Petición de resumen para ${dates?.length || 0} fechas`);

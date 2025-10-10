@@ -5,14 +5,14 @@ const ServicioSistema = require('../services/servicioSistema');
 const ServicioConfiguracion = require('../services/servicioConfiguracion');
 const ServicioClavesAdministrativas = require('../services/servicioClavesAdministrativas');
 const ServicioDispositivos = require('../services/servicioDispositivos');
-const { asyncHandler } = require('../middleware/errorHandler');
+const { manejadorAsincrono } = require('../middleware/manejadorErrores');
 
 class ControladorAdministracion {
     /**
      * Obtener estadísticas generales del sistema
      * GET /api/admin/stats
      */
-    static obtenerEstadisticasSistema = asyncHandler(async (req, res) => {
+    static obtenerEstadisticasSistema = manejadorAsincrono(async (req, res) => {
         console.log('📊 Petición de estadísticas del sistema');
         
         const { date } = req.query;
@@ -29,7 +29,7 @@ class ControladorAdministracion {
      * Obtener lista detallada de asistencia
      * GET /api/admin/detailed-list
      */
-    static obtenerListaDetallada = asyncHandler(async (req, res) => {
+    static obtenerListaDetallada = manejadorAsincrono(async (req, res) => {
         console.log('📋 Petición de lista detallada');
         
         const { date } = req.query;
@@ -46,7 +46,7 @@ class ControladorAdministracion {
      * Subir lista de estudiantes
      * POST /api/admin/upload-students
      */
-    static subirEstudiantes = asyncHandler(async (req, res) => {
+    static subirEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('📤 Petición de subida de estudiantes');
 
         const { students } = req.body;
@@ -74,7 +74,7 @@ class ControladorAdministracion {
      * Limpiar todos los estudiantes de la base de datos
      * DELETE /api/admin/students/clear
      */
-    static limpiarEstudiantes = asyncHandler(async (req, res) => {
+    static limpiarEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('🧹 Petición de limpieza de estudiantes');
 
         const result = await ServicioEstudiantes.clearAllStudents();
@@ -92,7 +92,7 @@ class ControladorAdministracion {
      * Cambiar contraseña de administrador
      * POST /api/admin/change-password
      */
-    static cambiarContrasena = asyncHandler(async (req, res) => {
+    static cambiarContrasena = manejadorAsincrono(async (req, res) => {
         console.log('🔐 Petición de cambio de contraseña');
         
         const { currentPassword, newPassword } = req.body;
@@ -111,7 +111,7 @@ class ControladorAdministracion {
      * Obtener información del administrador actual
      * GET /api/admin/profile
      */
-    static obtenerPerfil = asyncHandler(async (req, res) => {
+    static obtenerPerfil = manejadorAsincrono(async (req, res) => {
         console.log('👤 Petición de perfil de administrador');
         
         const username = req.admin.username;
@@ -134,7 +134,7 @@ class ControladorAdministracion {
      * Obtener estado del sistema
      * GET /api/admin/system-status
      */
-    static obtenerEstadoSistema = asyncHandler(async (req, res) => {
+    static obtenerEstadoSistema = manejadorAsincrono(async (req, res) => {
         console.log('🏥 Petición de estado del sistema');
         
         const status = await ServicioSistema.getSystemStatus();
@@ -149,7 +149,7 @@ class ControladorAdministracion {
      * Ejecutar diagnósticos del sistema
      * POST /api/admin/diagnostics
      */
-    static ejecutarDiagnosticos = asyncHandler(async (req, res) => {
+    static ejecutarDiagnosticos = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de diagnósticos del sistema');
         
         const diagnostics = await ServicioSistema.runSystemDiagnostics();
@@ -164,7 +164,7 @@ class ControladorAdministracion {
      * Crear backup del sistema
      * POST /api/admin/backup
      */
-    static crearRespaldo = asyncHandler(async (req, res) => {
+    static crearRespaldo = manejadorAsincrono(async (req, res) => {
         console.log('💾 Petición de backup del sistema');
         
         const backup = await ServicioSistema.createSystemBackup();
@@ -180,7 +180,7 @@ class ControladorAdministracion {
      * Limpiar sistema (archivos temporales, backups antiguos)
      * POST /api/admin/cleanup
      */
-    static limpiarSistema = asyncHandler(async (req, res) => {
+    static limpiarSistema = manejadorAsincrono(async (req, res) => {
         console.log('🧹 Petición de limpieza del sistema');
 
         const cleanup = await ServicioSistema.cleanupSystem();
@@ -196,7 +196,7 @@ class ControladorAdministracion {
      * Obtener configuración del sistema (restricciones)
      * GET /api/admin/config
      */
-    static obtenerConfiguracionSistema = asyncHandler(async (req, res) => {
+    static obtenerConfiguracionSistema = manejadorAsincrono(async (req, res) => {
         console.log('⚙️ Petición de configuración del sistema');
 
         const systemConfig = await ServicioConfiguracion.getSystemConfig();
@@ -207,7 +207,7 @@ class ControladorAdministracion {
      * Actualizar configuración del sistema (restricciones)
      * POST /api/admin/config
      */
-    static actualizarConfiguracionSistema = asyncHandler(async (req, res) => {
+    static actualizarConfiguracionSistema = manejadorAsincrono(async (req, res) => {
         console.log('💾 Petición de guardado de configuración');
 
         const updatedConfig = await ServicioConfiguracion.saveSystemConfig(req.body || {});
@@ -218,7 +218,7 @@ class ControladorAdministracion {
      * Obtener claves administrativas
      * GET /api/admin/admin-keys
      */
-    static obtenerClavesAdministrativas = asyncHandler(async (req, res) => {
+    static obtenerClavesAdministrativas = manejadorAsincrono(async (req, res) => {
         console.log('🔑 Petición de listado de claves administrativas');
 
         const keys = await ServicioClavesAdministrativas.getAllKeys();
@@ -229,7 +229,7 @@ class ControladorAdministracion {
      * Crear nueva clave administrativa
      * POST /api/admin/admin-keys
      */
-    static crearClaveAdministrativa = asyncHandler(async (req, res) => {
+    static crearClaveAdministrativa = manejadorAsincrono(async (req, res) => {
         console.log('➕ Petición de creación de clave administrativa');
 
         const { key, description } = req.body || {};
@@ -242,7 +242,7 @@ class ControladorAdministracion {
      * Desactivar clave administrativa
      * DELETE /api/admin/admin-keys/:key
      */
-    static desactivarClaveAdministrativa = asyncHandler(async (req, res) => {
+    static desactivarClaveAdministrativa = manejadorAsincrono(async (req, res) => {
         const { key } = req.params;
         console.log(`🗝️ Petición de desactivación de clave: ${key}`);
 
@@ -254,7 +254,7 @@ class ControladorAdministracion {
      * Obtener dispositivos registrados
      * GET /api/admin/devices
      */
-    static obtenerDispositivosRegistrados = asyncHandler(async (req, res) => {
+    static obtenerDispositivosRegistrados = manejadorAsincrono(async (req, res) => {
         console.log('📱 Petición de dispositivos registrados');
 
         const devices = await ServicioDispositivos.getAllDevices();
@@ -265,7 +265,7 @@ class ControladorAdministracion {
      * Obtener estadísticas de estudiantes
      * GET /api/admin/students/stats
      */
-    static obtenerEstadisticasEstudiantes = asyncHandler(async (req, res) => {
+    static obtenerEstadisticasEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('📚 Petición de estadísticas de estudiantes');
         
         const stats = await ServicioEstudiantes.getStudentStats();
@@ -280,7 +280,7 @@ class ControladorAdministracion {
      * Buscar estudiantes con filtros
      * GET /api/admin/students/search
      */
-    static buscarEstudiantes = asyncHandler(async (req, res) => {
+    static buscarEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de búsqueda de estudiantes');
         
         const filters = {
@@ -310,7 +310,7 @@ class ControladorAdministracion {
      * Validar integridad de datos de estudiantes
      * GET /api/admin/students/validate
      */
-    static validarIntegridadEstudiantes = asyncHandler(async (req, res) => {
+    static validarIntegridadEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de estudiantes');
         
         const validation = await ServicioEstudiantes.validateDataIntegrity();
@@ -325,7 +325,7 @@ class ControladorAdministracion {
      * Validar integridad de datos de asistencias
      * GET /api/admin/attendance/validate
      */
-    static validarIntegridadAsistencias = asyncHandler(async (req, res) => {
+    static validarIntegridadAsistencias = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de asistencias');
         
         const validation = await ServicioAsistencias.validateAttendanceIntegrity();
@@ -340,7 +340,7 @@ class ControladorAdministracion {
      * Obtener estadísticas de administradores
      * GET /api/admin/admins/stats
      */
-    static obtenerEstadisticasAdministradores = asyncHandler(async (req, res) => {
+    static obtenerEstadisticasAdministradores = manejadorAsincrono(async (req, res) => {
         console.log('👥 Petición de estadísticas de administradores');
         
         const stats = await ServicioAdministracion.getAdminStats();
@@ -355,7 +355,7 @@ class ControladorAdministracion {
      * Limpiar registros de asistencia
      * DELETE /api/admin/attendance/clear
      */
-    static limpiarRegistrosAsistencia = asyncHandler(async (req, res) => {
+    static limpiarRegistrosAsistencia = manejadorAsincrono(async (req, res) => {
         console.log('🧹 Petición de limpieza de registros de asistencia');
         
         await ServicioAsistencias.clearAttendanceRecords();
@@ -370,7 +370,7 @@ class ControladorAdministracion {
      * Exportar todos los datos del sistema
      * GET /api/admin/export-all
      */
-    static exportarTodosLosDatos = asyncHandler(async (req, res) => {
+    static exportarTodosLosDatos = manejadorAsincrono(async (req, res) => {
         console.log('📤 Petición de exportación completa de datos');
         
         const { format = 'json' } = req.query;
@@ -416,7 +416,7 @@ class ControladorAdministracion {
      * Obtener resumen ejecutivo
      * GET /api/admin/executive-summary
      */
-    static obtenerResumenEjecutivo = asyncHandler(async (req, res) => {
+    static obtenerResumenEjecutivo = manejadorAsincrono(async (req, res) => {
         console.log('📈 Petición de resumen ejecutivo');
         
         const { period = '7' } = req.query; // Días hacia atrás
@@ -491,7 +491,7 @@ class ControladorAdministracion {
      * Obtener métricas en tiempo real
      * GET /api/admin/realtime-metrics
      */
-    static obtenerMetricasTiempoReal = asyncHandler(async (req, res) => {
+    static obtenerMetricasTiempoReal = manejadorAsincrono(async (req, res) => {
         console.log('⚡ Petición de métricas en tiempo real');
         
         const [todayStats, systemStatus] = await Promise.all([
