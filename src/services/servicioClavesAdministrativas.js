@@ -1,14 +1,14 @@
-const database = require('./databaseService');
+const servicioBaseDatos = require('./servicioBaseDatos');
 const { AppError } = require('../middleware/errorHandler');
 
-class AdminKeyService {
+class ServicioClavesAdministrativas {
     static async ensureInitialized() {
         return true;
     }
 
     static async getAllKeys() {
         try {
-            const rows = await database.all(
+            const rows = await servicioBaseDatos.all(
                 `SELECT key, description, is_active, created_at, deactivated_at
                  FROM admin_keys
                  ORDER BY created_at DESC`
@@ -44,7 +44,7 @@ class AdminKeyService {
                 throw new AppError('La descripción es requerida', 400, 'ADMIN_KEY_DESCRIPTION_REQUIRED');
             }
 
-            const existing = await database.get(
+            const existing = await servicioBaseDatos.get(
                 `SELECT key FROM admin_keys WHERE key = $1 AND is_active = TRUE`,
                 [normalizedKey]
             );
@@ -54,7 +54,7 @@ class AdminKeyService {
             }
 
             const timestamp = new Date().toISOString();
-            const row = await database.get(
+            const row = await servicioBaseDatos.get(
                 `INSERT INTO admin_keys (key, description, is_active, created_at)
                  VALUES ($1, $2, TRUE, $3)
                  RETURNING key, description, is_active, created_at, deactivated_at`,
@@ -84,7 +84,7 @@ class AdminKeyService {
                 throw new AppError('La clave es requerida', 400, 'ADMIN_KEY_REQUIRED');
             }
 
-            const existing = await database.get(
+            const existing = await servicioBaseDatos.get(
                 `SELECT key, description, is_active, created_at, deactivated_at
                  FROM admin_keys
                  WHERE key = $1`,
@@ -105,7 +105,7 @@ class AdminKeyService {
                 };
             }
 
-            const result = await database.get(
+            const result = await servicioBaseDatos.get(
                 `UPDATE admin_keys
                  SET is_active = FALSE,
                      deactivated_at = $2
@@ -130,7 +130,7 @@ class AdminKeyService {
     }
 
     static async clearAll() {
-        await database.run('DELETE FROM admin_keys');
+        await servicioBaseDatos.run('DELETE FROM admin_keys');
     }
 
     static normalizeKey(key) {
@@ -139,4 +139,4 @@ class AdminKeyService {
     }
 }
 
-module.exports = AdminKeyService;
+module.exports = ServicioClavesAdministrativas;

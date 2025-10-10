@@ -1,16 +1,16 @@
-const Admin = require('../models/Admin');
-const database = require('./databaseService');
+const Administrador = require('../models/Administrador');
+const servicioBaseDatos = require('./servicioBaseDatos');
 const config = require('../config/server');
 const { AppError } = require('../middleware/errorHandler');
 const { generateToken } = require('../middleware/auth');
 
-class AdminService {
+class ServicioAdministracion {
     static mapRowToAdmin(row) {
         if (!row) {
             return null;
         }
 
-        return new Admin({
+        return new Administrador({
             username: row.username,
             password: row.password,
             createdAt: row.created_at,
@@ -23,7 +23,7 @@ class AdminService {
 
     static async getAllAdmins() {
         try {
-            const rows = await database.all(
+            const rows = await servicioBaseDatos.all(
                 `SELECT username, password, created_at, updated_at, last_login, login_attempts, lock_until
                  FROM admins
                  ORDER BY username`
@@ -47,8 +47,8 @@ class AdminService {
                 throw new AppError('Username es requerido', 400, 'MISSING_USERNAME');
             }
 
-            const normalizedUsername = new Admin({ username }).username;
-            const row = await database.get(
+            const normalizedUsername = new Administrador({ username }).username;
+            const row = await servicioBaseDatos.get(
                 `SELECT username, password, created_at, updated_at, last_login, login_attempts, lock_until
                  FROM admins
                  WHERE username = $1`,
@@ -148,7 +148,7 @@ class AdminService {
                 throw new AppError('Username, contraseña actual y nueva son requeridos', 400, 'MISSING_PARAMETERS');
             }
 
-            const passwordValidation = Admin.validatePasswordStrength(newPassword);
+            const passwordValidation = Administrador.validatePasswordStrength(newPassword);
             if (!passwordValidation.isStrong && config.NODE_ENV === 'production') {
                 throw new AppError(
                     `Contraseña no cumple requisitos de seguridad: ${passwordValidation.errors.join(', ')}`,
@@ -202,7 +202,7 @@ class AdminService {
 
     static async createAdmin(adminData) {
         try {
-            const admin = new Admin(adminData);
+            const admin = new Administrador(adminData);
             const validation = admin.isValid();
 
             if (!validation.isValid) {
@@ -218,7 +218,7 @@ class AdminService {
                 await admin.hashPassword(adminData.plainPassword);
             }
 
-            await database.run(
+            await servicioBaseDatos.run(
                 `INSERT INTO admins (username, password, created_at, updated_at, last_login, login_attempts, lock_until)
                  VALUES ($1, $2, $3, $4, $5, $6, $7)`,
                 [
@@ -260,9 +260,9 @@ class AdminService {
                 lockUntil: typeof updateData.lockUntil !== 'undefined' ? updateData.lockUntil : existingAdmin.lockUntil
             };
 
-            const updatedAdmin = new Admin(mergedData);
+            const updatedAdmin = new Administrador(mergedData);
 
-            const result = await database.run(
+            const result = await servicioBaseDatos.run(
                 `UPDATE admins
                  SET password = $1,
                      updated_at = $2,
@@ -311,7 +311,7 @@ class AdminService {
                 throw new AppError('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
             }
 
-            const result = await database.run(
+            const result = await servicioBaseDatos.run(
                 'DELETE FROM admins WHERE username = $1',
                 [existingAdmin.username]
             );
@@ -332,7 +332,7 @@ class AdminService {
     }
 
     static async persistAdminState(admin) {
-        await database.run(
+        await servicioBaseDatos.run(
             `UPDATE admins
              SET password = $1,
                  updated_at = $2,
@@ -481,4 +481,4 @@ class AdminService {
     }
 }
 
-module.exports = AdminService;
+module.exports = ServicioAdministracion;

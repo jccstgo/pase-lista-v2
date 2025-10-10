@@ -2,17 +2,17 @@ const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 
-const Admin = require('../models/Admin');
-const StudentService = require('./studentService');
-const AdminService = require('./adminService');
-const AttendanceService = require('./attendanceService');
-const ConfigService = require('./configService');
-const AdminKeyService = require('./adminKeyService');
-const DeviceService = require('./deviceService');
+const Administrador = require('../models/Administrador');
+const ServicioEstudiantes = require('./servicioEstudiantes');
+const ServicioAdministracion = require('./servicioAdministracion');
+const ServicioAsistencias = require('./servicioAsistencias');
+const ServicioConfiguracion = require('./servicioConfiguracion');
+const ServicioClavesAdministrativas = require('./servicioClavesAdministrativas');
+const ServicioDispositivos = require('./servicioDispositivos');
 const config = require('../config/server');
 const { AppError } = require('../middleware/errorHandler');
 
-class SystemService {
+class ServicioSistema {
     static async initializeSystem() {
         try {
             console.log('🔄 Iniciando proceso de inicialización del sistema...');
@@ -42,10 +42,10 @@ class SystemService {
     static async initializeDatabaseResources() {
         try {
             await Promise.all([
-                StudentService.validateDataIntegrity().catch(() => StudentService.getStudentStats()),
-                ConfigService.ensureInitialized(),
-                AdminKeyService.ensureInitialized(),
-                DeviceService.ensureInitialized()
+                ServicioEstudiantes.validateDataIntegrity().catch(() => ServicioEstudiantes.getStudentStats()),
+                ServicioConfiguracion.ensureInitialized(),
+                ServicioClavesAdministrativas.ensureInitialized(),
+                ServicioDispositivos.ensureInitialized()
             ]);
             console.log('✅ Recursos de base de datos verificados');
         } catch (error) {
@@ -56,15 +56,15 @@ class SystemService {
 
     static async createDefaultAdmin() {
         try {
-            const defaultAdmin = await AdminService.findByUsername('admin');
+            const defaultAdmin = await ServicioAdministracion.findByUsername('admin');
             if (defaultAdmin) {
                 console.log('✅ Administrador por defecto ya existe');
                 return defaultAdmin;
             }
 
             console.log('👤 Creando administrador por defecto...');
-            const newAdmin = await Admin.createDefault();
-            await AdminService.createAdmin({
+            const newAdmin = await Administrador.createDefault();
+            await ServicioAdministracion.createAdmin({
                 username: newAdmin.username,
                 password: newAdmin.password,
                 createdAt: newAdmin.createdAt,
@@ -84,11 +84,11 @@ class SystemService {
     static async getSystemStatus() {
         try {
             const [studentStats, adminStats, configData, adminKeys, devices, adminInfo] = await Promise.all([
-                StudentService.getStudentStats(),
-                AdminService.getAdminStats(),
-                ConfigService.getSystemConfig(),
-                AdminKeyService.getAllKeys(),
-                DeviceService.getAllDevices(),
+                ServicioEstudiantes.getStudentStats(),
+                ServicioAdministracion.getAdminStats(),
+                ServicioConfiguracion.getSystemConfig(),
+                ServicioClavesAdministrativas.getAllKeys(),
+                ServicioDispositivos.getAllDevices(),
                 this.checkAdminExists()
             ]);
 
@@ -170,12 +170,12 @@ class SystemService {
             await fsp.mkdir(backupDir, { recursive: true });
 
             const [students, attendances, admins, systemConfig, adminKeys, devices] = await Promise.all([
-                StudentService.getAllStudents().then(list => list.map(student => student.toJSON())),
-                AttendanceService.getAllAttendances().then(list => list.map(attendance => attendance.toJSON())),
-                AdminService.getAllAdmins().then(list => list.map(admin => admin.toJSON())),
-                ConfigService.getSystemConfig(),
-                AdminKeyService.getAllKeys(),
-                DeviceService.getAllDevices()
+                ServicioEstudiantes.getAllStudents().then(list => list.map(student => student.toJSON())),
+                ServicioAsistencias.getAllAttendances().then(list => list.map(attendance => attendance.toJSON())),
+                ServicioAdministracion.getAllAdmins().then(list => list.map(admin => admin.toJSON())),
+                ServicioConfiguracion.getSystemConfig(),
+                ServicioClavesAdministrativas.getAllKeys(),
+                ServicioDispositivos.getAllDevices()
             ]);
 
             const backupData = {
@@ -258,7 +258,7 @@ class SystemService {
 
     static async checkAdminExists() {
         try {
-            const admins = await AdminService.getAllAdmins();
+            const admins = await ServicioAdministracion.getAllAdmins();
             const defaultAdmin = admins.find(admin => admin.username === 'admin');
 
             return {
@@ -282,4 +282,4 @@ class SystemService {
     }
 }
 
-module.exports = SystemService;
+module.exports = ServicioSistema;

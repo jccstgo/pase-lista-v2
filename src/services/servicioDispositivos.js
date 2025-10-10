@@ -1,14 +1,14 @@
-const database = require('./databaseService');
+const servicioBaseDatos = require('./servicioBaseDatos');
 const { AppError } = require('../middleware/errorHandler');
 
-class DeviceService {
+class ServicioDispositivos {
     static async ensureInitialized() {
         return true;
     }
 
     static async getAllDevices() {
         try {
-            const rows = await database.all(
+            const rows = await servicioBaseDatos.all(
                 `SELECT device_fingerprint, matricula, first_registration, last_used, user_agent
                  FROM devices
                  ORDER BY last_used DESC`
@@ -38,7 +38,7 @@ class DeviceService {
             const userAgentValue = (userAgent || '').toString().trim();
             const timestamp = new Date().toISOString();
 
-            const row = await database.get(
+            const row = await servicioBaseDatos.get(
                 `INSERT INTO devices (device_fingerprint, matricula, first_registration, last_used, user_agent)
                  VALUES ($1, $2, $3, $3, $4)
                  ON CONFLICT (device_fingerprint) DO UPDATE SET
@@ -63,8 +63,8 @@ class DeviceService {
     }
 
     static async clearAllDevices() {
-        await database.run('DELETE FROM devices');
+        await servicioBaseDatos.run('DELETE FROM devices');
     }
 }
 
-module.exports = DeviceService;
+module.exports = ServicioDispositivos;

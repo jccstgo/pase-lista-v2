@@ -1,18 +1,18 @@
-const AdminService = require('../services/adminService');
+const ServicioAdministracion = require('../services/servicioAdministracion');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { verifyToken } = require('../middleware/auth');
 
-class AuthController {
+class ControladorAutenticacion {
     /**
      * Login de administrador
      * POST /api/auth/login
      */
-    static login = asyncHandler(async (req, res) => {
+    static iniciarSesion = asyncHandler(async (req, res) => {
         console.log('🔐 Intento de login de administrador');
         
         const { username, password } = req.body;
         
-        const result = await AdminService.authenticate(username, password);
+        const result = await ServicioAdministracion.authenticate(username, password);
         
         res.status(200).json({
             success: true,
@@ -30,7 +30,7 @@ class AuthController {
      * Verificar token válido
      * POST /api/auth/verify
      */
-    static verifyAuth = asyncHandler(async (req, res) => {
+    static verificarAutenticacion = asyncHandler(async (req, res) => {
         console.log('🔍 Verificación de token');
         
         const authHeader = req.headers.authorization;
@@ -57,7 +57,7 @@ class AuthController {
             const decoded = verifyToken(token);
             
             // Verificar que el usuario aún existe
-            const admin = await AdminService.findByUsername(decoded.username);
+            const admin = await ServicioAdministracion.findByUsername(decoded.username);
             
             if (!admin) {
                 return res.status(401).json({
@@ -112,7 +112,7 @@ class AuthController {
      * Renovar token
      * POST /api/auth/refresh
      */
-    static refreshToken = asyncHandler(async (req, res) => {
+    static renovarToken = asyncHandler(async (req, res) => {
         console.log('🔄 Renovación de token');
         
         const authHeader = req.headers.authorization;
@@ -138,7 +138,7 @@ class AuthController {
             const decoded = verifyToken(token);
             
             // Verificar que el usuario aún existe
-            const admin = await AdminService.findByUsername(decoded.username);
+            const admin = await ServicioAdministracion.findByUsername(decoded.username);
             
             if (!admin) {
                 return res.status(401).json({
@@ -179,7 +179,7 @@ class AuthController {
                 const hoursSinceExpired = (now - expiredTime) / (1000 * 60 * 60);
                 
                 if (hoursSinceExpired <= 24) { // Permitir renovación hasta 24h después de expirar
-                    const admin = await AdminService.findByUsername(expiredDecoded.username);
+                    const admin = await ServicioAdministracion.findByUsername(expiredDecoded.username);
                     
                     if (admin && !admin.isLocked()) {
                         const { generateToken } = require('../middleware/auth');
@@ -213,7 +213,7 @@ class AuthController {
      * Logout (invalidar token del lado del cliente)
      * POST /api/auth/logout
      */
-    static logout = asyncHandler(async (req, res) => {
+    static cerrarSesion = asyncHandler(async (req, res) => {
         console.log('👋 Logout de administrador');
         
         // En un sistema con JWT stateless, el logout se maneja del lado del cliente
@@ -232,7 +232,7 @@ class AuthController {
      * Cambiar contraseña con verificación de autenticación
      * POST /api/auth/change-password
      */
-    static changePassword = asyncHandler(async (req, res) => {
+    static cambiarContrasena = asyncHandler(async (req, res) => {
         console.log('🔐 Cambio de contraseña vía auth');
         
         const { currentPassword, newPassword } = req.body;
@@ -240,7 +240,7 @@ class AuthController {
         // El middleware de auth ya verificó el token y añadió req.admin
         const username = req.admin.username;
         
-        const result = await AdminService.changePassword(username, currentPassword, newPassword);
+        const result = await ServicioAdministracion.changePassword(username, currentPassword, newPassword);
         
         res.status(200).json({
             success: true,
@@ -257,11 +257,11 @@ class AuthController {
      * Obtener información de la sesión actual
      * GET /api/auth/session
      */
-    static getSession = asyncHandler(async (req, res) => {
+    static obtenerSesion = asyncHandler(async (req, res) => {
         console.log('📋 Información de sesión');
         
         const username = req.admin.username;
-        const admin = await AdminService.findByUsername(username);
+        const admin = await ServicioAdministracion.findByUsername(username);
         
         if (!admin) {
             return res.status(401).json({
@@ -302,7 +302,7 @@ class AuthController {
      * Validar fuerza de contraseña
      * POST /api/auth/validate-password
      */
-    static validatePassword = asyncHandler(async (req, res) => {
+    static validarContrasena = asyncHandler(async (req, res) => {
         console.log('🔍 Validación de contraseña');
         
         const { password } = req.body;
@@ -314,8 +314,8 @@ class AuthController {
             });
         }
         
-        const { Admin } = require('../models/Admin');
-        const validation = Admin.validatePasswordStrength(password);
+        const Administrador = require('../models/Administrador');
+        const validation = Administrador.validatePasswordStrength(password);
         
         res.status(200).json({
             success: true,
@@ -337,11 +337,11 @@ class AuthController {
      * Obtener intentos de login fallidos
      * GET /api/auth/login-attempts
      */
-    static getLoginAttempts = asyncHandler(async (req, res) => {
+    static obtenerIntentosInicioSesion = asyncHandler(async (req, res) => {
         console.log('🔍 Consulta de intentos de login');
         
         const username = req.admin.username;
-        const admin = await AdminService.findByUsername(username);
+        const admin = await ServicioAdministracion.findByUsername(username);
         
         if (!admin) {
             return res.status(401).json({
@@ -367,4 +367,4 @@ class AuthController {
     });
 }
 
-module.exports = AuthController;
+module.exports = ControladorAutenticacion;
