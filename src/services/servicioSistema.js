@@ -171,7 +171,7 @@ class ServicioSistema {
 
             const [students, attendances, admins, systemConfig, adminKeys, devices] = await Promise.all([
                 ServicioEstudiantes.getAllStudents().then(list => list.map(student => student.toJSON())),
-                ServicioAsistencias.getAllAttendances().then(list => list.map(attendance => attendance.toJSON())),
+                ServicioAsistencias.obtenerTodasLasAsistencias().then(list => list.map(asistencia => asistencia.toJSON())),
                 ServicioAdministracion.getAllAdmins().then(list => list.map(admin => admin.toJSON())),
                 ServicioConfiguracion.getSystemConfig(),
                 ServicioClavesAdministrativas.getAllKeys(),

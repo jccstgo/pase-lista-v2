@@ -17,7 +17,7 @@ class ControladorAdministracion {
         
         const { date } = req.query;
         
-        const stats = await ServicioAsistencias.getAttendanceStats(date);
+        const stats = await ServicioAsistencias.obtenerEstadisticasAsistencias(date);
         
         res.status(200).json({
             success: true,
@@ -34,7 +34,7 @@ class ControladorAdministracion {
         
         const { date } = req.query;
         
-        const detailedList = await ServicioAsistencias.getDetailedAttendanceList(date);
+        const detailedList = await ServicioAsistencias.obtenerListaDetalladaAsistencias(date);
         
         res.status(200).json({
             success: true,
@@ -54,7 +54,7 @@ class ControladorAdministracion {
         const result = await ServicioEstudiantes.updateStudentsList(students);
 
         // Limpiar registros de asistencia al subir nueva lista
-        await ServicioAsistencias.clearAttendanceRecords();
+        await ServicioAsistencias.limpiarRegistrosAsistencias();
         await ServicioDispositivos.clearAllDevices();
 
         res.status(200).json({
@@ -78,7 +78,7 @@ class ControladorAdministracion {
         console.log('🧹 Petición de limpieza de estudiantes');
 
         const result = await ServicioEstudiantes.clearAllStudents();
-        await ServicioAsistencias.clearAttendanceRecords();
+        await ServicioAsistencias.limpiarRegistrosAsistencias();
         await ServicioDispositivos.clearAllDevices();
 
         res.status(200).json({
@@ -328,7 +328,7 @@ class ControladorAdministracion {
     static validarIntegridadAsistencias = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de asistencias');
         
-        const validation = await ServicioAsistencias.validateAttendanceIntegrity();
+        const validation = await ServicioAsistencias.validarIntegridadAsistencias();
         
         res.status(200).json({
             success: true,
@@ -358,7 +358,7 @@ class ControladorAdministracion {
     static limpiarRegistrosAsistencia = manejadorAsincrono(async (req, res) => {
         console.log('🧹 Petición de limpieza de registros de asistencia');
         
-        await ServicioAsistencias.clearAttendanceRecords();
+        await ServicioAsistencias.limpiarRegistrosAsistencias();
         
         res.status(200).json({
             success: true,
@@ -377,7 +377,7 @@ class ControladorAdministracion {
         
         // Obtener todos los datos
         const students = await ServicioEstudiantes.getAllStudents();
-        const attendances = await ServicioAsistencias.getAllAttendances();
+        const attendances = await ServicioAsistencias.obtenerTodasLasAsistencias();
         const systemStatus = await ServicioSistema.getSystemStatus();
         
         const exportData = {
@@ -435,7 +435,7 @@ class ControladorAdministracion {
         // Obtener datos
         const [studentStats, attendanceReport, systemStatus] = await Promise.all([
             ServicioEstudiantes.getStudentStats(),
-            ServicioAsistencias.getAttendanceReport(startDate, endDate),
+            ServicioAsistencias.obtenerReporteAsistencias(startDate, endDate),
             ServicioSistema.getSystemStatus()
         ]);
         
@@ -495,7 +495,7 @@ class ControladorAdministracion {
         console.log('⚡ Petición de métricas en tiempo real');
         
         const [todayStats, systemStatus] = await Promise.all([
-            ServicioAsistencias.getAttendanceStats(),
+            ServicioAsistencias.obtenerEstadisticasAsistencias(),
             ServicioSistema.getSystemStatus()
         ]);
         

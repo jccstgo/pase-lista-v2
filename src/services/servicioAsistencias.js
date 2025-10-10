@@ -6,7 +6,7 @@ const ServicioDispositivos = require('./servicioDispositivos');
 const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
 class ServicioAsistencias {
-    static mapRowToAttendance(row) {
+    static mapearFilaAAsistencia(row) {
         return Asistencia.fromDatabaseRow({
             ...row,
             timestamp: row?.recorded_at,
@@ -14,7 +14,7 @@ class ServicioAsistencias {
         });
     }
 
-    static async getAllAttendances() {
+    static async obtenerTodasLasAsistencias() {
         try {
             const rows = await servicioBaseDatos.all(`
                 SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
@@ -22,9 +22,9 @@ class ServicioAsistencias {
                 ORDER BY recorded_at DESC
             `);
 
-            const attendances = rows.map(row => this.mapRowToAttendance(row));
-            console.log(`📝 Cargadas ${attendances.length} asistencias desde la base de datos`);
-            return attendances;
+            const asistencias = rows.map(row => this.mapearFilaAAsistencia(row));
+            console.log(`📝 Cargadas ${asistencias.length} asistencias desde la base de datos`);
+            return asistencias;
         } catch (error) {
             console.error('❌ Error obteniendo asistencias:', error);
             if (error instanceof ErrorAplicacion) {
@@ -34,22 +34,22 @@ class ServicioAsistencias {
         }
     }
 
-    static async registerAttendance(attendanceRequest) {
+    static async registrarAsistencia(solicitudAsistencia) {
         try {
-            const request = typeof attendanceRequest === 'object' && attendanceRequest !== null
-                ? attendanceRequest
-                : { matricula: attendanceRequest };
+            const solicitud = typeof solicitudAsistencia === 'object' && solicitudAsistencia !== null
+                ? solicitudAsistencia
+                : { matricula: solicitudAsistencia };
 
-            if (!request.matricula) {
+            if (!solicitud.matricula) {
                 throw new ErrorAplicacion('Matrícula es requerida', 400, 'MISSING_MATRICULA');
             }
 
-            const cleanMatricula = request.matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
-            console.log(`📝 Registrando asistencia para: ${cleanMatricula}`);
+            const matriculaNormalizada = solicitud.matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
+            console.log(`📝 Registrando asistencia para: ${matriculaNormalizada}`);
 
-            const student = await ServicioEstudiantes.findByMatricula(cleanMatricula);
+            const estudiante = await ServicioEstudiantes.findByMatricula(matriculaNormalizada);
 
-            if (!student) {
+            if (!estudiante) {
                 throw new ErrorAplicacion(
                     config.MESSAGES.ERROR.STUDENT_NOT_FOUND,
                     404,
@@ -57,19 +57,19 @@ class ServicioAsistencias {
                 );
             }
 
-            const attendanceDate = new Date().toISOString().split('T')[0];
-            const existingAttendance = await servicioBaseDatos.get(
+            const fechaAsistencia = new Date().toISOString().split('T')[0];
+            const asistenciaExistente = await servicioBaseDatos.get(
                 `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE matricula = $1 AND attendance_date = $2`,
-                [cleanMatricula, attendanceDate]
+                [matriculaNormalizada, fechaAsistencia]
             );
 
-            if (existingAttendance) {
-                const attendance = this.mapRowToAttendance(existingAttendance);
-                const timeStr = attendance.getFormattedTime();
+            if (asistenciaExistente) {
+                const asistenciaRegistrada = this.mapearFilaAAsistencia(asistenciaExistente);
+                const horaFormateada = asistenciaRegistrada.getFormattedTime();
                 throw new ErrorAplicacion(
-                    `Ya se registró su asistencia hoy a las ${timeStr}`,
+                    `Ya se registró su asistencia hoy a las ${horaFormateada}`,
                     409,
                     'ALREADY_REGISTERED_TODAY'
                 );
@@ -81,30 +81,30 @@ class ServicioAsistencias {
                  VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
                  RETURNING id, matricula, nombre, grupo, attendance_date, recorded_at, status`,
                 [
-                    student.matricula,
-                    student.nombre,
-                    student.grupo,
-                    attendanceDate,
+                    estudiante.matricula,
+                    estudiante.nombre,
+                    estudiante.grupo,
+                    fechaAsistencia,
                     timestamp,
                     'registered'
                 ]
             );
 
-            const attendance = this.mapRowToAttendance(inserted);
+            const asistencia = this.mapearFilaAAsistencia(inserted);
 
             await ServicioDispositivos.registerDeviceUsage({
-                matricula: student.matricula,
-                deviceFingerprint: request.deviceFingerprint,
-                userAgent: request.userAgent
+                matricula: estudiante.matricula,
+                deviceFingerprint: solicitud.deviceFingerprint,
+                userAgent: solicitud.userAgent
             });
 
-            console.log(`✅ Asistencia registrada: ${student.nombre} (${cleanMatricula})`);
+            console.log(`✅ Asistencia registrada: ${estudiante.nombre} (${matriculaNormalizada})`);
 
             return {
                 success: true,
-                message: `¡Asistencia registrada exitosamente!<br>Grado y Nombre: <strong>${student.nombre}</strong><br>Grupo: <strong>${student.grupo}</strong>`,
-                attendance: attendance.toJSON(),
-                student: student.toJSON()
+                message: `¡Asistencia registrada exitosamente!<br>Grado y Nombre: <strong>${estudiante.nombre}</strong><br>Grupo: <strong>${estudiante.grupo}</strong>`,
+                attendance: asistencia.toJSON(),
+                student: estudiante.toJSON()
             };
         } catch (error) {
             console.error('❌ Error registrando asistencia:', error);
@@ -122,37 +122,37 @@ class ServicioAsistencias {
         }
     }
 
-    static async findTodayAttendance(matricula) {
+    static async buscarAsistenciaDeHoy(matricula) {
         try {
-            const cleanMatricula = matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
-            const today = new Date().toISOString().split('T')[0];
+            const matriculaNormalizada = matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
+            const fechaHoy = new Date().toISOString().split('T')[0];
 
             const row = await servicioBaseDatos.get(
                 `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE matricula = $1 AND attendance_date = $2`,
-                [cleanMatricula, today]
+                [matriculaNormalizada, fechaHoy]
             );
 
-            return row ? this.mapRowToAttendance(row) : null;
+            return row ? this.mapearFilaAAsistencia(row) : null;
         } catch (error) {
             console.error('❌ Error buscando asistencia del día:', error);
             throw new ErrorAplicacion('Error al buscar asistencia', 500, 'ATTENDANCE_SEARCH_ERROR');
         }
     }
 
-    static async getAttendancesByDate(date = null) {
+    static async obtenerAsistenciasPorFecha(fecha = null) {
         try {
-            const targetDate = date || new Date().toISOString().split('T')[0];
+            const fechaObjetivo = fecha || new Date().toISOString().split('T')[0];
             const rows = await servicioBaseDatos.all(
                 `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE attendance_date = $1
                  ORDER BY recorded_at ASC`,
-                [targetDate]
+                [fechaObjetivo]
             );
 
-            return rows.map(row => this.mapRowToAttendance(row));
+            return rows.map(row => this.mapearFilaAAsistencia(row));
         } catch (error) {
             console.error('❌ Error obteniendo asistencias por fecha:', error);
             if (error instanceof ErrorAplicacion) {
@@ -162,36 +162,36 @@ class ServicioAsistencias {
         }
     }
 
-    static async getAttendanceStats(date = null) {
+    static async obtenerEstadisticasAsistencias(fecha = null) {
         try {
-            const students = await ServicioEstudiantes.getAllStudents();
-            const targetDate = date || new Date().toISOString().split('T')[0];
-            const attendances = await this.getAttendancesByDate(targetDate);
+            const estudiantes = await ServicioEstudiantes.getAllStudents();
+            const fechaObjetivo = fecha || new Date().toISOString().split('T')[0];
+            const asistencias = await this.obtenerAsistenciasPorFecha(fechaObjetivo);
 
-            const presentRegistered = attendances.filter(a => a.status === 'registered');
-            const presentMatriculas = new Set(presentRegistered.map(a => a.matricula));
-            const absentStudents = students.filter(s => !presentMatriculas.has(s.matricula));
+            const presentesRegistrados = asistencias.filter(asistencia => asistencia.status === 'registered');
+            const matriculasPresentes = new Set(presentesRegistrados.map(asistencia => asistencia.matricula));
+            const estudiantesAusentes = estudiantes.filter(estudiante => !matriculasPresentes.has(estudiante.matricula));
 
-            const stats = {
-                date: targetDate,
-                totalStudents: students.length,
-                presentRegistered: presentRegistered.length,
+            const estadisticas = {
+                date: fechaObjetivo,
+                totalStudents: estudiantes.length,
+                presentRegistered: presentesRegistrados.length,
                 presentNotInList: 0,
-                absent: absentStudents.length,
-                totalPresent: presentRegistered.length,
-                attendanceRate: students.length > 0 ? ((presentRegistered.length / students.length) * 100).toFixed(1) : 0,
-                byGroup: this.getStatsByGroup(students, presentRegistered),
+                absent: estudiantesAusentes.length,
+                totalPresent: presentesRegistrados.length,
+                attendanceRate: estudiantes.length > 0 ? ((presentesRegistrados.length / estudiantes.length) * 100).toFixed(1) : 0,
+                byGroup: this.obtenerEstadisticasPorGrupo(estudiantes, presentesRegistrados),
                 lastUpdate: new Date().toISOString()
             };
 
-            console.log(`📊 Estadísticas calculadas para ${targetDate}:`, {
-                total: stats.totalStudents,
-                present: stats.presentRegistered,
-                absent: stats.absent,
-                rate: `${stats.attendanceRate}%`
+            console.log(`📊 Estadísticas calculadas para ${fechaObjetivo}:`, {
+                total: estadisticas.totalStudents,
+                present: estadisticas.presentRegistered,
+                absent: estadisticas.absent,
+                rate: `${estadisticas.attendanceRate}%`
             });
 
-            return stats;
+            return estadisticas;
         } catch (error) {
             console.error('❌ Error calculando estadísticas:', error);
             if (error instanceof ErrorAplicacion) {
@@ -201,80 +201,82 @@ class ServicioAsistencias {
         }
     }
 
-    static getStatsByGroup(students, attendances) {
-        const groupStats = {};
+    static obtenerEstadisticasPorGrupo(estudiantes, asistencias) {
+        const estadisticasPorGrupo = {};
 
-        students.forEach(student => {
-            if (!groupStats[student.grupo]) {
-                groupStats[student.grupo] = {
+        estudiantes.forEach(estudiante => {
+            if (!estadisticasPorGrupo[estudiante.grupo]) {
+                estadisticasPorGrupo[estudiante.grupo] = {
                     total: 0,
                     present: 0,
                     absent: 0,
                     attendanceRate: 0
                 };
             }
-            groupStats[student.grupo].total++;
+            estadisticasPorGrupo[estudiante.grupo].total++;
         });
 
-        attendances.forEach(attendance => {
-            if (groupStats[attendance.grupo]) {
-                groupStats[attendance.grupo].present++;
+        asistencias.forEach(asistencia => {
+            if (estadisticasPorGrupo[asistencia.grupo]) {
+                estadisticasPorGrupo[asistencia.grupo].present++;
             }
         });
 
-        Object.keys(groupStats).forEach(grupo => {
-            const stats = groupStats[grupo];
-            stats.absent = stats.total - stats.present;
-            stats.attendanceRate = stats.total > 0 ? ((stats.present / stats.total) * 100).toFixed(1) : 0;
+        Object.keys(estadisticasPorGrupo).forEach(grupo => {
+            const resumenGrupo = estadisticasPorGrupo[grupo];
+            resumenGrupo.absent = resumenGrupo.total - resumenGrupo.present;
+            resumenGrupo.attendanceRate = resumenGrupo.total > 0
+                ? ((resumenGrupo.present / resumenGrupo.total) * 100).toFixed(1)
+                : 0;
         });
 
-        return groupStats;
+        return estadisticasPorGrupo;
     }
 
-    static async getDetailedAttendanceList(date = null) {
+    static async obtenerListaDetalladaAsistencias(fecha = null) {
         try {
-            const students = await ServicioEstudiantes.getAllStudents();
-            const targetDate = date || new Date().toISOString().split('T')[0];
-            const attendances = await this.getAttendancesByDate(targetDate);
+            const estudiantes = await ServicioEstudiantes.getAllStudents();
+            const fechaObjetivo = fecha || new Date().toISOString().split('T')[0];
+            const asistencias = await this.obtenerAsistenciasPorFecha(fechaObjetivo);
 
-            const presentRegistered = attendances
-                .filter(a => a.status === 'registered')
-                .map(attendance => ({
-                    matricula: attendance.matricula,
-                    nombre: attendance.nombre,
-                    grupo: attendance.grupo,
-                    timestamp: attendance.timestamp,
+            const presentesRegistrados = asistencias
+                .filter(asistencia => asistencia.status === 'registered')
+                .map(asistencia => ({
+                    matricula: asistencia.matricula,
+                    nombre: asistencia.nombre,
+                    grupo: asistencia.grupo,
+                    timestamp: asistencia.timestamp,
                     status: 'Presente (En lista)',
-                    formattedTime: attendance.getFormattedTime()
+                    formattedTime: asistencia.getFormattedTime()
                 }));
 
-            const presentMatriculas = new Set(attendances.map(a => a.matricula));
-            const absent = students
-                .filter(s => !presentMatriculas.has(s.matricula))
-                .map(student => ({
-                    matricula: student.matricula,
-                    nombre: student.nombre,
-                    grupo: student.grupo,
+            const matriculasPresentes = new Set(asistencias.map(asistencia => asistencia.matricula));
+            const ausentes = estudiantes
+                .filter(estudiante => !matriculasPresentes.has(estudiante.matricula))
+                .map(estudiante => ({
+                    matricula: estudiante.matricula,
+                    nombre: estudiante.nombre,
+                    grupo: estudiante.grupo,
                     timestamp: null,
                     status: 'Ausente',
                     formattedTime: '-'
                 }));
 
             return {
-                date: targetDate,
-                formattedDate: new Date(targetDate).toLocaleDateString('es-MX', {
+                date: fechaObjetivo,
+                formattedDate: new Date(fechaObjetivo).toLocaleDateString('es-MX', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
                 }),
-                presentRegistered: presentRegistered.sort((a, b) => a.nombre.localeCompare(b.nombre)),
+                presentRegistered: presentesRegistrados.sort((a, b) => a.nombre.localeCompare(b.nombre)),
                 presentNotInList: [],
-                absent: absent.sort((a, b) => a.nombre.localeCompare(b.nombre)),
+                absent: ausentes.sort((a, b) => a.nombre.localeCompare(b.nombre)),
                 summary: {
-                    totalStudents: students.length,
-                    present: presentRegistered.length,
-                    absent: absent.length,
-                    attendanceRate: students.length > 0 ? ((presentRegistered.length / students.length) * 100).toFixed(1) : 0
+                    totalStudents: estudiantes.length,
+                    present: presentesRegistrados.length,
+                    absent: ausentes.length,
+                    attendanceRate: estudiantes.length > 0 ? ((presentesRegistrados.length / estudiantes.length) * 100).toFixed(1) : 0
                 }
             };
         } catch (error) {
@@ -286,7 +288,7 @@ class ServicioAsistencias {
         }
     }
 
-    static async clearAttendanceRecords() {
+    static async limpiarRegistrosAsistencias() {
         try {
             const result = await servicioBaseDatos.run('DELETE FROM attendances');
             console.log('🧹 Registros de asistencia limpiados en la base de datos');
@@ -297,78 +299,78 @@ class ServicioAsistencias {
         }
     }
 
-    static async getAttendanceReport(startDate, endDate) {
+    static async obtenerReporteAsistencias(fechaInicio, fechaFin) {
         try {
             const rows = await servicioBaseDatos.all(
                 `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE attendance_date BETWEEN $1 AND $2
                  ORDER BY attendance_date ASC, recorded_at ASC`,
-                [startDate, endDate]
+                [fechaInicio, fechaFin]
             );
 
-            const attendances = rows.map(row => this.mapRowToAttendance(row));
-            const students = await ServicioEstudiantes.getAllStudents();
+            const asistencias = rows.map(row => this.mapearFilaAAsistencia(row));
+            const estudiantes = await ServicioEstudiantes.getAllStudents();
 
-            const reportAttendances = attendances;
-            const dailyStats = {};
-            const studentAttendance = {};
+            const asistenciasReporte = asistencias;
+            const estadisticasDiarias = {};
+            const asistenciaPorEstudiante = {};
 
-            students.forEach(student => {
-                studentAttendance[student.matricula] = {
-                    student: student.toJSON(),
+            estudiantes.forEach(estudiante => {
+                asistenciaPorEstudiante[estudiante.matricula] = {
+                    student: estudiante.toJSON(),
                     daysPresent: 0,
                     daysAbsent: 0,
                     attendanceDates: []
                 };
             });
 
-            const currentDate = new Date(startDate);
-            const endDateObj = new Date(endDate);
+            const fechaActual = new Date(fechaInicio);
+            const fechaFinObjeto = new Date(fechaFin);
 
-            while (currentDate <= endDateObj) {
-                const dateStr = currentDate.toISOString().split('T')[0];
-                const dayAttendances = reportAttendances.filter(a => a.date === dateStr);
+            while (fechaActual <= fechaFinObjeto) {
+                const fechaCadena = fechaActual.toISOString().split('T')[0];
+                const asistenciasDelDia = asistenciasReporte.filter(asistencia => asistencia.date === fechaCadena);
 
-                dailyStats[dateStr] = {
-                    date: dateStr,
-                    present: dayAttendances.length,
-                    absent: students.length - dayAttendances.length,
-                    attendanceRate: students.length > 0 ? ((dayAttendances.length / students.length) * 100).toFixed(1) : 0
+                estadisticasDiarias[fechaCadena] = {
+                    date: fechaCadena,
+                    present: asistenciasDelDia.length,
+                    absent: estudiantes.length - asistenciasDelDia.length,
+                    attendanceRate: estudiantes.length > 0 ? ((asistenciasDelDia.length / estudiantes.length) * 100).toFixed(1) : 0
                 };
 
-                const presentToday = new Set(dayAttendances.map(a => a.matricula));
+                const presentesHoy = new Set(asistenciasDelDia.map(asistencia => asistencia.matricula));
 
-                students.forEach(student => {
-                    if (presentToday.has(student.matricula)) {
-                        studentAttendance[student.matricula].daysPresent++;
-                        studentAttendance[student.matricula].attendanceDates.push(dateStr);
+                estudiantes.forEach(estudiante => {
+                    if (presentesHoy.has(estudiante.matricula)) {
+                        asistenciaPorEstudiante[estudiante.matricula].daysPresent++;
+                        asistenciaPorEstudiante[estudiante.matricula].attendanceDates.push(fechaCadena);
                     } else {
-                        studentAttendance[student.matricula].daysAbsent++;
+                        asistenciaPorEstudiante[estudiante.matricula].daysAbsent++;
                     }
                 });
 
-                currentDate.setDate(currentDate.getDate() + 1);
+                fechaActual.setDate(fechaActual.getDate() + 1);
             }
 
-            const totalDays = Object.keys(dailyStats).length;
+            const totalDias = Object.keys(estadisticasDiarias).length;
 
             return {
                 period: {
-                    startDate,
-                    endDate,
-                    totalDays
+                    startDate: fechaInicio,
+                    endDate: fechaFin,
+                    totalDays: totalDias
                 },
                 summary: {
-                    totalStudents: students.length,
-                    avgDailyAttendance: totalDays > 0 ? (Object.values(dailyStats).reduce((sum, day) => sum + day.present, 0) / totalDays).toFixed(1) : 0,
-                    avgAttendanceRate: totalDays > 0 ? (Object.values(dailyStats).reduce((sum, day) => sum + parseFloat(day.attendanceRate), 0) / totalDays).toFixed(1) : 0
+                    totalStudents: estudiantes.length,
+                    avgDailyAttendance: totalDias > 0 ? (Object.values(estadisticasDiarias).reduce((suma, dia) => suma + dia.present, 0) / totalDias).toFixed(1) : 0,
+                    avgAttendanceRate: totalDias > 0 ? (Object.values(estadisticasDiarias).reduce((suma, dia) => suma + parseFloat(dia.attendanceRate), 0) / totalDias).toFixed(1) : 0
                 },
-                dailyStats,
-                studentAttendance: Object.values(studentAttendance)
-                    .map(record => ({
-                        ...record,
-                        attendanceRate: totalDays > 0 ? ((record.daysPresent / totalDays) * 100).toFixed(1) : 0
+                dailyStats: estadisticasDiarias,
+                studentAttendance: Object.values(asistenciaPorEstudiante)
+                    .map(registro => ({
+                        ...registro,
+                        attendanceRate: totalDias > 0 ? ((registro.daysPresent / totalDias) * 100).toFixed(1) : 0
                     }))
                     .sort((a, b) => b.attendanceRate - a.attendanceRate)
             };
@@ -381,23 +383,23 @@ class ServicioAsistencias {
         }
     }
 
-    static async getStudentAttendanceHistory(matricula, limit = 30) {
+    static async obtenerHistorialAsistenciasEstudiante(matricula, limite = 30) {
         try {
-            const cleanMatricula = matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
+            const matriculaNormalizada = matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
             const rows = await servicioBaseDatos.all(
                 `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE matricula = $1
                  ORDER BY recorded_at DESC
                  LIMIT $2`,
-                [cleanMatricula, limit]
+                [matriculaNormalizada, limite]
             );
 
-            const studentAttendances = rows.map(row => this.mapRowToAttendance(row));
+            const asistenciasEstudiante = rows.map(row => this.mapearFilaAAsistencia(row));
 
-            if (studentAttendances.length === 0) {
+            if (asistenciasEstudiante.length === 0) {
                 return {
-                    matricula: cleanMatricula,
+                    matricula: matriculaNormalizada,
                     attendances: [],
                     summary: {
                         totalRecords: 0,
@@ -408,14 +410,14 @@ class ServicioAsistencias {
             }
 
             const summary = {
-                totalRecords: studentAttendances.length,
-                lastAttendance: studentAttendances[0].toJSON(),
-                averageAttendanceTime: this.calculateAverageTime(studentAttendances)
+                totalRecords: asistenciasEstudiante.length,
+                lastAttendance: asistenciasEstudiante[0].toJSON(),
+                averageAttendanceTime: this.calcularTiempoPromedio(asistenciasEstudiante)
             };
 
             return {
-                matricula: cleanMatricula,
-                attendances: studentAttendances.map(a => a.toJSON()),
+                matricula: matriculaNormalizada,
+                attendances: asistenciasEstudiante.map(asistencia => asistencia.toJSON()),
                 summary
             };
         } catch (error) {
@@ -427,94 +429,94 @@ class ServicioAsistencias {
         }
     }
 
-    static calculateAverageTime(attendances) {
-        if (attendances.length === 0) return null;
+    static calcularTiempoPromedio(asistencias) {
+        if (asistencias.length === 0) return null;
 
-        let totalMinutes = 0;
-        let validRecords = 0;
+        let minutosTotales = 0;
+        let registrosValidos = 0;
 
-        attendances.forEach(attendance => {
-            const time = new Date(attendance.timestamp);
-            if (!isNaN(time.getTime())) {
-                const minutes = time.getHours() * 60 + time.getMinutes();
-                totalMinutes += minutes;
-                validRecords++;
+        asistencias.forEach(asistencia => {
+            const hora = new Date(asistencia.timestamp);
+            if (!isNaN(hora.getTime())) {
+                const minutos = hora.getHours() * 60 + hora.getMinutes();
+                minutosTotales += minutos;
+                registrosValidos++;
             }
         });
 
-        if (validRecords === 0) return null;
+        if (registrosValidos === 0) return null;
 
-        const avgMinutes = Math.round(totalMinutes / validRecords);
-        const hours = Math.floor(avgMinutes / 60);
-        const minutes = avgMinutes % 60;
+        const minutosPromedio = Math.round(minutosTotales / registrosValidos);
+        const horas = Math.floor(minutosPromedio / 60);
+        const minutosRestantes = minutosPromedio % 60;
 
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        return `${horas.toString().padStart(2, '0')}:${minutosRestantes.toString().padStart(2, '0')}`;
     }
 
-    static async validateAttendanceIntegrity() {
+    static async validarIntegridadAsistencias() {
         try {
-            const [attendances, students] = await Promise.all([
-                this.getAllAttendances(),
+            const [asistencias, estudiantes] = await Promise.all([
+                this.obtenerTodasLasAsistencias(),
                 ServicioEstudiantes.getAllStudents()
             ]);
-            const issues = [];
+            const incidencias = [];
 
-            const dailyRecords = new Map();
-            attendances.forEach((attendance, index) => {
-                const key = `${attendance.matricula}-${attendance.date}`;
-                if (dailyRecords.has(key)) {
-                    issues.push({
+            const registrosDiarios = new Map();
+            asistencias.forEach((asistencia, indice) => {
+                const clave = `${asistencia.matricula}-${asistencia.date}`;
+                if (registrosDiarios.has(clave)) {
+                    incidencias.push({
                         type: 'DUPLICATE_DAILY_RECORD',
-                        message: `Registro duplicado para ${attendance.matricula} en ${attendance.date}`,
-                        indices: [dailyRecords.get(key), index],
-                        data: attendance.toJSON()
+                        message: `Registro duplicado para ${asistencia.matricula} en ${asistencia.date}`,
+                        indices: [registrosDiarios.get(clave), indice],
+                        data: asistencia.toJSON()
                     });
                 } else {
-                    dailyRecords.set(key, index);
+                    registrosDiarios.set(clave, indice);
                 }
             });
 
-            const validMatriculas = new Set(students.map(s => s.matricula));
-            attendances.forEach((attendance, index) => {
-                if (!validMatriculas.has(attendance.matricula)) {
-                    issues.push({
+            const matriculasValidas = new Set(estudiantes.map(estudiante => estudiante.matricula));
+            asistencias.forEach((asistencia, indice) => {
+                if (!matriculasValidas.has(asistencia.matricula)) {
+                    incidencias.push({
                         type: 'ORPHANED_RECORD',
-                        message: `Asistencia registrada para matrícula no existente: ${attendance.matricula}`,
-                        index,
-                        data: attendance.toJSON()
+                        message: `Asistencia registrada para matrícula no existente: ${asistencia.matricula}`,
+                        index: indice,
+                        data: asistencia.toJSON()
                     });
                 }
             });
 
-            attendances.forEach((attendance, index) => {
-                if (isNaN(new Date(attendance.timestamp).getTime())) {
-                    issues.push({
+            asistencias.forEach((asistencia, indice) => {
+                if (isNaN(new Date(asistencia.timestamp).getTime())) {
+                    incidencias.push({
                         type: 'INVALID_TIMESTAMP',
-                        message: `Timestamp inválido en registro ${index + 1}: ${attendance.timestamp}`,
-                        index,
-                        data: attendance.toJSON()
+                        message: `Timestamp inválido en registro ${indice + 1}: ${asistencia.timestamp}`,
+                        index: indice,
+                        data: asistencia.toJSON()
                     });
                 }
             });
 
             const now = new Date();
-            attendances.forEach((attendance, index) => {
-                const attendanceDate = new Date(attendance.timestamp);
-                if (attendanceDate > now) {
-                    issues.push({
+            asistencias.forEach((asistencia, indice) => {
+                const fechaAsistencia = new Date(asistencia.timestamp);
+                if (fechaAsistencia > now) {
+                    incidencias.push({
                         type: 'FUTURE_RECORD',
-                        message: `Registro con fecha futura: ${attendance.timestamp}`,
-                        index,
-                        data: attendance.toJSON()
+                        message: `Registro con fecha futura: ${asistencia.timestamp}`,
+                        index: indice,
+                        data: asistencia.toJSON()
                     });
                 }
             });
 
             return {
-                isValid: issues.length === 0,
-                totalRecords: attendances.length,
-                validStudentReferences: attendances.length - issues.filter(i => i.type === 'ORPHANED_RECORD').length,
-                issues,
+                isValid: incidencias.length === 0,
+                totalRecords: asistencias.length,
+                validStudentReferences: asistencias.length - incidencias.filter(i => i.type === 'ORPHANED_RECORD').length,
+                issues: incidencias,
                 timestamp: new Date().toISOString()
             };
         } catch (error) {
@@ -523,23 +525,23 @@ class ServicioAsistencias {
         }
     }
 
-    static async exportAttendanceData(format = 'json', startDate = null, endDate = null) {
+    static async exportarDatosAsistencias(formato = 'json', fechaInicio = null, fechaFin = null) {
         try {
             const conditions = [];
             const values = [];
             let paramIndex = 1;
 
-            if (startDate && endDate) {
+            if (fechaInicio && fechaFin) {
                 conditions.push(`attendance_date BETWEEN $${paramIndex} AND $${paramIndex + 1}`);
-                values.push(startDate, endDate);
+                values.push(fechaInicio, fechaFin);
                 paramIndex += 2;
-            } else if (startDate) {
+            } else if (fechaInicio) {
                 conditions.push(`attendance_date >= $${paramIndex}`);
-                values.push(startDate);
+                values.push(fechaInicio);
                 paramIndex += 1;
-            } else if (endDate) {
+            } else if (fechaFin) {
                 conditions.push(`attendance_date <= $${paramIndex}`);
-                values.push(endDate);
+                values.push(fechaFin);
                 paramIndex += 1;
             }
 
@@ -553,27 +555,27 @@ class ServicioAsistencias {
                 values
             );
 
-            const attendances = rows.map(row => this.mapRowToAttendance(row));
+            const asistencias = rows.map(row => this.mapearFilaAAsistencia(row));
 
             const exportData = {
                 exportDate: new Date().toISOString(),
-                period: startDate && endDate ? { startDate, endDate } : 'all',
-                totalRecords: attendances.length,
-                data: attendances.map(a => a.toJSON())
+                period: fechaInicio && fechaFin ? { startDate: fechaInicio, endDate: fechaFin } : 'all',
+                totalRecords: asistencias.length,
+                data: asistencias.map(asistencia => asistencia.toJSON())
             };
 
-            switch (format.toLowerCase()) {
+            switch (formato.toLowerCase()) {
                 case 'json':
                     return JSON.stringify(exportData, null, 2);
                 case 'csv': {
                     const csvHeaders = ['Matricula', 'Nombre', 'Grupo', 'Fecha', 'Hora', 'Status'];
-                    const csvRows = attendances.map(a => [
-                        a.matricula,
-                        a.nombre,
-                        a.grupo,
-                        a.date,
-                        a.getFormattedTime(),
-                        a.status
+                    const csvRows = asistencias.map(asistencia => [
+                        asistencia.matricula,
+                        asistencia.nombre,
+                        asistencia.grupo,
+                        asistencia.date,
+                        asistencia.getFormattedTime(),
+                        asistencia.status
                     ]);
 
                     return [

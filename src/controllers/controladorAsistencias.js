@@ -11,7 +11,7 @@ class ControladorAsistencias {
         
         const { matricula, deviceFingerprint } = req.body;
 
-        const result = await ServicioAsistencias.registerAttendance({
+        const result = await ServicioAsistencias.registrarAsistencia({
             matricula,
             deviceFingerprint,
             userAgent: req.headers['user-agent'] || ''
@@ -35,14 +35,14 @@ class ControladorAsistencias {
     static obtenerAsistenciasDeHoy = manejadorAsincrono(async (req, res) => {
         console.log('📋 Petición de asistencias del día');
         
-        const attendances = await ServicioAsistencias.getAttendancesByDate();
+        const asistencias = await ServicioAsistencias.obtenerAsistenciasPorFecha();
         
         res.status(200).json({
             success: true,
             data: {
                 date: new Date().toISOString().split('T')[0],
-                attendances: attendances.map(a => a.toJSON()),
-                total: attendances.length
+                attendances: asistencias.map(asistencia => asistencia.toJSON()),
+                total: asistencias.length
             }
         });
     });
@@ -64,14 +64,14 @@ class ControladorAsistencias {
             });
         }
         
-        const attendances = await ServicioAsistencias.getAttendancesByDate(date);
+        const asistencias = await ServicioAsistencias.obtenerAsistenciasPorFecha(date);
         
         res.status(200).json({
             success: true,
             data: {
                 date,
-                attendances: attendances.map(a => a.toJSON()),
-                total: attendances.length
+                attendances: asistencias.map(asistencia => asistencia.toJSON()),
+                total: asistencias.length
             }
         });
     });
@@ -85,14 +85,14 @@ class ControladorAsistencias {
         
         console.log(`🔍 Verificando asistencia del día para: ${matricula}`);
         
-        const attendance = await ServicioAsistencias.findTodayAttendance(matricula);
+        const asistencia = await ServicioAsistencias.buscarAsistenciaDeHoy(matricula);
         
         res.status(200).json({
             success: true,
             data: {
                 matricula,
-                hasAttended: !!attendance,
-                attendance: attendance ? attendance.toJSON() : null,
+                hasAttended: !!asistencia,
+                attendance: asistencia ? asistencia.toJSON() : null,
                 date: new Date().toISOString().split('T')[0]
             }
         });
@@ -116,7 +116,7 @@ class ControladorAsistencias {
             });
         }
         
-        const stats = await ServicioAsistencias.getAttendanceStats(date);
+        const stats = await ServicioAsistencias.obtenerEstadisticasAsistencias(date);
         
         res.status(200).json({
             success: true,
@@ -143,7 +143,7 @@ class ControladorAsistencias {
             });
         }
         
-        const history = await ServicioAsistencias.getStudentAttendanceHistory(matricula, parsedLimit);
+        const history = await ServicioAsistencias.obtenerHistorialAsistenciasEstudiante(matricula, parsedLimit);
         
         res.status(200).json({
             success: true,
@@ -192,7 +192,7 @@ class ControladorAsistencias {
             });
         }
         
-        const report = await ServicioAsistencias.getAttendanceReport(startDate, endDate);
+        const report = await ServicioAsistencias.obtenerReporteAsistencias(startDate, endDate);
         
         res.status(200).json({
             success: true,
@@ -233,7 +233,7 @@ class ControladorAsistencias {
             });
         }
         
-        const exportData = await ServicioAsistencias.exportAttendanceData(format, startDate, endDate);
+        const exportData = await ServicioAsistencias.exportarDatosAsistencias(format, startDate, endDate);
         
         // Configurar headers de respuesta según el formato
         if (format.toLowerCase() === 'csv') {
@@ -254,7 +254,7 @@ class ControladorAsistencias {
     static validarIntegridad = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de asistencias');
         
-        const validation = await ServicioAsistencias.validateAttendanceIntegrity();
+        const validation = await ServicioAsistencias.validarIntegridadAsistencias();
         
         res.status(200).json({
             success: true,
@@ -299,7 +299,7 @@ class ControladorAsistencias {
         
         for (const date of dates) {
             try {
-                const stats = await ServicioAsistencias.getAttendanceStats(date);
+                const stats = await ServicioAsistencias.obtenerEstadisticasAsistencias(date);
                 summaries[date] = stats;
             } catch (error) {
                 summaries[date] = {
