@@ -67,7 +67,7 @@ class ServicioAsistencias {
 
             if (asistenciaExistente) {
                 const asistenciaRegistrada = this.mapearFilaAAsistencia(asistenciaExistente);
-                const horaFormateada = asistenciaRegistrada.getFormattedTime();
+                const horaFormateada = asistenciaRegistrada.obtenerHoraFormateada();
                 throw new ErrorAplicacion(
                     `Ya se registró su asistencia hoy a las ${horaFormateada}`,
                     409,
@@ -247,7 +247,7 @@ class ServicioAsistencias {
                     grupo: asistencia.grupo,
                     timestamp: asistencia.timestamp,
                     status: 'Presente (En lista)',
-                    formattedTime: asistencia.getFormattedTime()
+                    formattedTime: asistencia.obtenerHoraFormateada()
                 }));
 
             const matriculasPresentes = new Set(asistencias.map(asistencia => asistencia.matricula));
@@ -574,7 +574,7 @@ class ServicioAsistencias {
                         asistencia.nombre,
                         asistencia.grupo,
                         asistencia.date,
-                        asistencia.getFormattedTime(),
+                        asistencia.obtenerHoraFormateada(),
                         asistencia.status
                     ]);
 

@@ -3,18 +3,18 @@
  */
 class Asistencia {
     constructor(data) {
-        this.matricula = this.normalizeMatricula(data.matricula);
+        this.matricula = this.normalizarMatricula(data.matricula);
         this.nombre = data.nombre || '';
-        this.grupo = this.normalizeGroup(data.grupo);
+        this.grupo = this.normalizarGrupo(data.grupo);
         this.timestamp = data.timestamp || data.recorded_at || new Date().toISOString();
         this.status = data.status || 'registered';
-        this.date = data.date || data.attendance_date || this.extractDate(this.timestamp);
+        this.date = data.date || data.attendance_date || this.extraerFecha(this.timestamp);
     }
 
     /**
      * Normalizar matrícula
      */
-    normalizeMatricula(matricula) {
+    normalizarMatricula(matricula) {
         if (!matricula) return '';
         return matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
     }
@@ -22,7 +22,7 @@ class Asistencia {
     /**
      * Normalizar grupo
      */
-    normalizeGroup(grupo) {
+    normalizarGrupo(grupo) {
         if (!grupo) return '';
         return grupo.toString().trim().toUpperCase();
     }
@@ -30,45 +30,45 @@ class Asistencia {
     /**
      * Extraer fecha del timestamp
      */
-    extractDate(timestamp) {
+    extraerFecha(timestamp) {
         return new Date(timestamp).toISOString().split('T')[0];
     }
 
     /**
      * Validar si el registro es válido
      */
-    isValid() {
-        const errors = [];
-        
+    esValida() {
+        const errores = [];
+
         if (!this.matricula || this.matricula.length === 0) {
-            errors.push('Matrícula es requerida');
+            errores.push('Matrícula es requerida');
         }
-        
+
         if (!this.timestamp) {
-            errors.push('Timestamp es requerido');
+            errores.push('Timestamp es requerido');
         }
-        
+
         // Validar timestamp
         if (this.timestamp && isNaN(new Date(this.timestamp).getTime())) {
-            errors.push('Timestamp inválido');
+            errores.push('Timestamp inválido');
         }
-        
+
         // Validar status
-        const validStatuses = ['registered', 'present', 'absent'];
-        if (!validStatuses.includes(this.status)) {
-            errors.push('Status inválido');
+        const estadosValidos = ['registered', 'present', 'absent'];
+        if (!estadosValidos.includes(this.status)) {
+            errores.push('Status inválido');
         }
-        
+
         return {
-            isValid: errors.length === 0,
-            errors
+            isValid: errores.length === 0,
+            errors: errores
         };
     }
 
     /**
      * Obtener hora formateada
      */
-    getFormattedTime() {
+    obtenerHoraFormateada() {
         return new Date(this.timestamp).toLocaleTimeString('es-MX', {
             hour: '2-digit',
             minute: '2-digit'
@@ -78,7 +78,7 @@ class Asistencia {
     /**
      * Obtener fecha formateada
      */
-    getFormattedDate() {
+    obtenerFechaFormateada() {
         return new Date(this.timestamp).toLocaleDateString('es-MX', {
             year: 'numeric',
             month: 'long',
@@ -89,7 +89,7 @@ class Asistencia {
     /**
      * Verificar si es del día de hoy
      */
-    isToday() {
+    esDeHoy() {
         const today = new Date().toISOString().split('T')[0];
         return this.date === today;
     }
@@ -118,8 +118,8 @@ class Asistencia {
             timestamp: this.timestamp,
             status: this.status,
             date: this.date,
-            formattedTime: this.getFormattedTime(),
-            formattedDate: this.getFormattedDate()
+            formattedTime: this.obtenerHoraFormateada(),
+            formattedDate: this.obtenerFechaFormateada()
         };
     }
 
@@ -165,8 +165,8 @@ class Asistencia {
     static fromCSVArray(csvArray) {
         return csvArray
             .map(data => Asistencia.fromCSV(data))
-            .filter(attendance => {
-                const validation = attendance.isValid();
+            .filter(asistencia => {
+                const validation = asistencia.esValida();
                 return validation.isValid;
             });
     }
@@ -174,83 +174,83 @@ class Asistencia {
     /**
      * Filtrar asistencias por fecha
      */
-    static filterByDate(attendances, date) {
-        const targetDate = typeof date === 'string' ? date : date.toISOString().split('T')[0];
-        return attendances.filter(attendance => attendance.date === targetDate);
+    static filtrarPorFecha(asistencias, fecha) {
+        const fechaObjetivo = typeof fecha === 'string' ? fecha : fecha.toISOString().split('T')[0];
+        return asistencias.filter(asistencia => asistencia.date === fechaObjetivo);
     }
 
     /**
      * Filtrar asistencias de hoy
      */
-    static filterToday(attendances) {
-        const today = new Date().toISOString().split('T')[0];
-        return Asistencia.filterByDate(attendances, today);
+    static filtrarHoy(asistencias) {
+        const hoy = new Date().toISOString().split('T')[0];
+        return Asistencia.filtrarPorFecha(asistencias, hoy);
     }
 
     /**
      * Buscar asistencia por matrícula y fecha
      */
-    static findByMatriculaAndDate(attendances, matricula, date = null) {
-        const normalizedMatricula = new Asistencia({ matricula }).matricula;
-        const targetDate = date || new Date().toISOString().split('T')[0];
-        
-        return attendances.find(attendance => 
-            attendance.matricula === normalizedMatricula && 
-            attendance.date === targetDate
+    static buscarPorMatriculaYFecha(asistencias, matricula, fecha = null) {
+        const matriculaNormalizada = new Asistencia({ matricula }).matricula;
+        const fechaObjetivo = fecha || new Date().toISOString().split('T')[0];
+
+        return asistencias.find(asistencia =>
+            asistencia.matricula === matriculaNormalizada &&
+            asistencia.date === fechaObjetivo
         );
     }
 
     /**
      * Obtener estadísticas de asistencias
      */
-    static getStats(attendances, date = null) {
-        const targetAttendances = date ? 
-            Asistencia.filterByDate(attendances, date) : 
-            Asistencia.filterToday(attendances);
+    static obtenerEstadisticas(asistencias, fecha = null) {
+        const asistenciasObjetivo = fecha ?
+            Asistencia.filtrarPorFecha(asistencias, fecha) :
+            Asistencia.filtrarHoy(asistencias);
 
-        const stats = {
-            total: targetAttendances.length,
-            byStatus: {},
-            byGroup: {},
-            date: date || new Date().toISOString().split('T')[0]
+        const estadisticas = {
+            total: asistenciasObjetivo.length,
+            porEstado: {},
+            porGrupo: {},
+            fecha: fecha || new Date().toISOString().split('T')[0]
         };
 
-        targetAttendances.forEach(attendance => {
+        asistenciasObjetivo.forEach(asistencia => {
             // Por status
-            if (!stats.byStatus[attendance.status]) {
-                stats.byStatus[attendance.status] = 0;
+            if (!estadisticas.porEstado[asistencia.status]) {
+                estadisticas.porEstado[asistencia.status] = 0;
             }
-            stats.byStatus[attendance.status]++;
+            estadisticas.porEstado[asistencia.status]++;
 
             // Por grupo
-            if (attendance.grupo) {
-                if (!stats.byGroup[attendance.grupo]) {
-                    stats.byGroup[attendance.grupo] = 0;
+            if (asistencia.grupo) {
+                if (!estadisticas.porGrupo[asistencia.grupo]) {
+                    estadisticas.porGrupo[asistencia.grupo] = 0;
                 }
-                stats.byGroup[attendance.grupo]++;
+                estadisticas.porGrupo[asistencia.grupo]++;
             }
         });
 
-        return stats;
+        return estadisticas;
     }
 
     /**
      * Obtener lista de asistentes únicos por día
      */
-    static getUniqueAttendees(attendances, date = null) {
-        const targetAttendances = date ? 
-            Asistencia.filterByDate(attendances, date) : 
-            Asistencia.filterToday(attendances);
+    static obtenerAsistentesUnicos(asistencias, fecha = null) {
+        const asistenciasObjetivo = fecha ?
+            Asistencia.filtrarPorFecha(asistencias, fecha) :
+            Asistencia.filtrarHoy(asistencias);
 
-        const unique = new Map();
-        
-        targetAttendances.forEach(attendance => {
-            if (!unique.has(attendance.matricula)) {
-                unique.set(attendance.matricula, attendance);
+        const asistenciasUnicas = new Map();
+
+        asistenciasObjetivo.forEach(asistencia => {
+            if (!asistenciasUnicas.has(asistencia.matricula)) {
+                asistenciasUnicas.set(asistencia.matricula, asistencia);
             }
         });
 
-        return Array.from(unique.values());
+        return Array.from(asistenciasUnicas.values());
     }
 }
 
