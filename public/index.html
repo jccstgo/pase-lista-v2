@@ -318,7 +318,7 @@
             const ctx = canvas.getContext('2d');
             ctx.textBaseline = 'top';
             ctx.font = '14px Arial';
-            ctx.fillText('Device fingerprint', 2, 2);
+            ctx.fillText('Huella del dispositivo', 2, 2);
             
             const fingerprint = [
                 navigator.userAgent,
@@ -342,7 +342,7 @@
         // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
             deviceFingerprint = generateDeviceFingerprint();
-            console.log('🔍 Device fingerprint:', deviceFingerprint);
+            console.log('🔍 Huella del dispositivo:', deviceFingerprint);
             
             loadSystemConfig();
             updateTime();

@@ -50,11 +50,11 @@ async function startServer() {
 
 // Manejo de errores no capturados
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection en:', promise, 'razón:', reason);
+    console.error('❌ Rechazo no controlado en:', promise, 'razón:', reason);
 });
 
 process.on('uncaughtException', (error) => {
-    console.error('❌ Uncaught Exception:', error);
+    console.error('❌ Excepción no controlada:', error);
     process.exit(1);
 });
 
