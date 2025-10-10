@@ -1,5 +1,5 @@
 const config = require('../config/server');
-const Admin = require('../models/Admin');
+const Administrador = require('../models/Administrador');
 
 const VALIDATION_CODES = {
     MISSING_FIELD: 'MISSING_FIELD',
@@ -215,7 +215,7 @@ const validatePasswordChange = (req, res, next) => {
         );
     }
 
-    const strength = Admin.validatePasswordStrength(newPasswordStr);
+    const strength = Administrador.validatePasswordStrength(newPasswordStr);
 
     if (!strength.isStrong) {
         return sendValidationError(

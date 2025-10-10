@@ -46,7 +46,7 @@
                 <h1>📊 Panel de Administración</h1>
                 <div>
                     <a href="/" class="back-link">← Pase de Lista</a>
-                    <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+                    <button class="logout-btn" onclick="cerrarSesion()">Cerrar Sesión</button>
                 </div>
             </div>
         </div>
@@ -66,19 +66,19 @@
 
                     <div class="stats-grid">
                         <div class="stat-card total">
-                            <span class="stat-number" id="totalStudents">-</span>
+                            <span class="stat-number" id="totalEstudiantes">-</span>
                             <span class="stat-label">Total Personal</span>
                         </div>
                         <div class="stat-card present">
-                            <span class="stat-number" id="presentRegistered">-</span>
+                            <span class="stat-number" id="presentesRegistrados">-</span>
                             <span class="stat-label">Presentes (En Lista)</span>
                         </div>
                         <div class="stat-card present">
-                            <span class="stat-number" id="attendanceRate">-</span>
+                            <span class="stat-number" id="porcentajeAsistencia">-</span>
                             <span class="stat-label">% Asistencia</span>
                         </div>
                         <div class="stat-card absent">
-                            <span class="stat-number" id="absent">-</span>
+                            <span class="stat-number" id="faltistas">-</span>
                             <span class="stat-label">Faltistas</span>
                         </div>
                     </div>
@@ -90,8 +90,8 @@
 
                     <div id="overviewTab" class="tab-content card" data-group="results" data-tab="overview">
                         <h2>📅 Resumen del Día</h2>
-                        <div id="overviewContent">
-                            <div class="loading" id="overviewLoading">
+                        <div id="contenidoResumen">
+                            <div class="loading" id="cargaResumen">
                                 <div class="spinner"></div>
                                 <p>Cargando estadísticas...</p>
                             </div>
@@ -100,11 +100,11 @@
 
                     <div id="detailedTab" class="tab-content card hidden" data-group="results" data-tab="detailed">
                         <h2>📋 Lista Detallada de Asistencia</h2>
-                        <div class="loading" id="detailedLoading">
+                        <div class="loading" id="cargaDetalle">
                             <div class="spinner"></div>
                             <p>Cargando lista detallada...</p>
                         </div>
-                        <div id="detailedContent"></div>
+                        <div id="contenidoDetalle"></div>
                     </div>
             </section>
 
@@ -160,7 +160,7 @@
                                             <input type="text" id="locationLongitude" name="location_longitude" placeholder="-99.1332">
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-secondary btn-small" onclick="getCurrentLocation()">📍 Obtener mi Ubicación Actual</button>
+                                    <button type="button" class="btn btn-secondary btn-small" onclick="obtenerUbicacionActual()">📍 Obtener mi Ubicación Actual</button>
                                 </div>
                             </div>
 
@@ -193,7 +193,7 @@
                             <div style="background: white; border-radius: 8px; padding: 20px; margin-top: 15px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                                     <h4>Claves Activas</h4>
-                                    <button class="btn btn-success btn-small" onclick="showCreateKeyForm()">+ Nueva Clave</button>
+                                    <button class="btn btn-success btn-small" onclick="mostrarFormularioCrearClave()">+ Nueva Clave</button>
                                 </div>
 
                                 <div id="createKeyForm" class="hidden" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
@@ -209,8 +209,8 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <button class="btn btn-success btn-small" onclick="createAdminKey()">Crear</button>
-                                        <button class="btn btn-secondary btn-small" onclick="hideCreateKeyForm()">Cancelar</button>
+                                        <button class="btn btn-success btn-small" onclick="crearClaveAdministrativa()">Crear</button>
+                                        <button class="btn btn-secondary btn-small" onclick="ocultarFormularioCrearClave()">Cancelar</button>
                                     </div>
                                 </div>
 
@@ -244,12 +244,12 @@
 
                         <div class="form-group">
                             <label for="csvFile">Seleccionar archivo CSV:</label>
-                            <input type="file" id="csvFile" accept=".csv" onchange="previewCSV()">
+                            <input type="file" id="csvFile" accept=".csv" onchange="previsualizarCSV()">
                         </div>
 
                         <div id="csvPreview"></div>
 
-                        <button class="btn" onclick="uploadStudents()" id="uploadBtn" disabled>
+                        <button class="btn" onclick="subirEstudiantes()" id="uploadBtn" disabled>
                             Subir Lista de Personal
                         </button>
 
@@ -258,7 +258,7 @@
                         <div class="danger-zone">
                             <h3>🧹 Limpiar Base de Datos</h3>
                             <p>Elimina todos los registros de personal almacenados en la base de datos y reinicia la lista de asistencia y dispositivos registrados.</p>
-                            <button class="btn btn-danger" onclick="clearStudentsDatabase()" id="clearStudentsBtn">
+                            <button class="btn btn-danger" onclick="limpiarBaseEstudiantes()" id="clearStudentsBtn">
                                 Limpiar Base de Datos de Personal
                             </button>
                             <p class="danger-note">Esta acción no se puede deshacer. Asegúrate de contar con un respaldo antes de continuar.</p>
