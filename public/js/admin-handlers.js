@@ -290,8 +290,8 @@ async function previewCSV() {
     );
     
     if (!hasRequiredHeaders) {
-        showMessage('uploadMessage', 
-            'Headers obligatorios faltantes. Se requieren: matricula, nombre, grupo. Se encontraron: ' + headers.join(', '), 
+        showMessage('uploadMessage',
+            'Encabezados obligatorios faltantes. Se requieren: matricula, nombre, grupo. Se encontraron: ' + headers.join(', '),
             'error');
         return;
     }
