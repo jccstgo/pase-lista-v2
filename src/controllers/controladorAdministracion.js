@@ -1,23 +1,23 @@
-const AdminService = require('../services/adminService');
-const StudentService = require('../services/studentService');
-const AttendanceService = require('../services/attendanceService');
-const SystemService = require('../services/systemService');
-const ConfigService = require('../services/configService');
-const AdminKeyService = require('../services/adminKeyService');
-const DeviceService = require('../services/deviceService');
-const { asyncHandler } = require('../middleware/errorHandler');
+const ServicioAdministracion = require('../services/servicioAdministracion');
+const ServicioEstudiantes = require('../services/servicioEstudiantes');
+const ServicioAsistencias = require('../services/servicioAsistencias');
+const ServicioSistema = require('../services/servicioSistema');
+const ServicioConfiguracion = require('../services/servicioConfiguracion');
+const ServicioClavesAdministrativas = require('../services/servicioClavesAdministrativas');
+const ServicioDispositivos = require('../services/servicioDispositivos');
+const { manejadorAsincrono } = require('../middleware/manejadorErrores');
 
-class AdminController {
+class ControladorAdministracion {
     /**
      * Obtener estadísticas generales del sistema
      * GET /api/admin/stats
      */
-    static getSystemStats = asyncHandler(async (req, res) => {
+    static obtenerEstadisticasSistema = manejadorAsincrono(async (req, res) => {
         console.log('📊 Petición de estadísticas del sistema');
         
         const { date } = req.query;
         
-        const stats = await AttendanceService.getAttendanceStats(date);
+        const stats = await ServicioAsistencias.obtenerEstadisticasAsistencias(date);
         
         res.status(200).json({
             success: true,
@@ -29,12 +29,12 @@ class AdminController {
      * Obtener lista detallada de asistencia
      * GET /api/admin/detailed-list
      */
-    static getDetailedList = asyncHandler(async (req, res) => {
+    static obtenerListaDetallada = manejadorAsincrono(async (req, res) => {
         console.log('📋 Petición de lista detallada');
         
         const { date } = req.query;
         
-        const detailedList = await AttendanceService.getDetailedAttendanceList(date);
+        const detailedList = await ServicioAsistencias.obtenerListaDetalladaAsistencias(date);
         
         res.status(200).json({
             success: true,
@@ -46,16 +46,16 @@ class AdminController {
      * Subir lista de estudiantes
      * POST /api/admin/upload-students
      */
-    static uploadStudents = asyncHandler(async (req, res) => {
+    static subirEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('📤 Petición de subida de estudiantes');
 
         const { students } = req.body;
 
-        const result = await StudentService.updateStudentsList(students);
+        const result = await ServicioEstudiantes.updateStudentsList(students);
 
         // Limpiar registros de asistencia al subir nueva lista
-        await AttendanceService.clearAttendanceRecords();
-        await DeviceService.clearAllDevices();
+        await ServicioAsistencias.limpiarRegistrosAsistencias();
+        await ServicioDispositivos.clearAllDevices();
 
         res.status(200).json({
             success: true,
@@ -74,12 +74,12 @@ class AdminController {
      * Limpiar todos los estudiantes de la base de datos
      * DELETE /api/admin/students/clear
      */
-    static clearStudents = asyncHandler(async (req, res) => {
+    static limpiarEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('🧹 Petición de limpieza de estudiantes');
 
-        const result = await StudentService.clearAllStudents();
-        await AttendanceService.clearAttendanceRecords();
-        await DeviceService.clearAllDevices();
+        const result = await ServicioEstudiantes.clearAllStudents();
+        await ServicioAsistencias.limpiarRegistrosAsistencias();
+        await ServicioDispositivos.clearAllDevices();
 
         res.status(200).json({
             success: true,
@@ -92,13 +92,13 @@ class AdminController {
      * Cambiar contraseña de administrador
      * POST /api/admin/change-password
      */
-    static changePassword = asyncHandler(async (req, res) => {
+    static cambiarContrasena = manejadorAsincrono(async (req, res) => {
         console.log('🔐 Petición de cambio de contraseña');
         
         const { currentPassword, newPassword } = req.body;
         const username = req.admin.username;
         
-        const result = await AdminService.changePassword(username, currentPassword, newPassword);
+        const result = await ServicioAdministracion.changePassword(username, currentPassword, newPassword);
         
         res.status(200).json({
             success: true,
@@ -111,11 +111,11 @@ class AdminController {
      * Obtener información del administrador actual
      * GET /api/admin/profile
      */
-    static getProfile = asyncHandler(async (req, res) => {
+    static obtenerPerfil = manejadorAsincrono(async (req, res) => {
         console.log('👤 Petición de perfil de administrador');
         
         const username = req.admin.username;
-        const admin = await AdminService.findByUsername(username);
+        const admin = await ServicioAdministracion.findByUsername(username);
         
         if (!admin) {
             return res.status(404).json({
@@ -134,10 +134,10 @@ class AdminController {
      * Obtener estado del sistema
      * GET /api/admin/system-status
      */
-    static getSystemStatus = asyncHandler(async (req, res) => {
+    static obtenerEstadoSistema = manejadorAsincrono(async (req, res) => {
         console.log('🏥 Petición de estado del sistema');
         
-        const status = await SystemService.getSystemStatus();
+        const status = await ServicioSistema.getSystemStatus();
         
         res.status(200).json({
             success: true,
@@ -149,10 +149,10 @@ class AdminController {
      * Ejecutar diagnósticos del sistema
      * POST /api/admin/diagnostics
      */
-    static runDiagnostics = asyncHandler(async (req, res) => {
+    static ejecutarDiagnosticos = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de diagnósticos del sistema');
         
-        const diagnostics = await SystemService.runSystemDiagnostics();
+        const diagnostics = await ServicioSistema.runSystemDiagnostics();
         
         res.status(200).json({
             success: true,
@@ -164,10 +164,10 @@ class AdminController {
      * Crear backup del sistema
      * POST /api/admin/backup
      */
-    static createBackup = asyncHandler(async (req, res) => {
+    static crearRespaldo = manejadorAsincrono(async (req, res) => {
         console.log('💾 Petición de backup del sistema');
         
-        const backup = await SystemService.createSystemBackup();
+        const backup = await ServicioSistema.createSystemBackup();
         
         res.status(200).json({
             success: true,
@@ -180,10 +180,10 @@ class AdminController {
      * Limpiar sistema (archivos temporales, backups antiguos)
      * POST /api/admin/cleanup
      */
-    static cleanupSystem = asyncHandler(async (req, res) => {
+    static limpiarSistema = manejadorAsincrono(async (req, res) => {
         console.log('🧹 Petición de limpieza del sistema');
 
-        const cleanup = await SystemService.cleanupSystem();
+        const cleanup = await ServicioSistema.cleanupSystem();
 
         res.status(200).json({
             success: true,
@@ -196,10 +196,10 @@ class AdminController {
      * Obtener configuración del sistema (restricciones)
      * GET /api/admin/config
      */
-    static getSystemConfig = asyncHandler(async (req, res) => {
+    static obtenerConfiguracionSistema = manejadorAsincrono(async (req, res) => {
         console.log('⚙️ Petición de configuración del sistema');
 
-        const systemConfig = await ConfigService.getSystemConfig();
+        const systemConfig = await ServicioConfiguracion.getSystemConfig();
         res.status(200).json(systemConfig);
     });
 
@@ -207,10 +207,10 @@ class AdminController {
      * Actualizar configuración del sistema (restricciones)
      * POST /api/admin/config
      */
-    static updateSystemConfig = asyncHandler(async (req, res) => {
+    static actualizarConfiguracionSistema = manejadorAsincrono(async (req, res) => {
         console.log('💾 Petición de guardado de configuración');
 
-        const updatedConfig = await ConfigService.saveSystemConfig(req.body || {});
+        const updatedConfig = await ServicioConfiguracion.saveSystemConfig(req.body || {});
         res.status(200).json(updatedConfig);
     });
 
@@ -218,10 +218,10 @@ class AdminController {
      * Obtener claves administrativas
      * GET /api/admin/admin-keys
      */
-    static getAdminKeys = asyncHandler(async (req, res) => {
+    static obtenerClavesAdministrativas = manejadorAsincrono(async (req, res) => {
         console.log('🔑 Petición de listado de claves administrativas');
 
-        const keys = await AdminKeyService.getAllKeys();
+        const keys = await ServicioClavesAdministrativas.getAllKeys();
         res.status(200).json(keys);
     });
 
@@ -229,11 +229,11 @@ class AdminController {
      * Crear nueva clave administrativa
      * POST /api/admin/admin-keys
      */
-    static createAdminKey = asyncHandler(async (req, res) => {
+    static crearClaveAdministrativa = manejadorAsincrono(async (req, res) => {
         console.log('➕ Petición de creación de clave administrativa');
 
         const { key, description } = req.body || {};
-        const newKey = await AdminKeyService.createKey(key, description);
+        const newKey = await ServicioClavesAdministrativas.createKey(key, description);
 
         res.status(201).json(newKey);
     });
@@ -242,11 +242,11 @@ class AdminController {
      * Desactivar clave administrativa
      * DELETE /api/admin/admin-keys/:key
      */
-    static deactivateAdminKey = asyncHandler(async (req, res) => {
+    static desactivarClaveAdministrativa = manejadorAsincrono(async (req, res) => {
         const { key } = req.params;
         console.log(`🗝️ Petición de desactivación de clave: ${key}`);
 
-        const updatedKey = await AdminKeyService.deactivateKey(key);
+        const updatedKey = await ServicioClavesAdministrativas.deactivateKey(key);
         res.status(200).json(updatedKey);
     });
 
@@ -254,10 +254,10 @@ class AdminController {
      * Obtener dispositivos registrados
      * GET /api/admin/devices
      */
-    static getRegisteredDevices = asyncHandler(async (req, res) => {
+    static obtenerDispositivosRegistrados = manejadorAsincrono(async (req, res) => {
         console.log('📱 Petición de dispositivos registrados');
 
-        const devices = await DeviceService.getAllDevices();
+        const devices = await ServicioDispositivos.getAllDevices();
         res.status(200).json(devices);
     });
 
@@ -265,10 +265,10 @@ class AdminController {
      * Obtener estadísticas de estudiantes
      * GET /api/admin/students/stats
      */
-    static getStudentStats = asyncHandler(async (req, res) => {
+    static obtenerEstadisticasEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('📚 Petición de estadísticas de estudiantes');
         
-        const stats = await StudentService.getStudentStats();
+        const stats = await ServicioEstudiantes.getStudentStats();
         
         res.status(200).json({
             success: true,
@@ -280,7 +280,7 @@ class AdminController {
      * Buscar estudiantes con filtros
      * GET /api/admin/students/search
      */
-    static searchStudents = asyncHandler(async (req, res) => {
+    static buscarEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de búsqueda de estudiantes');
         
         const filters = {
@@ -298,7 +298,7 @@ class AdminController {
             if (!filters[key]) delete filters[key];
         });
         
-        const results = await StudentService.searchStudents(filters);
+        const results = await ServicioEstudiantes.searchStudents(filters);
         
         res.status(200).json({
             success: true,
@@ -310,10 +310,10 @@ class AdminController {
      * Validar integridad de datos de estudiantes
      * GET /api/admin/students/validate
      */
-    static validateStudentsIntegrity = asyncHandler(async (req, res) => {
+    static validarIntegridadEstudiantes = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de estudiantes');
         
-        const validation = await StudentService.validateDataIntegrity();
+        const validation = await ServicioEstudiantes.validateDataIntegrity();
         
         res.status(200).json({
             success: true,
@@ -325,10 +325,10 @@ class AdminController {
      * Validar integridad de datos de asistencias
      * GET /api/admin/attendance/validate
      */
-    static validateAttendanceIntegrity = asyncHandler(async (req, res) => {
+    static validarIntegridadAsistencias = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de asistencias');
         
-        const validation = await AttendanceService.validateAttendanceIntegrity();
+        const validation = await ServicioAsistencias.validarIntegridadAsistencias();
         
         res.status(200).json({
             success: true,
@@ -340,10 +340,10 @@ class AdminController {
      * Obtener estadísticas de administradores
      * GET /api/admin/admins/stats
      */
-    static getAdminStats = asyncHandler(async (req, res) => {
+    static obtenerEstadisticasAdministradores = manejadorAsincrono(async (req, res) => {
         console.log('👥 Petición de estadísticas de administradores');
         
-        const stats = await AdminService.getAdminStats();
+        const stats = await ServicioAdministracion.getAdminStats();
         
         res.status(200).json({
             success: true,
@@ -355,10 +355,10 @@ class AdminController {
      * Limpiar registros de asistencia
      * DELETE /api/admin/attendance/clear
      */
-    static clearAttendanceRecords = asyncHandler(async (req, res) => {
+    static limpiarRegistrosAsistencia = manejadorAsincrono(async (req, res) => {
         console.log('🧹 Petición de limpieza de registros de asistencia');
         
-        await AttendanceService.clearAttendanceRecords();
+        await ServicioAsistencias.limpiarRegistrosAsistencias();
         
         res.status(200).json({
             success: true,
@@ -370,40 +370,40 @@ class AdminController {
      * Exportar todos los datos del sistema
      * GET /api/admin/export-all
      */
-    static exportAllData = asyncHandler(async (req, res) => {
+    static exportarTodosLosDatos = manejadorAsincrono(async (req, res) => {
         console.log('📤 Petición de exportación completa de datos');
         
         const { format = 'json' } = req.query;
         
         // Obtener todos los datos
-        const students = await StudentService.getAllStudents();
-        const attendances = await AttendanceService.getAllAttendances();
-        const systemStatus = await SystemService.getSystemStatus();
-        
-        const exportData = {
+        const estudiantes = await ServicioEstudiantes.getAllStudents();
+        const asistencias = await ServicioAsistencias.obtenerTodasLasAsistencias();
+        const estadoSistema = await ServicioSistema.getSystemStatus();
+
+        const datosExportacion = {
             exportInfo: {
                 timestamp: new Date().toISOString(),
                 format,
                 version: '1.0.0'
             },
             systemStatus: {
-                environment: systemStatus.environment,
-                uptime: systemStatus.uptime
+                environment: estadoSistema.environment,
+                uptime: estadoSistema.uptime
             },
             data: {
-                students: students.map(s => s.toJSON()),
-                attendances: attendances.map(a => a.toJSON()),
+                students: estudiantes.map(estudiante => estudiante.toJSON()),
+                attendances: asistencias.map(asistencia => asistencia.toJSON()),
                 totals: {
-                    students: students.length,
-                    attendances: attendances.length
+                    students: estudiantes.length,
+                    attendances: asistencias.length
                 }
             }
         };
-        
+
         if (format.toLowerCase() === 'json') {
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Content-Disposition', `attachment; filename=sistema_completo_${new Date().toISOString().split('T')[0]}.json`);
-            res.json(exportData);
+            res.json(datosExportacion);
         } else {
             res.status(400).json({
                 success: false,
@@ -416,45 +416,45 @@ class AdminController {
      * Obtener resumen ejecutivo
      * GET /api/admin/executive-summary
      */
-    static getExecutiveSummary = asyncHandler(async (req, res) => {
+    static obtenerResumenEjecutivo = manejadorAsincrono(async (req, res) => {
         console.log('📈 Petición de resumen ejecutivo');
         
         const { period = '7' } = req.query; // Días hacia atrás
-        const days = parseInt(period);
-        
-        if (days < 1 || days > 90) {
+        const dias = parseInt(period);
+
+        if (dias < 1 || dias > 90) {
             return res.status(400).json({
                 success: false,
                 error: 'El período debe estar entre 1 y 90 días'
             });
         }
-        
-        const endDate = new Date().toISOString().split('T')[0];
-        const startDate = new Date(Date.now() - (days - 1) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        
+
+        const fechaFin = new Date().toISOString().split('T')[0];
+        const fechaInicio = new Date(Date.now() - (dias - 1) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
         // Obtener datos
-        const [studentStats, attendanceReport, systemStatus] = await Promise.all([
-            StudentService.getStudentStats(),
-            AttendanceService.getAttendanceReport(startDate, endDate),
-            SystemService.getSystemStatus()
+        const [estadisticasEstudiantes, reporteAsistencias, estadoSistema] = await Promise.all([
+            ServicioEstudiantes.getStudentStats(),
+            ServicioAsistencias.obtenerReporteAsistencias(fechaInicio, fechaFin),
+            ServicioSistema.getSystemStatus()
         ]);
-        
-        const summary = {
+
+        const resumen = {
             period: {
-                days,
-                startDate,
-                endDate
+                days: dias,
+                startDate: fechaInicio,
+                endDate: fechaFin
             },
             overview: {
-                totalStudents: studentStats.total,
-                avgDailyAttendance: attendanceReport.summary.avgDailyAttendance,
-                avgAttendanceRate: `${attendanceReport.summary.avgAttendanceRate}%`,
-                systemUptime: `${Math.round(systemStatus.uptime / 3600)}h`
+                totalStudents: estadisticasEstudiantes.total,
+                avgDailyAttendance: reporteAsistencias.summary.avgDailyAttendance,
+                avgAttendanceRate: `${reporteAsistencias.summary.avgAttendanceRate}%`,
+                systemUptime: `${Math.round(estadoSistema.uptime / 3600)}h`
             },
             trends: {
-                attendanceByDay: attendanceReport.dailyStats,
-                groupDistribution: studentStats.groups,
-                topAttenders: attendanceReport.studentAttendance
+                attendanceByDay: reporteAsistencias.dailyStats,
+                groupDistribution: estadisticasEstudiantes.groups,
+                topAttenders: reporteAsistencias.studentAttendance
                     .filter(s => s.daysPresent > 0)
                     .slice(0, 10)
                     .map(s => ({
@@ -469,21 +469,21 @@ class AdminController {
         };
         
         // Generar alertas
-        if (parseFloat(attendanceReport.summary.avgAttendanceRate) < 80) {
-            summary.alerts.push({
+        if (parseFloat(reporteAsistencias.summary.avgAttendanceRate) < 80) {
+            resumen.alerts.push({
                 type: 'warning',
-                message: `Tasa de asistencia promedio baja: ${attendanceReport.summary.avgAttendanceRate}%`
+                message: `Tasa de asistencia promedio baja: ${reporteAsistencias.summary.avgAttendanceRate}%`
             });
-            summary.recommendations.push('Revisar posibles causas de ausentismo');
+            resumen.recommendations.push('Revisar posibles causas de ausentismo');
         }
-        
-        if (systemStatus.uptime > 7 * 24 * 3600) { // 7 días
-            summary.recommendations.push('Considere reinicio programado del sistema');
+
+        if (estadoSistema.uptime > 7 * 24 * 3600) { // 7 días
+            resumen.recommendations.push('Considere reinicio programado del sistema');
         }
-        
+
         res.status(200).json({
             success: true,
-            data: summary
+            data: resumen
         });
     });
 
@@ -491,36 +491,36 @@ class AdminController {
      * Obtener métricas en tiempo real
      * GET /api/admin/realtime-metrics
      */
-    static getRealtimeMetrics = asyncHandler(async (req, res) => {
+    static obtenerMetricasTiempoReal = manejadorAsincrono(async (req, res) => {
         console.log('⚡ Petición de métricas en tiempo real');
         
-        const [todayStats, systemStatus] = await Promise.all([
-            AttendanceService.getAttendanceStats(),
-            SystemService.getSystemStatus()
+        const [estadisticasHoy, estadoSistema] = await Promise.all([
+            ServicioAsistencias.obtenerEstadisticasAsistencias(),
+            ServicioSistema.getSystemStatus()
         ]);
-        
-        const metrics = {
+
+        const metricas = {
             timestamp: new Date().toISOString(),
             attendance: {
                 today: {
-                    present: todayStats.presentRegistered,
-                    total: todayStats.totalStudents,
-                    rate: parseFloat(todayStats.attendanceRate),
-                    lastUpdate: todayStats.lastUpdate
+                    present: estadisticasHoy.presentRegistered,
+                    total: estadisticasHoy.totalStudents,
+                    rate: parseFloat(estadisticasHoy.attendanceRate),
+                    lastUpdate: estadisticasHoy.lastUpdate
                 }
             },
             system: {
-                uptime: Math.round(systemStatus.uptime),
-                memoryUsage: Math.round(systemStatus.memory.rss / 1024 / 1024), // MB
-                filesStatus: Object.values(systemStatus.files).every(f => f.exists)
+                uptime: Math.round(estadoSistema.uptime),
+                memoryUsage: Math.round(estadoSistema.memory.rss / 1024 / 1024), // MB
+                filesStatus: Object.values(estadoSistema.files).every(f => f.exists)
             }
         };
-        
+
         res.status(200).json({
             success: true,
-            data: metrics
+            data: metricas
         });
     });
 }
 
-module.exports = AdminController;
+module.exports = ControladorAdministracion;
