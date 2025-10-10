@@ -1,5 +1,5 @@
 const express = require('express');
-const AuthController = require('../controllers/authController');
+const ControladorAutenticacion = require('../controllers/controladorAutenticacion');
 const { authenticateAdmin } = require('../middleware/auth');
 const { 
     validateAdminLogin, 
@@ -17,32 +17,32 @@ router.use(sanitizeInput);
  */
 
 // Login de administrador
-router.post('/login', validateAdminLogin, AuthController.login);
+router.post('/login', validateAdminLogin, ControladorAutenticacion.iniciarSesion);
 
 // Verificar si un token es válido
-router.post('/verify', AuthController.verifyAuth);
+router.post('/verify', ControladorAutenticacion.verificarAutenticacion);
 
 // Renovar token
-router.post('/refresh', AuthController.refreshToken);
+router.post('/refresh', ControladorAutenticacion.renovarToken);
 
 // Logout (invalidar token del lado cliente)
-router.post('/logout', AuthController.logout);
+router.post('/logout', ControladorAutenticacion.cerrarSesion);
 
 // Validar fuerza de contraseña
-router.post('/validate-password', AuthController.validatePassword);
+router.post('/validate-password', ControladorAutenticacion.validarContrasena);
 
 /**
  * Rutas protegidas (requieren autenticación)
  */
 
 // Cambiar contraseña (requiere token válido)
-router.post('/change-password', authenticateAdmin, validatePasswordChange, AuthController.changePassword);
+router.post('/change-password', authenticateAdmin, validatePasswordChange, ControladorAutenticacion.cambiarContrasena);
 
 // Obtener información de la sesión actual
-router.get('/session', authenticateAdmin, AuthController.getSession);
+router.get('/session', authenticateAdmin, ControladorAutenticacion.obtenerSesion);
 
 // Obtener información sobre intentos de login
-router.get('/login-attempts', authenticateAdmin, AuthController.getLoginAttempts);
+router.get('/login-attempts', authenticateAdmin, ControladorAutenticacion.obtenerIntentosInicioSesion);
 
 /**
  * Middleware de logging para rutas de auth
