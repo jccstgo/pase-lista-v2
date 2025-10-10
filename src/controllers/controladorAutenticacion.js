@@ -1,4 +1,4 @@
-const AdminService = require('../services/adminService');
+const ServicioAdministracion = require('../services/servicioAdministracion');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { verifyToken } = require('../middleware/auth');
 
@@ -12,7 +12,7 @@ class ControladorAutenticacion {
         
         const { username, password } = req.body;
         
-        const result = await AdminService.authenticate(username, password);
+        const result = await ServicioAdministracion.authenticate(username, password);
         
         res.status(200).json({
             success: true,
@@ -57,7 +57,7 @@ class ControladorAutenticacion {
             const decoded = verifyToken(token);
             
             // Verificar que el usuario aún existe
-            const admin = await AdminService.findByUsername(decoded.username);
+            const admin = await ServicioAdministracion.findByUsername(decoded.username);
             
             if (!admin) {
                 return res.status(401).json({
@@ -138,7 +138,7 @@ class ControladorAutenticacion {
             const decoded = verifyToken(token);
             
             // Verificar que el usuario aún existe
-            const admin = await AdminService.findByUsername(decoded.username);
+            const admin = await ServicioAdministracion.findByUsername(decoded.username);
             
             if (!admin) {
                 return res.status(401).json({
@@ -179,7 +179,7 @@ class ControladorAutenticacion {
                 const hoursSinceExpired = (now - expiredTime) / (1000 * 60 * 60);
                 
                 if (hoursSinceExpired <= 24) { // Permitir renovación hasta 24h después de expirar
-                    const admin = await AdminService.findByUsername(expiredDecoded.username);
+                    const admin = await ServicioAdministracion.findByUsername(expiredDecoded.username);
                     
                     if (admin && !admin.isLocked()) {
                         const { generateToken } = require('../middleware/auth');
@@ -240,7 +240,7 @@ class ControladorAutenticacion {
         // El middleware de auth ya verificó el token y añadió req.admin
         const username = req.admin.username;
         
-        const result = await AdminService.changePassword(username, currentPassword, newPassword);
+        const result = await ServicioAdministracion.changePassword(username, currentPassword, newPassword);
         
         res.status(200).json({
             success: true,
@@ -261,7 +261,7 @@ class ControladorAutenticacion {
         console.log('📋 Información de sesión');
         
         const username = req.admin.username;
-        const admin = await AdminService.findByUsername(username);
+        const admin = await ServicioAdministracion.findByUsername(username);
         
         if (!admin) {
             return res.status(401).json({
@@ -314,8 +314,8 @@ class ControladorAutenticacion {
             });
         }
         
-        const { Admin } = require('../models/Admin');
-        const validation = Admin.validatePasswordStrength(password);
+        const Administrador = require('../models/Administrador');
+        const validation = Administrador.validatePasswordStrength(password);
         
         res.status(200).json({
             success: true,
@@ -341,7 +341,7 @@ class ControladorAutenticacion {
         console.log('🔍 Consulta de intentos de login');
         
         const username = req.admin.username;
-        const admin = await AdminService.findByUsername(username);
+        const admin = await ServicioAdministracion.findByUsername(username);
         
         if (!admin) {
             return res.status(401).json({

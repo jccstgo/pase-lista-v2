@@ -1,10 +1,10 @@
-const AdminService = require('../services/adminService');
-const StudentService = require('../services/studentService');
-const AttendanceService = require('../services/attendanceService');
-const SystemService = require('../services/systemService');
-const ConfigService = require('../services/configService');
-const AdminKeyService = require('../services/adminKeyService');
-const DeviceService = require('../services/deviceService');
+const ServicioAdministracion = require('../services/servicioAdministracion');
+const ServicioEstudiantes = require('../services/servicioEstudiantes');
+const ServicioAsistencias = require('../services/servicioAsistencias');
+const ServicioSistema = require('../services/servicioSistema');
+const ServicioConfiguracion = require('../services/servicioConfiguracion');
+const ServicioClavesAdministrativas = require('../services/servicioClavesAdministrativas');
+const ServicioDispositivos = require('../services/servicioDispositivos');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 class ControladorAdministracion {
@@ -17,7 +17,7 @@ class ControladorAdministracion {
         
         const { date } = req.query;
         
-        const stats = await AttendanceService.getAttendanceStats(date);
+        const stats = await ServicioAsistencias.getAttendanceStats(date);
         
         res.status(200).json({
             success: true,
@@ -34,7 +34,7 @@ class ControladorAdministracion {
         
         const { date } = req.query;
         
-        const detailedList = await AttendanceService.getDetailedAttendanceList(date);
+        const detailedList = await ServicioAsistencias.getDetailedAttendanceList(date);
         
         res.status(200).json({
             success: true,
@@ -51,11 +51,11 @@ class ControladorAdministracion {
 
         const { students } = req.body;
 
-        const result = await StudentService.updateStudentsList(students);
+        const result = await ServicioEstudiantes.updateStudentsList(students);
 
         // Limpiar registros de asistencia al subir nueva lista
-        await AttendanceService.clearAttendanceRecords();
-        await DeviceService.clearAllDevices();
+        await ServicioAsistencias.clearAttendanceRecords();
+        await ServicioDispositivos.clearAllDevices();
 
         res.status(200).json({
             success: true,
@@ -77,9 +77,9 @@ class ControladorAdministracion {
     static limpiarEstudiantes = asyncHandler(async (req, res) => {
         console.log('🧹 Petición de limpieza de estudiantes');
 
-        const result = await StudentService.clearAllStudents();
-        await AttendanceService.clearAttendanceRecords();
-        await DeviceService.clearAllDevices();
+        const result = await ServicioEstudiantes.clearAllStudents();
+        await ServicioAsistencias.clearAttendanceRecords();
+        await ServicioDispositivos.clearAllDevices();
 
         res.status(200).json({
             success: true,
@@ -98,7 +98,7 @@ class ControladorAdministracion {
         const { currentPassword, newPassword } = req.body;
         const username = req.admin.username;
         
-        const result = await AdminService.changePassword(username, currentPassword, newPassword);
+        const result = await ServicioAdministracion.changePassword(username, currentPassword, newPassword);
         
         res.status(200).json({
             success: true,
@@ -115,7 +115,7 @@ class ControladorAdministracion {
         console.log('👤 Petición de perfil de administrador');
         
         const username = req.admin.username;
-        const admin = await AdminService.findByUsername(username);
+        const admin = await ServicioAdministracion.findByUsername(username);
         
         if (!admin) {
             return res.status(404).json({
@@ -137,7 +137,7 @@ class ControladorAdministracion {
     static obtenerEstadoSistema = asyncHandler(async (req, res) => {
         console.log('🏥 Petición de estado del sistema');
         
-        const status = await SystemService.getSystemStatus();
+        const status = await ServicioSistema.getSystemStatus();
         
         res.status(200).json({
             success: true,
@@ -152,7 +152,7 @@ class ControladorAdministracion {
     static ejecutarDiagnosticos = asyncHandler(async (req, res) => {
         console.log('🔍 Petición de diagnósticos del sistema');
         
-        const diagnostics = await SystemService.runSystemDiagnostics();
+        const diagnostics = await ServicioSistema.runSystemDiagnostics();
         
         res.status(200).json({
             success: true,
@@ -167,7 +167,7 @@ class ControladorAdministracion {
     static crearRespaldo = asyncHandler(async (req, res) => {
         console.log('💾 Petición de backup del sistema');
         
-        const backup = await SystemService.createSystemBackup();
+        const backup = await ServicioSistema.createSystemBackup();
         
         res.status(200).json({
             success: true,
@@ -183,7 +183,7 @@ class ControladorAdministracion {
     static limpiarSistema = asyncHandler(async (req, res) => {
         console.log('🧹 Petición de limpieza del sistema');
 
-        const cleanup = await SystemService.cleanupSystem();
+        const cleanup = await ServicioSistema.cleanupSystem();
 
         res.status(200).json({
             success: true,
@@ -199,7 +199,7 @@ class ControladorAdministracion {
     static obtenerConfiguracionSistema = asyncHandler(async (req, res) => {
         console.log('⚙️ Petición de configuración del sistema');
 
-        const systemConfig = await ConfigService.getSystemConfig();
+        const systemConfig = await ServicioConfiguracion.getSystemConfig();
         res.status(200).json(systemConfig);
     });
 
@@ -210,7 +210,7 @@ class ControladorAdministracion {
     static actualizarConfiguracionSistema = asyncHandler(async (req, res) => {
         console.log('💾 Petición de guardado de configuración');
 
-        const updatedConfig = await ConfigService.saveSystemConfig(req.body || {});
+        const updatedConfig = await ServicioConfiguracion.saveSystemConfig(req.body || {});
         res.status(200).json(updatedConfig);
     });
 
@@ -221,7 +221,7 @@ class ControladorAdministracion {
     static obtenerClavesAdministrativas = asyncHandler(async (req, res) => {
         console.log('🔑 Petición de listado de claves administrativas');
 
-        const keys = await AdminKeyService.getAllKeys();
+        const keys = await ServicioClavesAdministrativas.getAllKeys();
         res.status(200).json(keys);
     });
 
@@ -233,7 +233,7 @@ class ControladorAdministracion {
         console.log('➕ Petición de creación de clave administrativa');
 
         const { key, description } = req.body || {};
-        const newKey = await AdminKeyService.createKey(key, description);
+        const newKey = await ServicioClavesAdministrativas.createKey(key, description);
 
         res.status(201).json(newKey);
     });
@@ -246,7 +246,7 @@ class ControladorAdministracion {
         const { key } = req.params;
         console.log(`🗝️ Petición de desactivación de clave: ${key}`);
 
-        const updatedKey = await AdminKeyService.deactivateKey(key);
+        const updatedKey = await ServicioClavesAdministrativas.deactivateKey(key);
         res.status(200).json(updatedKey);
     });
 
@@ -257,7 +257,7 @@ class ControladorAdministracion {
     static obtenerDispositivosRegistrados = asyncHandler(async (req, res) => {
         console.log('📱 Petición de dispositivos registrados');
 
-        const devices = await DeviceService.getAllDevices();
+        const devices = await ServicioDispositivos.getAllDevices();
         res.status(200).json(devices);
     });
 
@@ -268,7 +268,7 @@ class ControladorAdministracion {
     static obtenerEstadisticasEstudiantes = asyncHandler(async (req, res) => {
         console.log('📚 Petición de estadísticas de estudiantes');
         
-        const stats = await StudentService.getStudentStats();
+        const stats = await ServicioEstudiantes.getStudentStats();
         
         res.status(200).json({
             success: true,
@@ -298,7 +298,7 @@ class ControladorAdministracion {
             if (!filters[key]) delete filters[key];
         });
         
-        const results = await StudentService.searchStudents(filters);
+        const results = await ServicioEstudiantes.searchStudents(filters);
         
         res.status(200).json({
             success: true,
@@ -313,7 +313,7 @@ class ControladorAdministracion {
     static validarIntegridadEstudiantes = asyncHandler(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de estudiantes');
         
-        const validation = await StudentService.validateDataIntegrity();
+        const validation = await ServicioEstudiantes.validateDataIntegrity();
         
         res.status(200).json({
             success: true,
@@ -328,7 +328,7 @@ class ControladorAdministracion {
     static validarIntegridadAsistencias = asyncHandler(async (req, res) => {
         console.log('🔍 Petición de validación de integridad de asistencias');
         
-        const validation = await AttendanceService.validateAttendanceIntegrity();
+        const validation = await ServicioAsistencias.validateAttendanceIntegrity();
         
         res.status(200).json({
             success: true,
@@ -343,7 +343,7 @@ class ControladorAdministracion {
     static obtenerEstadisticasAdministradores = asyncHandler(async (req, res) => {
         console.log('👥 Petición de estadísticas de administradores');
         
-        const stats = await AdminService.getAdminStats();
+        const stats = await ServicioAdministracion.getAdminStats();
         
         res.status(200).json({
             success: true,
@@ -358,7 +358,7 @@ class ControladorAdministracion {
     static limpiarRegistrosAsistencia = asyncHandler(async (req, res) => {
         console.log('🧹 Petición de limpieza de registros de asistencia');
         
-        await AttendanceService.clearAttendanceRecords();
+        await ServicioAsistencias.clearAttendanceRecords();
         
         res.status(200).json({
             success: true,
@@ -376,9 +376,9 @@ class ControladorAdministracion {
         const { format = 'json' } = req.query;
         
         // Obtener todos los datos
-        const students = await StudentService.getAllStudents();
-        const attendances = await AttendanceService.getAllAttendances();
-        const systemStatus = await SystemService.getSystemStatus();
+        const students = await ServicioEstudiantes.getAllStudents();
+        const attendances = await ServicioAsistencias.getAllAttendances();
+        const systemStatus = await ServicioSistema.getSystemStatus();
         
         const exportData = {
             exportInfo: {
@@ -434,9 +434,9 @@ class ControladorAdministracion {
         
         // Obtener datos
         const [studentStats, attendanceReport, systemStatus] = await Promise.all([
-            StudentService.getStudentStats(),
-            AttendanceService.getAttendanceReport(startDate, endDate),
-            SystemService.getSystemStatus()
+            ServicioEstudiantes.getStudentStats(),
+            ServicioAsistencias.getAttendanceReport(startDate, endDate),
+            ServicioSistema.getSystemStatus()
         ]);
         
         const summary = {
@@ -495,8 +495,8 @@ class ControladorAdministracion {
         console.log('⚡ Petición de métricas en tiempo real');
         
         const [todayStats, systemStatus] = await Promise.all([
-            AttendanceService.getAttendanceStats(),
-            SystemService.getSystemStatus()
+            ServicioAsistencias.getAttendanceStats(),
+            ServicioSistema.getSystemStatus()
         ]);
         
         const metrics = {

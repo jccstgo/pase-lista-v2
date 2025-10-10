@@ -1,11 +1,11 @@
-const database = require('./databaseService');
+const servicioBaseDatos = require('./servicioBaseDatos');
 const config = require('../config/server');
 const { AppError } = require('../middleware/errorHandler');
 
-class ConfigService {
+class ServicioConfiguracion {
     static async ensureInitialized() {
         try {
-            const rows = await database.all('SELECT key FROM system_config');
+            const rows = await servicioBaseDatos.all('SELECT key FROM system_config');
             const existingKeys = new Set(rows.map(row => row.key));
             const timestamp = new Date().toISOString();
 
@@ -13,7 +13,7 @@ class ConfigService {
             Object.entries(config.DEFAULT_SYSTEM_CONFIG).forEach(([key, value]) => {
                 if (!existingKeys.has(key)) {
                     operations.push(
-                        database.run(
+                        servicioBaseDatos.run(
                             `INSERT INTO system_config (key, value, updated_at)
                              VALUES ($1, $2, $3)
                              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
@@ -34,7 +34,7 @@ class ConfigService {
         try {
             await this.ensureInitialized();
 
-            const rows = await database.all('SELECT key, value, updated_at FROM system_config');
+            const rows = await servicioBaseDatos.all('SELECT key, value, updated_at FROM system_config');
             const baseConfig = { ...config.DEFAULT_SYSTEM_CONFIG };
             let updatedAt = null;
 
@@ -97,7 +97,7 @@ class ConfigService {
 
             const timestamp = new Date().toISOString();
 
-            await database.transaction(async (client) => {
+            await servicioBaseDatos.transaction(async (client) => {
                 for (const [key, value] of Object.entries(sanitizedConfig)) {
                     await client.query(
                         `INSERT INTO system_config (key, value, updated_at)
@@ -140,4 +140,4 @@ class ConfigService {
     }
 }
 
-module.exports = ConfigService;
+module.exports = ServicioConfiguracion;
