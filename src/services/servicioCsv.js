@@ -3,10 +3,13 @@ const fsSync = require('fs');
 const { Readable } = require('stream');
 const csv = require('csv-parser');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
-const { AppError } = require('../middleware/errorHandler');
-const { decodePotentiallyMisencodedText, decodeBufferToText } = require('../utils/encoding');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
+const {
+    decodificarTextoPotencialmenteIncorrecto,
+    decodificarBufferATexto
+} = require('../utils/codificacion');
 
-class CSVService {
+class ServicioCsv {
     /**
      * Verificar si un archivo existe
      */
@@ -29,7 +32,7 @@ class CSVService {
             return true;
         } catch (error) {
             console.error(`❌ Error creando directorio ${dirPath}:`, error);
-            throw new AppError(`Error creando directorio: ${error.message}`, 500, 'DIRECTORY_ERROR');
+            throw new ErrorAplicacion(`Error creando directorio: ${error.message}`, 500, 'DIRECTORY_ERROR');
         }
     }
 
@@ -46,10 +49,10 @@ class CSVService {
 
         try {
             const fileBuffer = await fs.readFile(filePath);
-            decodedContent = decodeBufferToText(fileBuffer);
+            decodedContent = decodificarBufferATexto(fileBuffer);
         } catch (error) {
             console.error(`❌ Error leyendo ${filePath}:`, error);
-            throw new AppError(`Error leyendo CSV: ${error.message}`, 500, 'CSV_READ_ERROR');
+            throw new ErrorAplicacion(`Error leyendo CSV: ${error.message}`, 500, 'CSV_READ_ERROR');
         }
 
         return new Promise((resolve, reject) => {
@@ -64,20 +67,20 @@ class CSVService {
                         }
 
                         const trimmed = header.replace(/^\uFEFF/, '').trim();
-                        return decodePotentiallyMisencodedText(trimmed);
+                        return decodificarTextoPotencialmenteIncorrecto(trimmed);
                     }
                 }))
                 .on('data', (data) => {
                     const cleanData = {};
                     Object.keys(data).forEach(key => {
-                        const cleanKey = decodePotentiallyMisencodedText(
+                        const cleanKey = decodificarTextoPotencialmenteIncorrecto(
                             key.replace(/^\uFEFF/, '').trim()
                         );
                         const value = data[key];
 
                         if (typeof value === 'string') {
                             const trimmedValue = value.trim();
-                            cleanData[cleanKey] = decodePotentiallyMisencodedText(trimmedValue);
+                            cleanData[cleanKey] = decodificarTextoPotencialmenteIncorrecto(trimmedValue);
                         } else {
                             cleanData[cleanKey] = value;
                         }
@@ -94,7 +97,7 @@ class CSVService {
                 })
                 .on('error', (error) => {
                     console.error(`❌ Error procesando CSV ${filePath}:`, error);
-                    reject(new AppError(`Error leyendo CSV: ${error.message}`, 500, 'CSV_READ_ERROR'));
+                    reject(new ErrorAplicacion(`Error leyendo CSV: ${error.message}`, 500, 'CSV_READ_ERROR'));
                 });
         });
     }
@@ -106,15 +109,15 @@ class CSVService {
         try {
             // Validar parámetros
             if (!filePath || !headers) {
-                throw new AppError('Ruta de archivo y headers son requeridos', 400, 'INVALID_PARAMETERS');
+                throw new ErrorAplicacion('Ruta de archivo y headers son requeridos', 400, 'INVALID_PARAMETERS');
             }
 
             if (!Array.isArray(data)) {
-                throw new AppError('Los datos deben ser un array', 400, 'INVALID_DATA_TYPE');
+                throw new ErrorAplicacion('Los datos deben ser un array', 400, 'INVALID_DATA_TYPE');
             }
 
             if (!Array.isArray(headers)) {
-                throw new AppError('Los headers deben ser un array', 400, 'INVALID_HEADERS_TYPE');
+                throw new ErrorAplicacion('Los headers deben ser un array', 400, 'INVALID_HEADERS_TYPE');
             }
 
             // Crear directorio padre si no existe
@@ -133,10 +136,10 @@ class CSVService {
             return true;
         } catch (error) {
             console.error(`❌ Error escribiendo ${filePath}:`, error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError(`Error escribiendo CSV: ${error.message}`, 500, 'CSV_WRITE_ERROR');
+            throw new ErrorAplicacion(`Error escribiendo CSV: ${error.message}`, 500, 'CSV_WRITE_ERROR');
         }
     }
 
@@ -151,7 +154,7 @@ class CSVService {
             return true;
         } catch (error) {
             console.error(`❌ Error creando archivo vacío ${filePath}:`, error);
-            throw new AppError(`Error creando archivo CSV vacío: ${error.message}`, 500, 'CSV_CREATE_ERROR');
+            throw new ErrorAplicacion(`Error creando archivo CSV vacío: ${error.message}`, 500, 'CSV_CREATE_ERROR');
         }
     }
 
@@ -172,10 +175,10 @@ class CSVService {
             return allRecords.length;
         } catch (error) {
             console.error(`❌ Error agregando registro a ${filePath}:`, error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError(`Error agregando a CSV: ${error.message}`, 500, 'CSV_APPEND_ERROR');
+            throw new ErrorAplicacion(`Error agregando a CSV: ${error.message}`, 500, 'CSV_APPEND_ERROR');
         }
     }
 
@@ -205,10 +208,10 @@ class CSVService {
             });
         } catch (error) {
             console.error(`❌ Error buscando en ${filePath}:`, error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError(`Error buscando en CSV: ${error.message}`, 500, 'CSV_SEARCH_ERROR');
+            throw new ErrorAplicacion(`Error buscando en CSV: ${error.message}`, 500, 'CSV_SEARCH_ERROR');
         }
     }
 
@@ -241,10 +244,10 @@ class CSVService {
             return updated;
         } catch (error) {
             console.error(`❌ Error actualizando en ${filePath}:`, error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError(`Error actualizando CSV: ${error.message}`, 500, 'CSV_UPDATE_ERROR');
+            throw new ErrorAplicacion(`Error actualizando CSV: ${error.message}`, 500, 'CSV_UPDATE_ERROR');
         }
     }
 
@@ -271,10 +274,10 @@ class CSVService {
             return deletedCount;
         } catch (error) {
             console.error(`❌ Error eliminando de ${filePath}:`, error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError(`Error eliminando de CSV: ${error.message}`, 500, 'CSV_DELETE_ERROR');
+            throw new ErrorAplicacion(`Error eliminando de CSV: ${error.message}`, 500, 'CSV_DELETE_ERROR');
         }
     }
 
@@ -294,7 +297,7 @@ class CSVService {
             };
         } catch (error) {
             console.error(`❌ Error obteniendo estadísticas de ${filePath}:`, error);
-            throw new AppError(`Error obteniendo estadísticas: ${error.message}`, 500, 'CSV_STATS_ERROR');
+            throw new ErrorAplicacion(`Error obteniendo estadísticas: ${error.message}`, 500, 'CSV_STATS_ERROR');
         }
     }
 
@@ -312,9 +315,9 @@ class CSVService {
             return backupPath;
         } catch (error) {
             console.error(`❌ Error creando backup de ${filePath}:`, error);
-            throw new AppError(`Error creando backup: ${error.message}`, 500, 'CSV_BACKUP_ERROR');
+            throw new ErrorAplicacion(`Error creando backup: ${error.message}`, 500, 'CSV_BACKUP_ERROR');
         }
     }
 }
 
-module.exports = CSVService;
+module.exports = ServicioCsv;

@@ -1,6 +1,6 @@
 const app = require('./src/app');
 const config = require('./src/config/server');
-const SystemService = require('./src/services/systemService');
+const ServicioSistema = require('./src/services/servicioSistema');
 
 const PORT = process.env.PORT || config.DEFAULT_PORT;
 
@@ -8,7 +8,7 @@ async function startServer() {
     try {
         // Inicializar el sistema (crear directorios, archivos base, etc.)
         console.log('🔄 Inicializando sistema...');
-        await SystemService.initializeSystem();
+        await ServicioSistema.initializeSystem();
 
         // Iniciar servidor
         const server = app.listen(PORT, () => {
@@ -50,11 +50,11 @@ async function startServer() {
 
 // Manejo de errores no capturados
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection en:', promise, 'razón:', reason);
+    console.error('❌ Rechazo no controlado en:', promise, 'razón:', reason);
 });
 
 process.on('uncaughtException', (error) => {
-    console.error('❌ Uncaught Exception:', error);
+    console.error('❌ Excepción no controlada:', error);
     process.exit(1);
 });
 
