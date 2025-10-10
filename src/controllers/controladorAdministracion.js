@@ -439,6 +439,10 @@ class ControladorAdministracion {
             ServicioSistema.getSystemStatus()
         ]);
 
+        const totalEstudiantes = estadisticasEstudiantes.total ?? estadisticasEstudiantes.totalEstudiantes ?? 0;
+        const promedioAsistenciasDiarias = reporteAsistencias.resumen?.promedioAsistenciasDiarias ?? reporteAsistencias.summary?.avgDailyAttendance ?? 0;
+        const promedioPorcentaje = reporteAsistencias.resumen?.promedioPorcentajeAsistencia ?? reporteAsistencias.summary?.avgAttendanceRate ?? 0;
+
         const resumen = {
             period: {
                 days: dias,
@@ -446,9 +450,13 @@ class ControladorAdministracion {
                 endDate: fechaFin
             },
             overview: {
-                totalStudents: estadisticasEstudiantes.total,
-                avgDailyAttendance: reporteAsistencias.summary.avgDailyAttendance,
-                avgAttendanceRate: `${reporteAsistencias.summary.avgAttendanceRate}%`,
+                totalEstudiantes,
+                asistenciaDiariaPromedio: promedioAsistenciasDiarias,
+                porcentajeAsistenciaPromedio: `${promedioPorcentaje}%`,
+                tiempoActividadSistema: `${Math.round(estadoSistema.uptime / 3600)}h`,
+                totalStudents: totalEstudiantes,
+                avgDailyAttendance: promedioAsistenciasDiarias,
+                avgAttendanceRate: `${promedioPorcentaje}%`,
                 systemUptime: `${Math.round(estadoSistema.uptime / 3600)}h`
             },
             trends: {
@@ -469,10 +477,11 @@ class ControladorAdministracion {
         };
         
         // Generar alertas
-        if (parseFloat(reporteAsistencias.summary.avgAttendanceRate) < 80) {
+        const tasaPromedio = parseFloat(promedioPorcentaje);
+        if (!Number.isNaN(tasaPromedio) && tasaPromedio < 80) {
             resumen.alerts.push({
                 type: 'warning',
-                message: `Tasa de asistencia promedio baja: ${reporteAsistencias.summary.avgAttendanceRate}%`
+                message: `Tasa de asistencia promedio baja: ${promedioPorcentaje}%`
             });
             resumen.recommendations.push('Revisar posibles causas de ausentismo');
         }
@@ -499,14 +508,25 @@ class ControladorAdministracion {
             ServicioSistema.getSystemStatus()
         ]);
 
+        const presentesHoy = estadisticasHoy.presentesRegistrados ?? estadisticasHoy.presentRegistered ?? 0;
+        const totalHoy = estadisticasHoy.totalEstudiantes ?? estadisticasHoy.totalStudents ?? 0;
+        const tasaHoy = parseFloat(estadisticasHoy.porcentajeAsistencia ?? estadisticasHoy.attendanceRate ?? 0);
+        const ultimaActualizacion = estadisticasHoy.ultimaActualizacion ?? estadisticasHoy.lastUpdate;
+
         const metricas = {
             timestamp: new Date().toISOString(),
             attendance: {
                 today: {
-                    present: estadisticasHoy.presentRegistered,
-                    total: estadisticasHoy.totalStudents,
-                    rate: parseFloat(estadisticasHoy.attendanceRate),
-                    lastUpdate: estadisticasHoy.lastUpdate
+                    present: presentesHoy,
+                    total: totalHoy,
+                    rate: tasaHoy,
+                    lastUpdate: ultimaActualizacion
+                },
+                hoy: {
+                    presentes: presentesHoy,
+                    totalEstudiantes: totalHoy,
+                    porcentaje: tasaHoy,
+                    ultimaActualizacion
                 }
             },
             system: {

@@ -11,19 +11,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabGroups = new Map();
 
     if (loginForm) {
-        loginForm.addEventListener('submit', handleLogin);
+        loginForm.addEventListener('submit', manejarInicioSesion);
     }
 
     if (changePasswordForm) {
-        changePasswordForm.addEventListener('submit', handleChangePassword);
+        changePasswordForm.addEventListener('submit', manejarCambioContrasena);
     }
 
     if (restrictionsForm) {
-        restrictionsForm.addEventListener('submit', handleRestrictionsSubmit);
+        restrictionsForm.addEventListener('submit', manejarEnvioRestricciones);
     }
 
     if (locationCheckbox) {
-        locationCheckbox.addEventListener('change', handleLocationRestrictionChange);
+        locationCheckbox.addEventListener('change', manejarCambioRestriccionUbicacion);
     }
 
     tabs.forEach(tab => {
@@ -36,31 +36,31 @@ document.addEventListener('DOMContentLoaded', () => {
         tabGroups.get(group).push(tab);
 
         tab.addEventListener('click', () => {
-            showTab(tab.dataset.tab, tab, group);
+            mostrarPestana(tab.dataset.tab, tab, group);
         });
     });
 
     const initializeDashboardTabs = () => {
         dashboardTabs.forEach(tab => {
             tab.addEventListener('click', () => {
-                showDashboardSection(tab.dataset.target, tab);
+                mostrarSeccionTablero(tab.dataset.target, tab);
             });
         });
 
         const initialDashboardTab = dashboardTabs.find(tab => tab.classList.contains('active')) || dashboardTabs[0];
         if (initialDashboardTab) {
-            showDashboardSection(initialDashboardTab.dataset.target, initialDashboardTab);
+            mostrarSeccionTablero(initialDashboardTab.dataset.target, initialDashboardTab);
         }
     };
 
-    handleLocationRestrictionChange();
+    manejarCambioRestriccionUbicacion();
 
     const initializeTabs = () => {
         tabGroups.forEach(groupTabs => {
             const initialTab = groupTabs.find(tab => tab.classList.contains('active')) || groupTabs[0];
             if (initialTab) {
                 const group = initialTab.dataset.group || 'default';
-                showTab(initialTab.dataset.tab, initialTab, group);
+                mostrarPestana(initialTab.dataset.tab, initialTab, group);
             }
         });
     };
@@ -68,10 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeDashboardTabs();
 
     if (authToken) {
-        showAdminSection();
+        mostrarSeccionAdministracion();
         initializeTabs();
-        loadDashboard();
-        updateSystemInfo();
+        cargarPanelAdministrativo();
+        actualizarInformacionSistema();
     } else {
         initializeTabs();
     }

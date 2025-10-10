@@ -1,14 +1,14 @@
 // ================================
 // FUNCIONES DE DATOS Y RENDERIZADO
 // ================================
-async function loadDashboard() {
-    await loadSystemConfig();
-    await loadStats();
-    await loadDetailedList();
-    ensureStatsPolling();
+async function cargarPanelAdministrativo() {
+    await cargarConfiguracionSistema();
+    await cargarEstadisticas();
+    await cargarListaDetallada();
+    asegurarActualizacionEstadisticas();
 }
 
-async function loadSystemConfig() {
+async function cargarConfiguracionSistema() {
     if (!authToken) return;
 
     try {
@@ -17,22 +17,22 @@ async function loadSystemConfig() {
         });
 
         if (response.ok) {
-            systemConfig = await response.json();
-            populateRestrictionsForm();
+            configuracionSistema = await response.json();
+            llenarFormularioRestricciones();
         } else if (response.status === 401 || response.status === 403) {
-            logout();
+            cerrarSesion();
         }
     } catch (error) {
         console.error('Error cargando configuración:', error);
     }
 }
 
-async function loadStats() {
+async function cargarEstadisticas() {
     if (!authToken) return;
 
-    const overviewLoading = document.getElementById('overviewLoading');
-    if (overviewLoading) {
-        overviewLoading.style.display = 'block';
+    const indicadorCargaResumen = document.getElementById('cargaResumen');
+    if (indicadorCargaResumen) {
+        indicadorCargaResumen.style.display = 'block';
     }
 
     try {
@@ -45,46 +45,46 @@ async function loadStats() {
         }
 
         const payload = await response.json();
-        const stats = payload?.data ?? payload ?? {};
-        const totalStudents = stats.totalStudents ?? 0;
-        const presentRegistered = stats.presentRegistered ?? 0;
-        const totalPresent = stats.totalPresent ?? presentRegistered;
-        const notInList = stats.notInList ?? 0;
+        const estadisticas = payload?.data ?? payload ?? {};
+        const totalEstudiantes = estadisticas.totalEstudiantes ?? estadisticas.totalStudents ?? 0;
+        const presentesRegistrados = estadisticas.presentesRegistrados ?? estadisticas.presentRegistered ?? 0;
+        const totalPresentes = estadisticas.totalPresentes ?? estadisticas.totalPresent ?? presentesRegistrados;
+        const registrosFueraDeLista = estadisticas.fueraDeLista ?? estadisticas.notInList ?? 0;
 
-        document.getElementById('totalStudents').textContent = totalStudents;
-        document.getElementById('presentRegistered').textContent = presentRegistered;
-        const attendanceRate = totalStudents > 0
-            ? ((presentRegistered / totalStudents) * 100).toFixed(1)
+        document.getElementById('totalEstudiantes').textContent = totalEstudiantes;
+        document.getElementById('presentesRegistrados').textContent = presentesRegistrados;
+        const porcentajeAsistencia = totalEstudiantes > 0
+            ? ((presentesRegistrados / totalEstudiantes) * 100).toFixed(1)
             : '0.0';
-        document.getElementById('attendanceRate').textContent = `${attendanceRate}%`;
-        document.getElementById('absent').textContent = stats.absent ?? '-';
+        document.getElementById('porcentajeAsistencia').textContent = `${porcentajeAsistencia}%`;
+        document.getElementById('faltistas').textContent = estadisticas.faltistas ?? estadisticas.absent ?? '-';
 
-        const overviewContent = document.getElementById('overviewContent');
-        if (overviewContent) {
-            overviewContent.innerHTML = `
+        const contenedorResumen = document.getElementById('contenidoResumen');
+        if (contenedorResumen) {
+            contenedorResumen.innerHTML = `
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
                     <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
                         <h3 style="color: #2ecc71; margin-bottom: 10px;">✅ Asistencia Total</h3>
-                        <p style="font-size: 24px; font-weight: bold;">${totalPresent}</p>
-                        <p style="color: #666; font-size: 14px;">${((totalPresent / Math.max(totalStudents || 1, 1)) * 100).toFixed(1)}% del total</p>
+                        <p style="font-size: 24px; font-weight: bold;">${totalPresentes}</p>
+                        <p style="color: #666; font-size: 14px;">${((totalPresentes / Math.max(totalEstudiantes || 1, 1)) * 100).toFixed(1)}% del total</p>
                     </div>
                     <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
                         <h3 style="color: #f39c12; margin-bottom: 10px;">📍 Registros Fuera de Lista</h3>
-                        <p style="font-size: 24px; font-weight: bold;">${notInList}</p>
+                        <p style="font-size: 24px; font-weight: bold;">${registrosFueraDeLista}</p>
                         <p style="color: #666; font-size: 14px;">Registros de personal no listado</p>
                     </div>
                     <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
                         <h3 style="color: #3498db; margin-bottom: 10px;">🛡️ Restricciones Activas</h3>
                         <p style="font-size: 16px;">
-                            ${systemConfig.location_restriction_enabled === 'true' ? '📍 Ubicación ' : ''}
-                            ${systemConfig.device_restriction_enabled === 'true' ? '📱 Dispositivo ' : ''}
-                            ${systemConfig.admin_key_bypass_enabled === 'true' ? '🔑 Claves de supervisor ' : ''}
-                            ${systemConfig.location_restriction_enabled !== 'true' && systemConfig.device_restriction_enabled !== 'true' && systemConfig.admin_key_bypass_enabled !== 'true' ? 'Ninguna' : ''}
+                            ${configuracionSistema.location_restriction_enabled === 'true' ? '📍 Ubicación ' : ''}
+                            ${configuracionSistema.device_restriction_enabled === 'true' ? '📱 Dispositivo ' : ''}
+                            ${configuracionSistema.admin_key_bypass_enabled === 'true' ? '🔑 Claves de supervisor ' : ''}
+                            ${configuracionSistema.location_restriction_enabled !== 'true' && configuracionSistema.device_restriction_enabled !== 'true' && configuracionSistema.admin_key_bypass_enabled !== 'true' ? 'Ninguna' : ''}
                         </p>
                         <p style="color: #666; font-size: 12px;">Estado actual</p>
                     </div>
                     <div style="margin-top: 20px; padding: 15px; background: #e9ecef; border-radius: 10px;">
-                        <p style="margin: 0;"><strong>Fecha:</strong> ${new Date(stats.date).toLocaleDateString('es-MX', {
+                        <p style="margin: 0;"><strong>Fecha:</strong> ${new Date(estadisticas.fecha ?? estadisticas.date).toLocaleDateString('es-MX', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric'
@@ -96,21 +96,21 @@ async function loadStats() {
     } catch (error) {
         console.error('Error al cargar estadísticas:', error);
         if (String(error.message).includes('401') || String(error.message).includes('403')) {
-            logout();
+            cerrarSesion();
         }
     } finally {
-        if (overviewLoading) {
-            overviewLoading.style.display = 'none';
+        if (indicadorCargaResumen) {
+            indicadorCargaResumen.style.display = 'none';
         }
     }
 }
 
-async function loadDetailedList() {
+async function cargarListaDetallada() {
     if (!authToken) return;
 
-    const detailedLoading = document.getElementById('detailedLoading');
-    if (detailedLoading) {
-        detailedLoading.style.display = 'block';
+    const indicadorCargaDetalle = document.getElementById('cargaDetalle');
+    if (indicadorCargaDetalle) {
+        indicadorCargaDetalle.style.display = 'block';
     }
 
     try {
@@ -123,48 +123,50 @@ async function loadDetailedList() {
         }
 
         const payload = await response.json();
-        const detailedData = payload?.data ?? payload ?? {};
-        displayDetailedList(detailedData);
+        const informacionDetallada = payload?.data ?? payload ?? {};
+        mostrarListaDetallada(informacionDetallada);
     } catch (error) {
         console.error('Error al cargar la lista detallada:', error);
         if (String(error.message).includes('401') || String(error.message).includes('403')) {
-            logout();
+            cerrarSesion();
         }
     } finally {
-        if (detailedLoading) {
-            detailedLoading.style.display = 'none';
+        if (indicadorCargaDetalle) {
+            indicadorCargaDetalle.style.display = 'none';
         }
     }
 }
 
-function displayDetailedList(data) {
-    const content = document.getElementById('detailedContent');
-    if (!content) return;
+function mostrarListaDetallada(datos) {
+    const contenedor = document.getElementById('contenidoDetalle');
+    if (!contenedor) return;
 
     let html = '<div style="margin-bottom: 20px;">';
-    html += `<h3>Fecha: ${new Date(data.date).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</h3>`;
+    html += `<h3>Fecha: ${new Date(datos.fecha ?? datos.date).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</h3>`;
     html += '</div>';
 
-    if (Array.isArray(data.presentRegistered) && data.presentRegistered.length > 0) {
+    const registrosPresentes = datos.presentesRegistrados ?? datos.presentRegistered;
+    if (Array.isArray(registrosPresentes) && registrosPresentes.length > 0) {
         html += '<h3 style="color: #2ecc71; margin: 20px 0 10px 0;">✅ Presentes (En Lista)</h3>';
-        html += createDetailedTable(data.presentRegistered);
+        html += crearTablaDetallada(registrosPresentes);
     }
 
-    if (Array.isArray(data.absent) && data.absent.length > 0) {
+    const registrosFaltantes = datos.faltistas ?? datos.absent;
+    if (Array.isArray(registrosFaltantes) && registrosFaltantes.length > 0) {
         html += '<h3 style="color: #e74c3c; margin: 20px 0 10px 0;">❌ Faltistas</h3>';
-        html += createDetailedTable(data.absent);
+        html += crearTablaDetallada(registrosFaltantes);
     }
 
-    if ((!Array.isArray(data.presentRegistered) || data.presentRegistered.length === 0) &&
-        (!Array.isArray(data.absent) || data.absent.length === 0)) {
+    if ((!Array.isArray(registrosPresentes) || registrosPresentes.length === 0) &&
+        (!Array.isArray(registrosFaltantes) || registrosFaltantes.length === 0)) {
         html += '<p>No hay registros disponibles para la fecha seleccionada.</p>';
     }
 
-    content.innerHTML = html;
+    contenedor.innerHTML = html;
 }
 
-function createDetailedTable(students) {
-    if (!students || students.length === 0) {
+function crearTablaDetallada(registros) {
+    if (!registros || registros.length === 0) {
         return '<p>No hay registros</p>';
     }
 
@@ -172,21 +174,21 @@ function createDetailedTable(students) {
     html += '<th>Matrícula</th><th>Nombre</th><th>Grupo</th><th>Estado</th><th>Hora</th><th>Ubicación</th><th>Dispositivo</th>';
     html += '</tr></thead><tbody>';
 
-    students.forEach(student => {
-        const statusClass = student.status?.includes('Presente') ? 'status-present' : 'status-absent';
-        const timeString = student.timestamp
-            ? new Date(student.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+    registros.forEach(registro => {
+        const claseEstado = registro.status?.includes('Presente') ? 'status-present' : 'status-absent';
+        const horaFormateada = registro.timestamp
+            ? new Date(registro.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
             : '-';
 
         html += `
             <tr>
-                <td>${student.matricula || '-'}</td>
-                <td>${decodeSpecialChars(student.nombre || '-')}</td>
-                <td>${decodeSpecialChars((student.grupo || '-')).toUpperCase()}</td>
-                <td><span class="status-badge ${statusClass}">${student.status || '-'}</span></td>
-                <td>${timeString}</td>
-                <td style="font-size: 12px;">${student.location || 'N/D'}</td>
-                <td style="font-size: 12px; font-family: monospace;">${student.device || 'N/D'}</td>
+                <td>${registro.matricula || '-'}</td>
+                <td>${decodificarCaracteresEspeciales(registro.nombre || '-')}</td>
+                <td>${decodificarCaracteresEspeciales((registro.grupo || '-')).toUpperCase()}</td>
+                <td><span class="status-badge ${claseEstado}">${registro.status || '-'}</span></td>
+                <td>${horaFormateada}</td>
+                <td style="font-size: 12px;">${registro.location || 'N/D'}</td>
+                <td style="font-size: 12px; font-family: monospace;">${registro.device || 'N/D'}</td>
             </tr>
         `;
     });
@@ -195,12 +197,12 @@ function createDetailedTable(students) {
     return html;
 }
 
-async function loadDevices() {
+async function cargarDispositivos() {
     if (!authToken) return;
 
-    const loading = document.getElementById('devicesLoading');
-    if (loading) {
-        loading.style.display = 'block';
+    const indicadorDispositivos = document.getElementById('cargaDispositivos');
+    if (indicadorDispositivos) {
+        indicadorDispositivos.style.display = 'block';
     }
 
     try {
@@ -212,27 +214,30 @@ async function loadDevices() {
             throw new Error('Error al cargar dispositivos');
         }
 
-        const devices = await response.json();
-        displayDevices(devices);
+        const dispositivos = await response.json();
+        mostrarDispositivos(dispositivos);
     } catch (error) {
         console.error('Error al cargar dispositivos:', error);
-        document.getElementById('devicesContent').innerHTML = '<p style="color: #e74c3c;">Error cargando dispositivos</p>';
+        const contenedor = document.getElementById('devicesContent');
+        if (contenedor) {
+            contenedor.innerHTML = '<p style="color: #e74c3c;">Error cargando dispositivos</p>';
+        }
         if (String(error.message).includes('401') || String(error.message).includes('403')) {
-            logout();
+            cerrarSesion();
         }
     } finally {
-        if (loading) {
-            loading.style.display = 'none';
+        if (indicadorDispositivos) {
+            indicadorDispositivos.style.display = 'none';
         }
     }
 }
 
-function displayDevices(devices) {
-    const content = document.getElementById('devicesContent');
-    if (!content) return;
+function mostrarDispositivos(dispositivos) {
+    const contenedor = document.getElementById('devicesContent');
+    if (!contenedor) return;
 
-    if (!devices || devices.length === 0) {
-        content.innerHTML = '<p>No hay dispositivos registrados</p>';
+    if (!dispositivos || dispositivos.length === 0) {
+        contenedor.innerHTML = '<p>No hay dispositivos registrados</p>';
         return;
     }
 
@@ -240,31 +245,31 @@ function displayDevices(devices) {
     html += '<th>Huella Digital</th><th>Matrícula</th><th>Primer Registro</th><th>Último Uso</th><th>Navegador</th>';
     html += '</tr></thead><tbody>';
 
-    devices.forEach(device => {
-        const firstRegistration = device.first_registration ? new Date(device.first_registration).toLocaleString('es-MX') : '-';
-        const lastUsed = device.last_used ? new Date(device.last_used).toLocaleString('es-MX') : '-';
+    dispositivos.forEach(dispositivo => {
+        const primerRegistro = dispositivo.first_registration ? new Date(dispositivo.first_registration).toLocaleString('es-MX') : '-';
+        const ultimoUso = dispositivo.last_used ? new Date(dispositivo.last_used).toLocaleString('es-MX') : '-';
 
         html += `
             <tr>
-                <td style="font-family: monospace; font-size: 12px;">${device.device_fingerprint}</td>
-                <td><strong>${device.matricula}</strong></td>
-                <td>${firstRegistration}</td>
-                <td>${lastUsed}</td>
-                <td style="font-size: 12px;">${device.user_agent || 'Desconocido'}</td>
+                <td style="font-family: monospace; font-size: 12px;">${dispositivo.device_fingerprint}</td>
+                <td><strong>${dispositivo.matricula}</strong></td>
+                <td>${primerRegistro}</td>
+                <td>${ultimoUso}</td>
+                <td style="font-size: 12px;">${dispositivo.user_agent || 'Desconocido'}</td>
             </tr>
         `;
     });
 
     html += '</tbody></table></div>';
-    content.innerHTML = html;
+    contenedor.innerHTML = html;
 }
 
-async function loadAdminKeys() {
+async function cargarClavesAdministrativas() {
     if (!authToken) return;
 
-    const container = document.getElementById('adminKeysList');
-    if (container) {
-        container.innerHTML = `
+    const contenedor = document.getElementById('adminKeysList');
+    if (contenedor) {
+        contenedor.innerHTML = `
             <div class="loading">
                 <div class="spinner"></div>
                 <p>Cargando claves administrativas...</p>
@@ -281,57 +286,64 @@ async function loadAdminKeys() {
             throw new Error('Error al cargar claves administrativas');
         }
 
-        const adminKeys = await response.json();
-        displayAdminKeys(adminKeys);
+        const claves = await response.json();
+        mostrarClavesAdministrativas(claves);
     } catch (error) {
         console.error('Error al cargar claves administrativas:', error);
-        if (container) {
-            container.innerHTML = '<p style="color: #e74c3c;">Error cargando claves administrativas</p>';
+        if (contenedor) {
+            contenedor.innerHTML = '<p style="color: #e74c3c;">Error cargando claves administrativas</p>';
         }
         if (String(error.message).includes('401') || String(error.message).includes('403')) {
-            logout();
+            cerrarSesion();
         }
     }
 }
 
-function displayAdminKeys(adminKeys) {
-    const content = document.getElementById('adminKeysList');
-    if (!content) return;
+function mostrarClavesAdministrativas(claves) {
+    const contenedor = document.getElementById('adminKeysList');
+    if (!contenedor) return;
 
-    if (!adminKeys || adminKeys.length === 0) {
-        content.innerHTML = '<p>No hay claves administrativas configuradas</p>';
+    if (!claves || claves.length === 0) {
+        contenedor.innerHTML = '<p>No hay claves administrativas configuradas</p>';
         return;
     }
 
     let html = '';
-    adminKeys.forEach(key => {
-        const isActive = key.is_active === 'true';
-        const createdDate = key.created_at ? new Date(key.created_at).toLocaleDateString('es-MX') : '-';
+    claves.forEach(clave => {
+        const activa = clave.is_active === 'true';
+        const fechaCreacion = clave.created_at ? new Date(clave.created_at).toLocaleDateString('es-MX') : '-';
 
         html += `
-            <div class="admin-key-item ${isActive ? '' : 'inactive'}">
+            <div class="admin-key-item ${activa ? '' : 'inactive'}">
                 <div class="admin-key-info">
-                    <div style="font-weight: bold; font-family: monospace;">${key.key}</div>
-                    <div style="color: #666; font-size: 14px;">${decodeSpecialChars(key.description || '')}</div>
-                    <div style="color: #999; font-size: 12px;">Creada: ${createdDate} | Estado: ${isActive ? '✅ Activa' : '❌ Inactiva'}</div>
+                    <div style="font-weight: bold; font-family: monospace;">${clave.key}</div>
+                    <div style="color: #666; font-size: 14px;">${decodificarCaracteresEspeciales(clave.description || '')}</div>
+                    <div style="color: #999; font-size: 12px;">Creada: ${fechaCreacion} | Estado: ${activa ? '✅ Activa' : '❌ Inactiva'}</div>
                 </div>
                 <div class="admin-key-actions">
-                    ${isActive
-                        ? `<button class="btn btn-danger btn-small" onclick="deactivateAdminKey('${key.key}')">Desactivar</button>`
+                    ${activa
+                        ? `<button class="btn btn-danger btn-small" onclick="desactivarClaveAdministrativa('${clave.key}')">Desactivar</button>`
                         : '<span style="color: #999;">Inactiva</span>'}
                 </div>
             </div>
         `;
     });
 
-    content.innerHTML = html;
+    contenedor.innerHTML = html;
 }
 
 // Exponer funciones necesarias globalmente
-window.loadDashboard = loadDashboard;
-window.loadSystemConfig = loadSystemConfig;
-window.loadStats = loadStats;
-window.loadDetailedList = loadDetailedList;
-window.loadDevices = loadDevices;
-window.loadAdminKeys = loadAdminKeys;
-window.displayAdminKeys = displayAdminKeys;
+window.cargarPanelAdministrativo = cargarPanelAdministrativo;
+window.cargarConfiguracionSistema = cargarConfiguracionSistema;
+window.cargarEstadisticas = cargarEstadisticas;
+window.cargarListaDetallada = cargarListaDetallada;
+window.cargarDispositivos = cargarDispositivos;
+window.cargarClavesAdministrativas = cargarClavesAdministrativas;
+window.mostrarClavesAdministrativas = mostrarClavesAdministrativas;
+window.loadDashboard = cargarPanelAdministrativo;
+window.loadSystemConfig = cargarConfiguracionSistema;
+window.loadStats = cargarEstadisticas;
+window.loadDetailedList = cargarListaDetallada;
+window.loadDevices = cargarDispositivos;
+window.loadAdminKeys = cargarClavesAdministrativas;
+window.displayAdminKeys = mostrarClavesAdministrativas;

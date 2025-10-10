@@ -388,14 +388,26 @@ class ServicioEstudiantes {
                 grupos[fila.grupo] = Number.parseInt(fila.total, 10);
             });
 
+            const totalEstudiantes = Number.parseInt(totales?.total, 10) || 0;
+            const estadisticasBase = {
+                totalEstudiantes,
+                grupos,
+                cantidadGrupos: Object.keys(grupos).length,
+                almacenamiento: {
+                    conexion: config.DATABASE.SUMMARY
+                },
+                marcaTiempo: new Date().toISOString()
+            };
+
             return {
-                total: Number.parseInt(totales?.total, 10) || 0,
-                groups: grupos,
-                groupCount: Object.keys(grupos).length,
+                ...estadisticasBase,
+                total: estadisticasBase.totalEstudiantes,
+                groups: estadisticasBase.grupos,
+                groupCount: estadisticasBase.cantidadGrupos,
                 storage: {
                     connection: config.DATABASE.SUMMARY
                 },
-                timestamp: new Date().toISOString()
+                timestamp: estadisticasBase.marcaTiempo
             };
         } catch (error) {
             console.error('❌ Error obteniendo estadísticas de estudiantes:', error);

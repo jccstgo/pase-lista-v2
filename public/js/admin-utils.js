@@ -2,24 +2,24 @@
 // VARIABLES GLOBALES
 // ================================
 let authToken = localStorage.getItem('adminToken');
-let currentStudents = [];
-let systemConfig = {};
-let statsIntervalId = null;
+let estudiantesActuales = [];
+let configuracionSistema = {};
+let idIntervaloEstadisticas = null;
 
 // ================================
 // UTILIDADES GENERALES
 // ================================
-function showAdminSection() {
+function mostrarSeccionAdministracion() {
     document.getElementById('loginSection').classList.add('hidden');
     document.getElementById('adminSection').classList.remove('hidden');
 }
 
-function logout() {
+function cerrarSesion() {
     localStorage.removeItem('adminToken');
     authToken = null;
-    if (statsIntervalId) {
-        clearInterval(statsIntervalId);
-        statsIntervalId = null;
+    if (idIntervaloEstadisticas) {
+        clearInterval(idIntervaloEstadisticas);
+        idIntervaloEstadisticas = null;
     }
     document.getElementById('loginSection').classList.remove('hidden');
     document.getElementById('adminSection').classList.add('hidden');
@@ -27,7 +27,7 @@ function logout() {
     document.getElementById('password').value = '';
 }
 
-function showDashboardSection(sectionId, triggerElement = null) {
+function mostrarSeccionTablero(sectionId, triggerElement = null) {
     const sections = document.querySelectorAll('.dashboard-content');
     sections.forEach(section => section.classList.add('hidden'));
 
@@ -47,15 +47,15 @@ function showDashboardSection(sectionId, triggerElement = null) {
     }
 
     if (sectionId === 'resultsSection') {
-        loadStats();
-        loadDetailedList();
+        cargarEstadisticas();
+        cargarListaDetallada();
     } else if (sectionId === 'managementSection') {
-        loadSystemConfig();
-        updateSystemInfo();
+        cargarConfiguracionSistema();
+        actualizarInformacionSistema();
     }
 }
 
-function showTab(tabName, tabElement, group = 'default') {
+function mostrarPestana(tabName, tabElement, group = 'default') {
     const groupSelector = `.tab-content[data-group="${group}"]`;
     const groupTabsSelector = `.tab[data-group="${group}"]`;
 
@@ -87,27 +87,27 @@ function showTab(tabName, tabElement, group = 'default') {
 
     switch (tabName) {
         case 'overview':
-            loadStats();
+            cargarEstadisticas();
             break;
         case 'detailed':
-            loadDetailedList();
+            cargarListaDetallada();
             break;
         case 'restrictions':
-            loadSystemConfig();
-            loadAdminKeys();
+            cargarConfiguracionSistema();
+            cargarClavesAdministrativas();
             break;
         case 'devices':
-            loadDevices();
+            cargarDispositivos();
             break;
         case 'settings':
-            updateSystemInfo();
+            actualizarInformacionSistema();
             break;
         default:
             break;
     }
 }
 
-function updateSystemInfo() {
+function actualizarInformacionSistema() {
     document.getElementById('currentUser').textContent = 'admin';
     document.getElementById('sessionTime').textContent = new Date().toLocaleString('es-MX');
     document.getElementById('lastUpdate').textContent = new Date().toLocaleString('es-MX');
@@ -119,8 +119,10 @@ function updateSystemInfo() {
             .then(response => response.json())
             .then(payload => {
                 const stats = payload?.data ?? payload ?? {};
-                document.getElementById('systemTotalStudents').textContent = stats.totalStudents ?? '-';
-                document.getElementById('systemTodayRecords').textContent = stats.totalPresent ?? '-';
+                const totalEstudiantes = stats.totalEstudiantes ?? stats.totalStudents ?? '-';
+                const totalPresentes = stats.totalPresentes ?? stats.totalPresent ?? '-';
+                document.getElementById('systemTotalStudents').textContent = totalEstudiantes;
+                document.getElementById('systemTodayRecords').textContent = totalPresentes;
             })
             .catch(() => {
                 document.getElementById('systemTotalStudents').textContent = 'Error';
@@ -129,7 +131,7 @@ function updateSystemInfo() {
     }
 }
 
-function showMessage(elementId, message, type) {
+function mostrarMensaje(elementId, message, type) {
     const element = document.getElementById(elementId);
     if (!element) return;
 
@@ -142,7 +144,7 @@ function showMessage(elementId, message, type) {
     }, 5000);
 }
 
-function hasEncodingArtifacts(text) {
+function tieneArtefactosCodificacion(text) {
     if (!text || typeof text !== 'string') {
         return false;
     }
@@ -150,7 +152,7 @@ function hasEncodingArtifacts(text) {
     return text.includes('\uFFFD') || /Ã.|Â./.test(text);
 }
 
-function decodeText(bytes, encoding) {
+function decodificarTexto(bytes, encoding) {
     try {
         return new TextDecoder(encoding, { fatal: false }).decode(bytes);
     } catch (error) {
@@ -158,7 +160,7 @@ function decodeText(bytes, encoding) {
     }
 }
 
-function decodeSpecialChars(text) {
+function decodificarCaracteresEspeciales(text) {
     if (!text || typeof text !== 'string') {
         return text;
     }
@@ -171,8 +173,8 @@ function decodeSpecialChars(text) {
     const preferredEncodings = ['utf-8', 'windows-1252', 'iso-8859-1'];
 
     for (const encoding of preferredEncodings) {
-        const decoded = decodeText(bytes, encoding);
-        if (decoded && !hasEncodingArtifacts(decoded)) {
+        const decoded = decodificarTexto(bytes, encoding);
+        if (decoded && !tieneArtefactosCodificacion(decoded)) {
             return decoded;
         }
     }
@@ -180,20 +182,20 @@ function decodeSpecialChars(text) {
     return text;
 }
 
-async function readFileAsTextWithEncoding(file) {
+async function leerArchivoComoTextoConCodificacion(file) {
     const buffer = await file.arrayBuffer();
     const bytes = new Uint8Array(buffer);
     const encodingsToTry = ['utf-8', 'windows-1252', 'iso-8859-1'];
 
     for (let index = 0; index < encodingsToTry.length; index++) {
         const encoding = encodingsToTry[index];
-        const decoded = decodeText(bytes, encoding);
+        const decoded = decodificarTexto(bytes, encoding);
 
         if (!decoded) {
             continue;
         }
 
-        if (!hasEncodingArtifacts(decoded) || index === encodingsToTry.length - 1) {
+        if (!tieneArtefactosCodificacion(decoded) || index === encodingsToTry.length - 1) {
             return decoded;
         }
     }
@@ -201,20 +203,20 @@ async function readFileAsTextWithEncoding(file) {
     return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
 }
 
-function populateRestrictionsForm() {
-    document.getElementById('locationRestrictionEnabled').checked = systemConfig.location_restriction_enabled === 'true';
-    document.getElementById('deviceRestrictionEnabled').checked = systemConfig.device_restriction_enabled === 'true';
-    document.getElementById('adminKeyBypassEnabled').checked = systemConfig.admin_key_bypass_enabled === 'true';
+function llenarFormularioRestricciones() {
+    document.getElementById('locationRestrictionEnabled').checked = configuracionSistema.location_restriction_enabled === 'true';
+    document.getElementById('deviceRestrictionEnabled').checked = configuracionSistema.device_restriction_enabled === 'true';
+    document.getElementById('adminKeyBypassEnabled').checked = configuracionSistema.admin_key_bypass_enabled === 'true';
 
-    document.getElementById('locationName').value = systemConfig.location_name || '';
-    document.getElementById('locationLatitude').value = systemConfig.location_latitude || '';
-    document.getElementById('locationLongitude').value = systemConfig.location_longitude || '';
-    document.getElementById('locationRadius').value = systemConfig.location_radius_km || '1';
+    document.getElementById('locationName').value = configuracionSistema.location_name || '';
+    document.getElementById('locationLatitude').value = configuracionSistema.location_latitude || '';
+    document.getElementById('locationLongitude').value = configuracionSistema.location_longitude || '';
+    document.getElementById('locationRadius').value = configuracionSistema.location_radius_km || '1';
 
-    handleLocationRestrictionChange();
+    manejarCambioRestriccionUbicacion();
 }
 
-function handleLocationRestrictionChange() {
+function manejarCambioRestriccionUbicacion() {
     const locationSettings = document.getElementById('locationSettings');
     const checkbox = document.getElementById('locationRestrictionEnabled');
 
@@ -229,7 +231,7 @@ function handleLocationRestrictionChange() {
     });
 }
 
-function getCurrentLocation() {
+function obtenerUbicacionActual() {
     if (!navigator.geolocation) {
         alert('La geolocalización no está disponible en este navegador');
         return;
@@ -252,18 +254,18 @@ function getCurrentLocation() {
     );
 }
 
-function ensureStatsPolling() {
-    if (statsIntervalId) {
-        clearInterval(statsIntervalId);
+function asegurarActualizacionEstadisticas() {
+    if (idIntervaloEstadisticas) {
+        clearInterval(idIntervaloEstadisticas);
     }
 
-    statsIntervalId = setInterval(() => {
+    idIntervaloEstadisticas = setInterval(() => {
         const adminSection = document.getElementById('adminSection');
         if (authToken && adminSection && !adminSection.classList.contains('hidden')) {
-            loadStats();
+            cargarEstadisticas();
             const resultsSection = document.getElementById('resultsSection');
             if (resultsSection && !resultsSection.classList.contains('hidden')) {
-                loadDetailedList();
+                cargarListaDetallada();
             }
         }
     }, 30000);
@@ -272,15 +274,69 @@ function ensureStatsPolling() {
 // ================================
 // EXPONER FUNCIONES GLOBALES
 // ================================
-window.logout = logout;
-window.showTab = showTab;
-window.showAdminSection = showAdminSection;
-window.updateSystemInfo = updateSystemInfo;
-window.showMessage = showMessage;
-window.decodeSpecialChars = decodeSpecialChars;
-window.readFileAsTextWithEncoding = readFileAsTextWithEncoding;
-window.populateRestrictionsForm = populateRestrictionsForm;
-window.handleLocationRestrictionChange = handleLocationRestrictionChange;
-window.getCurrentLocation = getCurrentLocation;
-window.ensureStatsPolling = ensureStatsPolling;
-window.showDashboardSection = showDashboardSection;
+window.cerrarSesion = cerrarSesion;
+window.mostrarPestana = mostrarPestana;
+window.mostrarSeccionAdministracion = mostrarSeccionAdministracion;
+window.actualizarInformacionSistema = actualizarInformacionSistema;
+window.mostrarMensaje = mostrarMensaje;
+window.decodificarCaracteresEspeciales = decodificarCaracteresEspeciales;
+window.leerArchivoComoTextoConCodificacion = leerArchivoComoTextoConCodificacion;
+window.llenarFormularioRestricciones = llenarFormularioRestricciones;
+window.manejarCambioRestriccionUbicacion = manejarCambioRestriccionUbicacion;
+window.obtenerUbicacionActual = obtenerUbicacionActual;
+window.asegurarActualizacionEstadisticas = asegurarActualizacionEstadisticas;
+window.mostrarSeccionTablero = mostrarSeccionTablero;
+window.logout = cerrarSesion;
+window.showTab = mostrarPestana;
+window.showAdminSection = mostrarSeccionAdministracion;
+window.updateSystemInfo = actualizarInformacionSistema;
+window.showMessage = mostrarMensaje;
+window.decodeSpecialChars = decodificarCaracteresEspeciales;
+window.readFileAsTextWithEncoding = leerArchivoComoTextoConCodificacion;
+window.populateRestrictionsForm = llenarFormularioRestricciones;
+window.handleLocationRestrictionChange = manejarCambioRestriccionUbicacion;
+window.getCurrentLocation = obtenerUbicacionActual;
+window.ensureStatsPolling = asegurarActualizacionEstadisticas;
+window.showDashboardSection = mostrarSeccionTablero;
+
+Object.defineProperty(window, 'estudiantesActuales', {
+    get: () => estudiantesActuales,
+    set: (valor) => {
+        estudiantesActuales = Array.isArray(valor) ? valor : [];
+    }
+});
+
+Object.defineProperty(window, 'configuracionSistema', {
+    get: () => configuracionSistema,
+    set: (valor) => {
+        configuracionSistema = valor || {};
+    }
+});
+
+Object.defineProperty(window, 'idIntervaloEstadisticas', {
+    get: () => idIntervaloEstadisticas,
+    set: (valor) => {
+        idIntervaloEstadisticas = valor;
+    }
+});
+
+Object.defineProperty(window, 'currentStudents', {
+    get: () => estudiantesActuales,
+    set: (valor) => {
+        estudiantesActuales = Array.isArray(valor) ? valor : [];
+    }
+});
+
+Object.defineProperty(window, 'systemConfig', {
+    get: () => configuracionSistema,
+    set: (valor) => {
+        configuracionSistema = valor || {};
+    }
+});
+
+Object.defineProperty(window, 'statsIntervalId', {
+    get: () => idIntervaloEstadisticas,
+    set: (valor) => {
+        idIntervaloEstadisticas = valor;
+    }
+});

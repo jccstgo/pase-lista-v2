@@ -172,26 +172,37 @@ class ServicioAsistencias {
             const matriculasPresentes = new Set(presentesRegistrados.map(asistencia => asistencia.matricula));
             const estudiantesAusentes = estudiantes.filter(estudiante => !matriculasPresentes.has(estudiante.matricula));
 
-            const estadisticas = {
-                date: fechaObjetivo,
-                totalStudents: estudiantes.length,
-                presentRegistered: presentesRegistrados.length,
-                presentNotInList: 0,
-                absent: estudiantesAusentes.length,
-                totalPresent: presentesRegistrados.length,
-                attendanceRate: estudiantes.length > 0 ? ((presentesRegistrados.length / estudiantes.length) * 100).toFixed(1) : 0,
-                byGroup: this.obtenerEstadisticasPorGrupo(estudiantes, presentesRegistrados),
-                lastUpdate: new Date().toISOString()
+            const estadisticasBase = {
+                fecha: fechaObjetivo,
+                totalEstudiantes: estudiantes.length,
+                presentesRegistrados: presentesRegistrados.length,
+                presentesFueraDeLista: 0,
+                faltistas: estudiantesAusentes.length,
+                totalPresentes: presentesRegistrados.length,
+                porcentajeAsistencia: estudiantes.length > 0 ? ((presentesRegistrados.length / estudiantes.length) * 100).toFixed(1) : 0,
+                estadisticasPorGrupo: this.obtenerEstadisticasPorGrupo(estudiantes, presentesRegistrados),
+                ultimaActualizacion: new Date().toISOString()
             };
 
             console.log(`📊 Estadísticas calculadas para ${fechaObjetivo}:`, {
-                total: estadisticas.totalStudents,
-                present: estadisticas.presentRegistered,
-                absent: estadisticas.absent,
-                rate: `${estadisticas.attendanceRate}%`
+                total: estadisticasBase.totalEstudiantes,
+                presentes: estadisticasBase.presentesRegistrados,
+                faltistas: estadisticasBase.faltistas,
+                porcentaje: `${estadisticasBase.porcentajeAsistencia}%`
             });
 
-            return estadisticas;
+            return {
+                ...estadisticasBase,
+                date: estadisticasBase.fecha,
+                totalStudents: estadisticasBase.totalEstudiantes,
+                presentRegistered: estadisticasBase.presentesRegistrados,
+                presentNotInList: estadisticasBase.presentesFueraDeLista,
+                absent: estadisticasBase.faltistas,
+                totalPresent: estadisticasBase.totalPresentes,
+                attendanceRate: estadisticasBase.porcentajeAsistencia,
+                byGroup: estadisticasBase.estadisticasPorGrupo,
+                lastUpdate: estadisticasBase.ultimaActualizacion
+            };
         } catch (error) {
             console.error('❌ Error calculando estadísticas:', error);
             if (error instanceof ErrorAplicacion) {
@@ -207,27 +218,35 @@ class ServicioAsistencias {
         estudiantes.forEach(estudiante => {
             if (!estadisticasPorGrupo[estudiante.grupo]) {
                 estadisticasPorGrupo[estudiante.grupo] = {
-                    total: 0,
-                    present: 0,
-                    absent: 0,
-                    attendanceRate: 0
+                    totalEstudiantes: 0,
+                    presentes: 0,
+                    faltistas: 0,
+                    porcentajeAsistencia: 0
                 };
             }
-            estadisticasPorGrupo[estudiante.grupo].total++;
+            estadisticasPorGrupo[estudiante.grupo].totalEstudiantes++;
         });
 
         asistencias.forEach(asistencia => {
             if (estadisticasPorGrupo[asistencia.grupo]) {
-                estadisticasPorGrupo[asistencia.grupo].present++;
+                estadisticasPorGrupo[asistencia.grupo].presentes++;
             }
         });
 
         Object.keys(estadisticasPorGrupo).forEach(grupo => {
             const resumenGrupo = estadisticasPorGrupo[grupo];
-            resumenGrupo.absent = resumenGrupo.total - resumenGrupo.present;
-            resumenGrupo.attendanceRate = resumenGrupo.total > 0
-                ? ((resumenGrupo.present / resumenGrupo.total) * 100).toFixed(1)
+            resumenGrupo.faltistas = resumenGrupo.totalEstudiantes - resumenGrupo.presentes;
+            resumenGrupo.porcentajeAsistencia = resumenGrupo.totalEstudiantes > 0
+                ? ((resumenGrupo.presentes / resumenGrupo.totalEstudiantes) * 100).toFixed(1)
                 : 0;
+
+            estadisticasPorGrupo[grupo] = {
+                ...resumenGrupo,
+                total: resumenGrupo.totalEstudiantes,
+                present: resumenGrupo.presentes,
+                absent: resumenGrupo.faltistas,
+                attendanceRate: resumenGrupo.porcentajeAsistencia
+            };
         });
 
         return estadisticasPorGrupo;
@@ -262,21 +281,36 @@ class ServicioAsistencias {
                     formattedTime: '-'
                 }));
 
-            return {
-                date: fechaObjetivo,
-                formattedDate: new Date(fechaObjetivo).toLocaleDateString('es-MX', {
+            const listadoBase = {
+                fecha: fechaObjetivo,
+                fechaFormateada: new Date(fechaObjetivo).toLocaleDateString('es-MX', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
                 }),
-                presentRegistered: presentesRegistrados.sort((a, b) => a.nombre.localeCompare(b.nombre)),
-                presentNotInList: [],
-                absent: ausentes.sort((a, b) => a.nombre.localeCompare(b.nombre)),
+                presentesRegistrados: presentesRegistrados.sort((a, b) => a.nombre.localeCompare(b.nombre)),
+                presentesFueraDeLista: [],
+                faltistas: ausentes.sort((a, b) => a.nombre.localeCompare(b.nombre)),
+                resumen: {
+                    totalEstudiantes: estudiantes.length,
+                    presentes: presentesRegistrados.length,
+                    faltistas: ausentes.length,
+                    porcentajeAsistencia: estudiantes.length > 0 ? ((presentesRegistrados.length / estudiantes.length) * 100).toFixed(1) : 0
+                }
+            };
+
+            return {
+                ...listadoBase,
+                date: listadoBase.fecha,
+                formattedDate: listadoBase.fechaFormateada,
+                presentRegistered: listadoBase.presentesRegistrados,
+                presentNotInList: listadoBase.presentesFueraDeLista,
+                absent: listadoBase.faltistas,
                 summary: {
-                    totalStudents: estudiantes.length,
-                    present: presentesRegistrados.length,
-                    absent: ausentes.length,
-                    attendanceRate: estudiantes.length > 0 ? ((presentesRegistrados.length / estudiantes.length) * 100).toFixed(1) : 0
+                    totalStudents: listadoBase.resumen.totalEstudiantes,
+                    present: listadoBase.resumen.presentes,
+                    absent: listadoBase.resumen.faltistas,
+                    attendanceRate: listadoBase.resumen.porcentajeAsistencia
                 }
             };
         } catch (error) {
@@ -332,11 +366,19 @@ class ServicioAsistencias {
                 const fechaCadena = fechaActual.toISOString().split('T')[0];
                 const asistenciasDelDia = asistenciasReporte.filter(asistencia => asistencia.date === fechaCadena);
 
+                const resumenDia = {
+                    fecha: fechaCadena,
+                    presentes: asistenciasDelDia.length,
+                    faltistas: estudiantes.length - asistenciasDelDia.length,
+                    porcentajeAsistencia: estudiantes.length > 0 ? ((asistenciasDelDia.length / estudiantes.length) * 100).toFixed(1) : 0
+                };
+
                 estadisticasDiarias[fechaCadena] = {
-                    date: fechaCadena,
-                    present: asistenciasDelDia.length,
-                    absent: estudiantes.length - asistenciasDelDia.length,
-                    attendanceRate: estudiantes.length > 0 ? ((asistenciasDelDia.length / estudiantes.length) * 100).toFixed(1) : 0
+                    ...resumenDia,
+                    date: resumenDia.fecha,
+                    present: resumenDia.presentes,
+                    absent: resumenDia.faltistas,
+                    attendanceRate: resumenDia.porcentajeAsistencia
                 };
 
                 const presentesHoy = new Set(asistenciasDelDia.map(asistencia => asistencia.matricula));
@@ -355,24 +397,45 @@ class ServicioAsistencias {
 
             const totalDias = Object.keys(estadisticasDiarias).length;
 
-            return {
-                period: {
-                    startDate: fechaInicio,
-                    endDate: fechaFin,
-                    totalDays: totalDias
+            const resumenBase = {
+                periodo: {
+                    fechaInicio,
+                    fechaFin,
+                    totalDias
                 },
-                summary: {
-                    totalStudents: estudiantes.length,
-                    avgDailyAttendance: totalDias > 0 ? (Object.values(estadisticasDiarias).reduce((suma, dia) => suma + dia.present, 0) / totalDias).toFixed(1) : 0,
-                    avgAttendanceRate: totalDias > 0 ? (Object.values(estadisticasDiarias).reduce((suma, dia) => suma + parseFloat(dia.attendanceRate), 0) / totalDias).toFixed(1) : 0
+                resumen: {
+                    totalEstudiantes: estudiantes.length,
+                    promedioAsistenciasDiarias: totalDias > 0 ? (Object.values(estadisticasDiarias).reduce((suma, dia) => suma + dia.presentes, 0) / totalDias).toFixed(1) : 0,
+                    promedioPorcentajeAsistencia: totalDias > 0 ? (Object.values(estadisticasDiarias).reduce((suma, dia) => suma + parseFloat(dia.porcentajeAsistencia), 0) / totalDias).toFixed(1) : 0
                 },
-                dailyStats: estadisticasDiarias,
-                studentAttendance: Object.values(asistenciaPorEstudiante)
+                estadisticasDiarias,
+                asistenciaPorEstudiante: Object.values(asistenciaPorEstudiante)
                     .map(registro => ({
                         ...registro,
+                        estudiante: registro.student,
+                        diasAsistidos: registro.daysPresent,
+                        diasAusentes: registro.daysAbsent,
+                        fechasAsistencia: registro.attendanceDates,
+                        porcentajeAsistencia: totalDias > 0 ? ((registro.daysPresent / totalDias) * 100).toFixed(1) : 0,
                         attendanceRate: totalDias > 0 ? ((registro.daysPresent / totalDias) * 100).toFixed(1) : 0
                     }))
                     .sort((a, b) => b.attendanceRate - a.attendanceRate)
+            };
+
+            return {
+                ...resumenBase,
+                period: {
+                    startDate: resumenBase.periodo.fechaInicio,
+                    endDate: resumenBase.periodo.fechaFin,
+                    totalDays: resumenBase.periodo.totalDias
+                },
+                summary: {
+                    totalStudents: resumenBase.resumen.totalEstudiantes,
+                    avgDailyAttendance: resumenBase.resumen.promedioAsistenciasDiarias,
+                    avgAttendanceRate: resumenBase.resumen.promedioPorcentajeAsistencia
+                },
+                dailyStats: resumenBase.estadisticasDiarias,
+                studentAttendance: resumenBase.asistenciaPorEstudiante
             };
         } catch (error) {
             console.error('❌ Error generando reporte:', error);
