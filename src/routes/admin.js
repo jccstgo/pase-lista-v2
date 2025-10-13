@@ -90,6 +90,9 @@ router.get('/profile', requerirAccesoTecnico, ControladorAdministracion.obtenerP
 // Cambiar contraseña
 router.post('/change-password', requerirAccesoTecnico, validarCambioContrasena, ControladorAdministracion.cambiarContrasena);
 
+// Actualizar contraseña de acceso técnico
+router.post('/technical-access/password', requerirAccesoTecnico, validarCambioContrasena, ControladorAdministracion.actualizarContrasenaAccesoTecnico);
+
 // Obtener estadísticas de administradores
 router.get('/admins/stats', requerirAccesoTecnico, ControladorAdministracion.obtenerEstadisticasAdministradores);
 

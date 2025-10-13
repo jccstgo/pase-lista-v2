@@ -313,6 +313,36 @@
                             <div class="message" id="passwordMessage"></div>
                         </div>
 
+                        <div style="margin-bottom: 30px;">
+                            <h3 style="color: #333; margin-bottom: 15px;">🛠️ Configuración de Acceso Técnico</h3>
+                            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                                Actualiza la contraseña utilizada para habilitar las acciones avanzadas del sistema.
+                            </p>
+                            <form id="technicalAccessForm">
+                                <div class="form-group">
+                                    <label for="currentTechPassword">Contraseña Técnica Actual:</label>
+                                    <input type="password" id="currentTechPassword" name="currentPassword" autocomplete="current-password" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="newTechPassword">Nueva Contraseña Técnica:</label>
+                                    <input type="password" id="newTechPassword" name="newPassword" autocomplete="new-password" minlength="6" required>
+                                    <small style="color: #666; font-size: 12px;">Recomendado: combinar mayúsculas, minúsculas y números</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="confirmTechPassword">Confirmar Nueva Contraseña Técnica:</label>
+                                    <input type="password" id="confirmTechPassword" name="confirmPassword" autocomplete="new-password" minlength="6" required>
+                                </div>
+
+                                <button type="submit" class="btn" id="updateTechnicalAccessBtn">
+                                    Actualizar Acceso Técnico
+                                </button>
+                            </form>
+
+                            <div class="message" id="technicalAccessMessage"></div>
+                        </div>
+
                         <!-- Información del Sistema -->
                         <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
                             <h3 style="color: #333; margin-bottom: 15px;">ℹ️ Información del Sistema</h3>
@@ -331,6 +361,24 @@
                         </div>
                     </div>
             </section>
+        </div>
+    </div>
+
+    <div id="techAccessModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>🔐 Acceso Técnico Requerido</h3>
+            <p>Ingresa la contraseña técnica para continuar.</p>
+            <form id="techAccessModalForm">
+                <div class="form-group">
+                    <label for="techAccessModalPassword">Contraseña técnica:</label>
+                    <input type="password" id="techAccessModalPassword" autocomplete="current-password" required>
+                </div>
+                <div class="modal-message" id="techAccessModalError"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="techAccessModalCancel">Cancelar</button>
+                    <button type="submit" class="btn">Confirmar</button>
+                </div>
+            </form>
         </div>
     </div>
 </body>

@@ -23,6 +23,8 @@ async function iniciarServidor() {
             }
 
             console.log('🔐 Usuario admin por defecto: admin / admin123');
+            const defaultTechnicalPassword = process.env.TECH_ADMIN_PASSWORD || 'tecnico123';
+            console.log(`🛠️ Contraseña técnica por defecto: ${defaultTechnicalPassword}`);
             console.log('🚀 ================================');
         });
 
