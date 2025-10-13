@@ -2,6 +2,20 @@
 // FUNCIONES DE DATOS Y RENDERIZADO
 // ================================
 let ultimaListaDetallada = null;
+let filtroListaDetallada = '';
+let valorBusquedaListaDetallada = '';
+
+function escaparHTML(texto) {
+    const mapaCaracteres = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    };
+
+    return String(texto ?? '').replace(/[&<>"']/g, caracter => mapaCaracteres[caracter] || caracter);
+}
 
 async function cargarPanelAdministrativo() {
     if (typeof tieneAccesoTecnico === 'function' && tieneAccesoTecnico()) {
@@ -150,12 +164,42 @@ async function cargarListaDetallada() {
 }
 
 function mostrarListaDetallada(datos) {
+    ultimaListaDetallada = datos ?? {};
+    valorBusquedaListaDetallada = filtroListaDetallada;
+    renderizarListaDetallada();
+}
+
+function normalizarValorBusqueda(valor) {
+    if (valor === null || valor === undefined) {
+        return '';
+    }
+
+    const texto = typeof valor === 'string' ? decodificarCaracteresEspeciales(valor) : valor;
+    return String(texto).toLowerCase();
+}
+
+function filtrarRegistrosDetallados(registros, termino) {
+    if (!Array.isArray(registros)) {
+        return [];
+    }
+
+    const terminoNormalizado = termino.trim().toLowerCase();
+
+    if (terminoNormalizado === '') {
+        return registros;
+    }
+
+    return registros.filter(registro => {
+        const campos = [registro.matricula, registro.nombre, registro.grupo, registro.status];
+        return campos.some(campo => normalizarValorBusqueda(campo).includes(terminoNormalizado));
+    });
+}
+
+function renderizarListaDetallada() {
     const contenedor = document.getElementById('contenidoDetalle');
     if (!contenedor) return;
 
-    const informacion = datos ?? {};
-    ultimaListaDetallada = informacion;
-
+    const informacion = ultimaListaDetallada ?? {};
     const fechaValor = informacion?.fecha ?? informacion?.date ?? null;
     const fechaObjeto = fechaValor ? new Date(fechaValor) : new Date();
     const fechaValida = !Number.isNaN(fechaObjeto.getTime());
@@ -163,10 +207,22 @@ function mostrarListaDetallada(datos) {
         ? fechaObjeto.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })
         : 'Sin fecha disponible';
 
-    const registrosPresentes = informacion.presentesRegistrados ?? informacion.presentRegistered;
-    const registrosFaltantes = informacion.faltistas ?? informacion.absent;
-    const hayRegistros = (Array.isArray(registrosPresentes) && registrosPresentes.length > 0) ||
-        (Array.isArray(registrosFaltantes) && registrosFaltantes.length > 0);
+    const registrosPresentesOriginales = Array.isArray(informacion.presentesRegistrados ?? informacion.presentRegistered)
+        ? (informacion.presentesRegistrados ?? informacion.presentRegistered)
+        : [];
+    const registrosFaltantesOriginales = Array.isArray(informacion.faltistas ?? informacion.absent)
+        ? (informacion.faltistas ?? informacion.absent)
+        : [];
+
+    const filtroActual = filtroListaDetallada.trim();
+    const presentesFiltrados = filtrarRegistrosDetallados(registrosPresentesOriginales, filtroActual);
+    const faltistasFiltrados = filtrarRegistrosDetallados(registrosFaltantesOriginales, filtroActual);
+
+    const hayRegistrosOriginales = registrosPresentesOriginales.length > 0 || registrosFaltantesOriginales.length > 0;
+    const hayCoincidencias = presentesFiltrados.length > 0 || faltistasFiltrados.length > 0;
+    const filtroActivo = filtroActual !== '';
+    const filtroEscapado = escaparHTML(filtroActual);
+    const totalCoincidencias = presentesFiltrados.length + faltistasFiltrados.length;
 
     let html = `
         <div class="detailed-list-header">
@@ -174,22 +230,41 @@ function mostrarListaDetallada(datos) {
                 <h3 class="detailed-list-title">Fecha: ${fechaLegible}</h3>
                 <p class="detailed-list-subtitle">Descarga un archivo con la lista de presentes y faltistas mostrados en esta sección.</p>
             </div>
-            <button type="button" class="btn btn-secondary" id="descargarListaDetalladaBtn">⬇️ Descargar listado</button>
+            <div class="detailed-list-actions">
+                <div class="detailed-list-search">
+                    <label for="filtroListaDetallada">🔍 Buscar en la lista</label>
+                    <div class="detailed-list-search-controls">
+                        <input type="search" id="filtroListaDetallada" placeholder="Busca por nombre, matrícula o grupo" autocomplete="off" spellcheck="false" />
+                        <button type="button" id="aplicarFiltroListaDetalladaBtn" class="btn btn-primary detailed-list-search-button">Buscar</button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary" id="descargarListaDetalladaBtn">⬇️ Descargar listado</button>
+            </div>
         </div>
     `;
 
-    if (Array.isArray(registrosPresentes) && registrosPresentes.length > 0) {
-        html += '<h3 style="color: #2ecc71; margin: 20px 0 10px 0;">✅ Presentes (En Lista)</h3>';
-        html += crearTablaDetallada(registrosPresentes);
+    if (filtroActivo) {
+        html += `<p class="detailed-list-filter-info">Mostrando ${totalCoincidencias} coincidencia(s) para "<strong>${filtroEscapado}</strong>".</p>`;
     }
 
-    if (Array.isArray(registrosFaltantes) && registrosFaltantes.length > 0) {
-        html += '<h3 style="color: #e74c3c; margin: 20px 0 10px 0;">❌ Faltistas</h3>';
-        html += crearTablaDetallada(registrosFaltantes);
+    if (presentesFiltrados.length > 0) {
+        html += `<h3 style="color: #2ecc71; margin: 20px 0 10px 0;">✅ Presentes (En Lista) — ${presentesFiltrados.length}</h3>`;
+        html += crearTablaDetallada(presentesFiltrados);
+    } else if (filtroActivo && registrosPresentesOriginales.length > 0) {
+        html += '<p class="detailed-list-empty-section">No hay presentes que coincidan con la búsqueda.</p>';
     }
 
-    if (!hayRegistros) {
+    if (faltistasFiltrados.length > 0) {
+        html += `<h3 style="color: #e74c3c; margin: 20px 0 10px 0;">❌ Faltistas — ${faltistasFiltrados.length}</h3>`;
+        html += crearTablaDetallada(faltistasFiltrados);
+    } else if (filtroActivo && registrosFaltantesOriginales.length > 0) {
+        html += '<p class="detailed-list-empty-section">No hay faltistas que coincidan con la búsqueda.</p>';
+    }
+
+    if (!hayRegistrosOriginales) {
         html += '<p>No hay registros disponibles para la fecha seleccionada.</p>';
+    } else if (filtroActivo && !hayCoincidencias) {
+        html += `<p class="detailed-list-empty-results">No se encontraron coincidencias para "<strong>${filtroEscapado}</strong>".</p>`;
     }
 
     contenedor.innerHTML = html;
@@ -197,7 +272,7 @@ function mostrarListaDetallada(datos) {
     const botonDescarga = document.getElementById('descargarListaDetalladaBtn');
     if (botonDescarga) {
         botonDescarga.addEventListener('click', descargarListaDetallada);
-        if (!hayRegistros) {
+        if (!hayRegistrosOriginales) {
             botonDescarga.disabled = true;
             botonDescarga.title = 'No hay registros para descargar.';
         } else {
@@ -205,6 +280,32 @@ function mostrarListaDetallada(datos) {
             botonDescarga.title = 'Descargar archivo con presentes y faltistas.';
         }
     }
+
+    const campoBusqueda = document.getElementById('filtroListaDetallada');
+    if (campoBusqueda) {
+        campoBusqueda.value = valorBusquedaListaDetallada;
+        campoBusqueda.addEventListener('input', event => {
+            valorBusquedaListaDetallada = event.target.value;
+        });
+        campoBusqueda.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                aplicarFiltroListaDetallada();
+            }
+        });
+    }
+
+    const botonAplicarFiltro = document.getElementById('aplicarFiltroListaDetalladaBtn');
+    if (botonAplicarFiltro) {
+        botonAplicarFiltro.addEventListener('click', aplicarFiltroListaDetallada);
+    }
+}
+
+function aplicarFiltroListaDetallada() {
+    const nuevoFiltro = (valorBusquedaListaDetallada || '').trim();
+    filtroListaDetallada = nuevoFiltro;
+    valorBusquedaListaDetallada = nuevoFiltro;
+    renderizarListaDetallada();
 }
 
 function crearTablaDetallada(registros) {
