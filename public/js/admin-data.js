@@ -74,8 +74,6 @@ async function cargarEstadisticas() {
         const totalEstudiantes = estadisticas.totalEstudiantes ?? estadisticas.totalStudents ?? 0;
         const presentesRegistrados = estadisticas.presentesRegistrados ?? estadisticas.presentRegistered ?? 0;
         const totalPresentes = estadisticas.totalPresentes ?? estadisticas.totalPresent ?? presentesRegistrados;
-        const registrosFueraDeLista = estadisticas.fueraDeLista ?? estadisticas.notInList ?? 0;
-
         document.getElementById('totalEstudiantes').textContent = totalEstudiantes;
         document.getElementById('presentesRegistrados').textContent = presentesRegistrados;
         const porcentajeAsistencia = totalEstudiantes > 0
@@ -92,11 +90,6 @@ async function cargarEstadisticas() {
                         <h3 style="color: #2ecc71; margin-bottom: 10px;">✅ Asistencia Total</h3>
                         <p style="font-size: 24px; font-weight: bold;">${totalPresentes}</p>
                         <p style="color: #666; font-size: 14px;">${((totalPresentes / Math.max(totalEstudiantes || 1, 1)) * 100).toFixed(1)}% del total</p>
-                    </div>
-                    <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                        <h3 style="color: #f39c12; margin-bottom: 10px;">📍 Registros Fuera de Lista</h3>
-                        <p style="font-size: 24px; font-weight: bold;">${registrosFueraDeLista}</p>
-                        <p style="color: #666; font-size: 14px;">Registros de personal no listado</p>
                     </div>
                     <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
                         <h3 style="color: #3498db; margin-bottom: 10px;">🛡️ Restricciones Activas</h3>
