@@ -1,11 +1,11 @@
-const database = require('./databaseService');
+const servicioBaseDatos = require('./servicioBaseDatos');
 const config = require('../config/server');
-const { AppError } = require('../middleware/errorHandler');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
-class ConfigService {
-    static async ensureInitialized() {
+class ServicioConfiguracion {
+    static async asegurarInicializacion() {
         try {
-            const rows = await database.all('SELECT key FROM system_config');
+            const rows = await servicioBaseDatos.obtenerTodos('SELECT key FROM system_config');
             const existingKeys = new Set(rows.map(row => row.key));
             const timestamp = new Date().toISOString();
 
@@ -13,7 +13,7 @@ class ConfigService {
             Object.entries(config.DEFAULT_SYSTEM_CONFIG).forEach(([key, value]) => {
                 if (!existingKeys.has(key)) {
                     operations.push(
-                        database.run(
+                        servicioBaseDatos.ejecutar(
                             `INSERT INTO system_config (key, value, updated_at)
                              VALUES ($1, $2, $3)
                              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
@@ -26,15 +26,15 @@ class ConfigService {
             await Promise.all(operations);
         } catch (error) {
             console.error('❌ Error asegurando configuración del sistema:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo inicializar la configuración', 500, 'CONFIG_INIT_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo inicializar la configuración', 500, 'CONFIG_INIT_ERROR');
         }
     }
 
-    static async getSystemConfig() {
+    static async obtenerConfiguracionSistema() {
         try {
-            await this.ensureInitialized();
+            await this.asegurarInicializacion();
 
-            const rows = await database.all('SELECT key, value, updated_at FROM system_config');
+            const rows = await servicioBaseDatos.obtenerTodos('SELECT key, value, updated_at FROM system_config');
             const baseConfig = { ...config.DEFAULT_SYSTEM_CONFIG };
             let updatedAt = null;
 
@@ -59,13 +59,13 @@ class ConfigService {
             return baseConfig;
         } catch (error) {
             console.error('❌ Error obteniendo configuración del sistema:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo obtener la configuración del sistema', 500, 'CONFIG_LOAD_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo obtener la configuración del sistema', 500, 'CONFIG_LOAD_ERROR');
         }
     }
 
-    static async saveSystemConfig(newConfig = {}) {
+    static async guardarConfiguracionSistema(newConfig = {}) {
         try {
-            await this.ensureInitialized();
+            await this.asegurarInicializacion();
 
             const sanitizedConfig = { ...config.DEFAULT_SYSTEM_CONFIG };
             const allowedKeys = new Set(Object.keys(config.DEFAULT_SYSTEM_CONFIG));
@@ -84,9 +84,9 @@ class ConfigService {
                 sanitizedConfig[cleanKey] = cleanValue;
             });
 
-            sanitizedConfig.location_restriction_enabled = this.normalizeBoolean(sanitizedConfig.location_restriction_enabled);
-            sanitizedConfig.device_restriction_enabled = this.normalizeBoolean(sanitizedConfig.device_restriction_enabled);
-            sanitizedConfig.admin_key_bypass_enabled = this.normalizeBoolean(sanitizedConfig.admin_key_bypass_enabled);
+            sanitizedConfig.location_restriction_enabled = this.normalizarBooleano(sanitizedConfig.location_restriction_enabled);
+            sanitizedConfig.device_restriction_enabled = this.normalizarBooleano(sanitizedConfig.device_restriction_enabled);
+            sanitizedConfig.admin_key_bypass_enabled = this.normalizarBooleano(sanitizedConfig.admin_key_bypass_enabled);
 
             const radius = parseFloat(sanitizedConfig.location_radius_km);
             if (Number.isNaN(radius) || radius <= 0) {
@@ -97,7 +97,7 @@ class ConfigService {
 
             const timestamp = new Date().toISOString();
 
-            await database.transaction(async (client) => {
+            await servicioBaseDatos.transaccion(async (client) => {
                 for (const [key, value] of Object.entries(sanitizedConfig)) {
                     await client.query(
                         `INSERT INTO system_config (key, value, updated_at)
@@ -111,12 +111,12 @@ class ConfigService {
             return { ...sanitizedConfig, updated_at: timestamp };
         } catch (error) {
             console.error('❌ Error guardando configuración del sistema:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo guardar la configuración del sistema', 500, 'CONFIG_SAVE_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo guardar la configuración del sistema', 500, 'CONFIG_SAVE_ERROR');
         }
     }
 
-    static async getPublicConfig() {
-        const configData = await this.getSystemConfig();
+    static async obtenerConfiguracionPublica() {
+        const configData = await this.obtenerConfiguracionSistema();
 
         return {
             location_restriction_enabled: configData.location_restriction_enabled === 'true',
@@ -130,7 +130,7 @@ class ConfigService {
         };
     }
 
-    static normalizeBoolean(value) {
+    static normalizarBooleano(value) {
         if (typeof value === 'boolean') {
             return value ? 'true' : 'false';
         }
@@ -140,4 +140,4 @@ class ConfigService {
     }
 }
 
-module.exports = ConfigService;
+module.exports = ServicioConfiguracion;

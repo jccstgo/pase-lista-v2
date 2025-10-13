@@ -1,17 +1,17 @@
 const express = require('express');
-const AdminController = require('../controllers/adminController');
-const { authenticateAdmin } = require('../middleware/auth');
-const { 
-    validatePasswordChange, 
-    validateStudentsList, 
-    sanitizeInput 
-} = require('../middleware/validation');
+const ControladorAdministracion = require('../controllers/controladorAdministracion');
+const { autenticarAdministrador } = require('../middleware/autenticacion');
+const {
+    validarCambioContrasena,
+    validarListaEstudiantes,
+    sanitizarEntrada
+} = require('../middleware/validacion');
 
 const router = express.Router();
 
 // Aplicar autenticación y sanitización a todas las rutas de admin
-router.use(authenticateAdmin);
-router.use(sanitizeInput);
+router.use(autenticarAdministrador);
+router.use(sanitizarEntrada);
 
 /**
  * Rutas principales de estadísticas y reportes
@@ -20,101 +20,101 @@ router.use(sanitizeInput);
 /**
  * Configuración del sistema y restricciones
  */
-router.get('/config', AdminController.getSystemConfig);
-router.post('/config', AdminController.updateSystemConfig);
+router.get('/config', ControladorAdministracion.obtenerConfiguracionSistema);
+router.post('/config', ControladorAdministracion.actualizarConfiguracionSistema);
 
 /**
  * Gestión de claves administrativas
  */
-router.get('/admin-keys', AdminController.getAdminKeys);
-router.post('/admin-keys', AdminController.createAdminKey);
-router.delete('/admin-keys/:key', AdminController.deactivateAdminKey);
+router.get('/admin-keys', ControladorAdministracion.obtenerClavesAdministrativas);
+router.post('/admin-keys', ControladorAdministracion.crearClaveAdministrativa);
+router.delete('/admin-keys/:key', ControladorAdministracion.desactivarClaveAdministrativa);
 
 /**
  * Gestión de dispositivos registrados
  */
-router.get('/devices', AdminController.getRegisteredDevices);
+router.get('/devices', ControladorAdministracion.obtenerDispositivosRegistrados);
 
 /**
  * Rutas principales de estadísticas y reportes
  */
 
 // Obtener estadísticas generales del sistema
-router.get('/stats', AdminController.getSystemStats);
+router.get('/stats', ControladorAdministracion.obtenerEstadisticasSistema);
 
 // Obtener lista detallada de asistencia
-router.get('/detailed-list', AdminController.getDetailedList);
+router.get('/detailed-list', ControladorAdministracion.obtenerListaDetallada);
 
 // Obtener resumen ejecutivo
-router.get('/executive-summary', AdminController.getExecutiveSummary);
+router.get('/executive-summary', ControladorAdministracion.obtenerResumenEjecutivo);
 
 // Obtener métricas en tiempo real
-router.get('/realtime-metrics', AdminController.getRealtimeMetrics);
+router.get('/realtime-metrics', ControladorAdministracion.obtenerMetricasTiempoReal);
 
 /**
  * Gestión de estudiantes
  */
 
 // Subir nueva lista de estudiantes
-router.post('/upload-students', validateStudentsList, AdminController.uploadStudents);
+router.post('/upload-students', validarListaEstudiantes, ControladorAdministracion.subirEstudiantes);
 
 // Limpiar todos los estudiantes
-router.delete('/students/clear', AdminController.clearStudents);
+router.delete('/students/clear', ControladorAdministracion.limpiarEstudiantes);
 
 // Obtener estadísticas de estudiantes
-router.get('/students/stats', AdminController.getStudentStats);
+router.get('/students/stats', ControladorAdministracion.obtenerEstadisticasEstudiantes);
 
 // Buscar estudiantes con filtros
-router.get('/students/search', AdminController.searchStudents);
+router.get('/students/search', ControladorAdministracion.buscarEstudiantes);
 
 // Validar integridad de datos de estudiantes
-router.get('/students/validate', AdminController.validateStudentsIntegrity);
+router.get('/students/validate', ControladorAdministracion.validarIntegridadEstudiantes);
 
 /**
  * Gestión de asistencias
  */
 
 // Validar integridad de datos de asistencias
-router.get('/attendance/validate', AdminController.validateAttendanceIntegrity);
+router.get('/attendance/validate', ControladorAdministracion.validarIntegridadAsistencias);
 
 // Limpiar todos los registros de asistencia
-router.delete('/attendance/clear', AdminController.clearAttendanceRecords);
+router.delete('/attendance/clear', ControladorAdministracion.limpiarRegistrosAsistencia);
 
 /**
  * Gestión de cuenta de administrador
  */
 
 // Obtener perfil del administrador actual
-router.get('/profile', AdminController.getProfile);
+router.get('/profile', ControladorAdministracion.obtenerPerfil);
 
 // Cambiar contraseña
-router.post('/change-password', validatePasswordChange, AdminController.changePassword);
+router.post('/change-password', validarCambioContrasena, ControladorAdministracion.cambiarContrasena);
 
 // Obtener estadísticas de administradores
-router.get('/admins/stats', AdminController.getAdminStats);
+router.get('/admins/stats', ControladorAdministracion.obtenerEstadisticasAdministradores);
 
 /**
  * Gestión del sistema
  */
 
 // Obtener estado completo del sistema
-router.get('/system-status', AdminController.getSystemStatus);
+router.get('/system-status', ControladorAdministracion.obtenerEstadoSistema);
 
 // Ejecutar diagnósticos del sistema
-router.post('/diagnostics', AdminController.runDiagnostics);
+router.post('/diagnostics', ControladorAdministracion.ejecutarDiagnosticos);
 
 // Crear backup completo del sistema
-router.post('/backup', AdminController.createBackup);
+router.post('/backup', ControladorAdministracion.crearRespaldo);
 
 // Limpiar archivos temporales y antiguos
-router.post('/cleanup', AdminController.cleanupSystem);
+router.post('/cleanup', ControladorAdministracion.limpiarSistema);
 
 /**
  * Exportación de datos
  */
 
 // Exportar todos los datos del sistema
-router.get('/export-all', AdminController.exportAllData);
+router.get('/export-all', ControladorAdministracion.exportarTodosLosDatos);
 
 /**
  * Middleware de manejo de errores específico para rutas de admin

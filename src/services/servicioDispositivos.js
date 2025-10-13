@@ -1,14 +1,14 @@
-const database = require('./databaseService');
-const { AppError } = require('../middleware/errorHandler');
+const servicioBaseDatos = require('./servicioBaseDatos');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
-class DeviceService {
-    static async ensureInitialized() {
+class ServicioDispositivos {
+    static async asegurarInicializacion() {
         return true;
     }
 
-    static async getAllDevices() {
+    static async obtenerTodosLosDispositivos() {
         try {
-            const rows = await database.all(
+            const rows = await servicioBaseDatos.obtenerTodos(
                 `SELECT device_fingerprint, matricula, first_registration, last_used, user_agent
                  FROM devices
                  ORDER BY last_used DESC`
@@ -23,11 +23,11 @@ class DeviceService {
             }));
         } catch (error) {
             console.error('❌ Error obteniendo dispositivos registrados:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudieron obtener los dispositivos registrados', 500, 'DEVICES_LOAD_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudieron obtener los dispositivos registrados', 500, 'DEVICES_LOAD_ERROR');
         }
     }
 
-    static async registerDeviceUsage({ matricula, deviceFingerprint, userAgent }) {
+    static async registrarUsoDispositivo({ matricula, deviceFingerprint, userAgent }) {
         try {
             const fingerprint = (deviceFingerprint || '').toString().trim();
             if (!fingerprint) {
@@ -38,7 +38,7 @@ class DeviceService {
             const userAgentValue = (userAgent || '').toString().trim();
             const timestamp = new Date().toISOString();
 
-            const row = await database.get(
+            const row = await servicioBaseDatos.obtenerUno(
                 `INSERT INTO devices (device_fingerprint, matricula, first_registration, last_used, user_agent)
                  VALUES ($1, $2, $3, $3, $4)
                  ON CONFLICT (device_fingerprint) DO UPDATE SET
@@ -58,13 +58,13 @@ class DeviceService {
             };
         } catch (error) {
             console.error('❌ Error registrando dispositivo:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo registrar el dispositivo', 500, 'DEVICE_REGISTER_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo registrar el dispositivo', 500, 'DEVICE_REGISTER_ERROR');
         }
     }
 
-    static async clearAllDevices() {
-        await database.run('DELETE FROM devices');
+    static async limpiarTodosLosDispositivos() {
+        await servicioBaseDatos.ejecutar('DELETE FROM devices');
     }
 }
 
-module.exports = DeviceService;
+module.exports = ServicioDispositivos;

@@ -1,9 +1,9 @@
-const { errorLogger } = require('./logger');
+const { registradorErrores } = require('./registro');
 
-class AppError extends Error {
+class ErrorAplicacion extends Error {
     constructor(message, statusCode = 500, code = 'INTERNAL_SERVER_ERROR', details = null) {
         super(message);
-        this.name = 'AppError';
+        this.name = 'ErrorAplicacion';
         this.statusCode = statusCode;
         this.code = code;
         this.details = details;
@@ -15,19 +15,19 @@ class AppError extends Error {
     }
 }
 
-const asyncHandler = (fn) => (req, res, next) =>
+const manejadorAsincrono = (fn) => (req, res, next) =>
     Promise.resolve(fn(req, res, next)).catch(next);
 
-const globalErrorHandler = (err, req, res, next) => { // eslint-disable-line no-unused-vars
+const manejadorErroresGlobal = (err, req, res, next) => { // eslint-disable-line no-unused-vars
     if (res.headersSent) {
         return next(err);
     }
 
     const statusCode = err.statusCode || 500;
     const errorCode = err.code || 'INTERNAL_SERVER_ERROR';
-    const isOperational = err instanceof AppError || err.isOperational;
+    const isOperational = err instanceof ErrorAplicacion || err.isOperational;
 
-    errorLogger(err, req, {
+    registradorErrores(err, req, {
         code: errorCode,
         statusCode,
         isOperational,
@@ -55,7 +55,7 @@ const globalErrorHandler = (err, req, res, next) => { // eslint-disable-line no-
 };
 
 module.exports = {
-    AppError,
-    asyncHandler,
-    globalErrorHandler
+    ErrorAplicacion,
+    manejadorAsincrono,
+    manejadorErroresGlobal
 };

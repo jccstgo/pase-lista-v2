@@ -4,42 +4,42 @@ const config = require('../config/server');
 /**
  * Middleware para autenticar administradores
  */
-const authenticateAdmin = async (req, res, next) => {
+const autenticarAdministrador = async (req, res, next) => {
     try {
-        const authHeader = req.headers.authorization;
-        
-        if (!authHeader) {
-            return res.status(401).json({ 
+        const encabezadoAutorizacion = req.headers.authorization;
+
+        if (!encabezadoAutorizacion) {
+            return res.status(401).json({
                 error: 'Token de autorización requerido',
                 code: 'MISSING_TOKEN'
             });
         }
 
-        const token = authHeader.split(' ')[1];
-        
+        const token = encabezadoAutorizacion.split(' ')[1];
+
         if (!token) {
-            return res.status(401).json({ 
+            return res.status(401).json({
                 error: 'Formato de token inválido. Use: Bearer <token>',
                 code: 'INVALID_TOKEN_FORMAT'
             });
         }
 
-        const decoded = jwt.verify(token, config.JWT_SECRET);
-        
+        const datosDecodificados = jwt.verify(token, config.JWT_SECRET);
+
         // Verificar que el token no haya expirado
         const now = Math.floor(Date.now() / 1000);
-        if (decoded.exp && decoded.exp < now) {
-            return res.status(401).json({ 
+        if (datosDecodificados.exp && datosDecodificados.exp < now) {
+            return res.status(401).json({
                 error: 'Token expirado',
                 code: 'TOKEN_EXPIRED'
             });
         }
 
-        req.admin = decoded;
+        req.admin = datosDecodificados;
         next();
     } catch (error) {
         console.error('❌ Error de autenticación:', error.message);
-        
+
         let errorMessage = 'Token inválido';
         let errorCode = 'INVALID_TOKEN';
         
@@ -61,18 +61,18 @@ const authenticateAdmin = async (req, res, next) => {
 /**
  * Middleware opcional de autenticación
  */
-const optionalAuth = async (req, res, next) => {
+const autenticacionOpcional = async (req, res, next) => {
     try {
-        const authHeader = req.headers.authorization;
-        
-        if (authHeader) {
-            const token = authHeader.split(' ')[1];
+        const encabezadoAutorizacion = req.headers.authorization;
+
+        if (encabezadoAutorizacion) {
+            const token = encabezadoAutorizacion.split(' ')[1];
             if (token) {
-                const decoded = jwt.verify(token, config.JWT_SECRET);
-                req.admin = decoded;
+                const datosDecodificados = jwt.verify(token, config.JWT_SECRET);
+                req.admin = datosDecodificados;
             }
         }
-        
+
         next();
     } catch (error) {
         // En auth opcional, ignoramos errores y continuamos sin autenticación
@@ -83,22 +83,22 @@ const optionalAuth = async (req, res, next) => {
 /**
  * Generar token JWT
  */
-const generateToken = (payload) => {
-    return jwt.sign(payload, config.JWT_SECRET, { 
-        expiresIn: config.JWT_EXPIRES_IN 
+const generarToken = (cargaUtil) => {
+    return jwt.sign(cargaUtil, config.JWT_SECRET, {
+        expiresIn: config.JWT_EXPIRES_IN
     });
 };
 
 /**
  * Verificar token JWT
  */
-const verifyToken = (token) => {
+const verificarToken = (token) => {
     return jwt.verify(token, config.JWT_SECRET);
 };
 
 module.exports = {
-    authenticateAdmin,
-    optionalAuth,
-    generateToken,
-    verifyToken
+    autenticarAdministrador,
+    autenticacionOpcional,
+    generarToken,
+    verificarToken
 };

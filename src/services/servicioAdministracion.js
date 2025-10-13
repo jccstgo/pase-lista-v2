@@ -1,16 +1,16 @@
-const Admin = require('../models/Admin');
-const database = require('./databaseService');
+const Administrador = require('../models/Administrador');
+const servicioBaseDatos = require('./servicioBaseDatos');
 const config = require('../config/server');
-const { AppError } = require('../middleware/errorHandler');
-const { generateToken } = require('../middleware/auth');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
+const { generarToken } = require('../middleware/autenticacion');
 
-class AdminService {
-    static mapRowToAdmin(row) {
+class ServicioAdministracion {
+    static mapearFilaAdministrador(row) {
         if (!row) {
             return null;
         }
 
-        return new Admin({
+        return new Administrador({
             username: row.username,
             password: row.password,
             createdAt: row.created_at,
@@ -21,34 +21,34 @@ class AdminService {
         });
     }
 
-    static async getAllAdmins() {
+    static async obtenerTodosLosAdministradores() {
         try {
-            const rows = await database.all(
+            const rows = await servicioBaseDatos.obtenerTodos(
                 `SELECT username, password, created_at, updated_at, last_login, login_attempts, lock_until
                  FROM admins
                  ORDER BY username`
             );
 
-            const admins = rows.map(row => this.mapRowToAdmin(row));
+            const admins = rows.map(row => this.mapearFilaAdministrador(row));
             console.log(`👥 Cargados ${admins.length} administradores desde la base de datos`);
             return admins;
         } catch (error) {
             console.error('❌ Error obteniendo administradores:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al obtener administradores', 500, 'ADMINS_LOAD_ERROR');
+            throw new ErrorAplicacion('Error al obtener administradores', 500, 'ADMINS_LOAD_ERROR');
         }
     }
 
-    static async findByUsername(username) {
+    static async buscarPorNombreUsuario(username) {
         try {
             if (!username) {
-                throw new AppError('Username es requerido', 400, 'MISSING_USERNAME');
+                throw new ErrorAplicacion('Username es requerido', 400, 'MISSING_USERNAME');
             }
 
-            const normalizedUsername = new Admin({ username }).username;
-            const row = await database.get(
+            const normalizedUsername = new Administrador({ username }).username;
+            const row = await servicioBaseDatos.obtenerUno(
                 `SELECT username, password, created_at, updated_at, last_login, login_attempts, lock_until
                  FROM admins
                  WHERE username = $1`,
@@ -60,33 +60,33 @@ class AdminService {
                 return null;
             }
 
-            const admin = this.mapRowToAdmin(row);
+            const admin = this.mapearFilaAdministrador(row);
             console.log(`✅ Administrador encontrado: ${admin.username}`);
             return admin;
         } catch (error) {
             console.error('❌ Error buscando administrador:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al buscar administrador', 500, 'ADMIN_SEARCH_ERROR');
+            throw new ErrorAplicacion('Error al buscar administrador', 500, 'ADMIN_SEARCH_ERROR');
         }
     }
 
-    static async authenticate(username, password) {
+    static async autenticar(username, password) {
         try {
             if (!username || !password) {
-                throw new AppError(
+                throw new ErrorAplicacion(
                     config.MESSAGES.ERROR.INVALID_CREDENTIALS,
                     401,
                     'MISSING_CREDENTIALS'
                 );
             }
 
-            const admin = await this.findByUsername(username);
+            const admin = await this.buscarPorNombreUsuario(username);
 
             if (!admin) {
                 console.log(`⚠️ Intento de login con usuario inexistente: ${username}`);
-                throw new AppError(
+                throw new ErrorAplicacion(
                     config.MESSAGES.ERROR.INVALID_CREDENTIALS,
                     401,
                     'USER_NOT_FOUND'
@@ -95,7 +95,7 @@ class AdminService {
 
             if (admin.isLocked()) {
                 const timeRemaining = Math.ceil(admin.getLockTimeRemaining() / 1000 / 60);
-                throw new AppError(
+                throw new ErrorAplicacion(
                     `Cuenta bloqueada. Intente nuevamente en ${timeRemaining} minutos.`,
                     423,
                     'ACCOUNT_LOCKED'
@@ -108,9 +108,9 @@ class AdminService {
                 console.log(`⚠️ Contraseña incorrecta para: ${username}`);
 
                 admin.recordFailedLogin();
-                await this.persistAdminState(admin);
+                await this.persistirEstadoAdministrador(admin);
 
-                throw new AppError(
+                throw new ErrorAplicacion(
                     config.MESSAGES.ERROR.INVALID_CREDENTIALS,
                     401,
                     'INVALID_PASSWORD'
@@ -118,9 +118,9 @@ class AdminService {
             }
 
             admin.recordSuccessfulLogin();
-            await this.persistAdminState(admin);
+            await this.persistirEstadoAdministrador(admin);
 
-            const token = generateToken({
+            const token = generarToken({
                 username: admin.username,
                 loginTime: new Date().toISOString()
             });
@@ -135,22 +135,22 @@ class AdminService {
             };
         } catch (error) {
             console.error('❌ Error en autenticación:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error en proceso de autenticación', 500, 'AUTHENTICATION_ERROR');
+            throw new ErrorAplicacion('Error en proceso de autenticación', 500, 'AUTHENTICATION_ERROR');
         }
     }
 
-    static async changePassword(username, currentPassword, newPassword) {
+    static async cambiarContrasena(username, currentPassword, newPassword) {
         try {
             if (!username || !currentPassword || !newPassword) {
-                throw new AppError('Username, contraseña actual y nueva son requeridos', 400, 'MISSING_PARAMETERS');
+                throw new ErrorAplicacion('Username, contraseña actual y nueva son requeridos', 400, 'MISSING_PARAMETERS');
             }
 
-            const passwordValidation = Admin.validatePasswordStrength(newPassword);
+            const passwordValidation = Administrador.validatePasswordStrength(newPassword);
             if (!passwordValidation.isStrong && config.NODE_ENV === 'production') {
-                throw new AppError(
+                throw new ErrorAplicacion(
                     `Contraseña no cumple requisitos de seguridad: ${passwordValidation.errors.join(', ')}`,
                     400,
                     'WEAK_PASSWORD'
@@ -158,31 +158,31 @@ class AdminService {
             }
 
             if (newPassword.length < config.VALIDATION.MIN_PASSWORD_LENGTH) {
-                throw new AppError(
+                throw new ErrorAplicacion(
                     `La contraseña debe tener al menos ${config.VALIDATION.MIN_PASSWORD_LENGTH} caracteres`,
                     400,
                     'PASSWORD_TOO_SHORT'
                 );
             }
 
-            const admin = await this.findByUsername(username);
+            const admin = await this.buscarPorNombreUsuario(username);
             if (!admin) {
-                throw new AppError('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
+                throw new ErrorAplicacion('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
             }
 
             const isValidCurrentPassword = await admin.verifyPassword(currentPassword);
             if (!isValidCurrentPassword) {
                 console.log(`⚠️ Contraseña actual incorrecta para: ${username}`);
-                throw new AppError('Contraseña actual incorrecta', 401, 'INVALID_CURRENT_PASSWORD');
+                throw new ErrorAplicacion('Contraseña actual incorrecta', 401, 'INVALID_CURRENT_PASSWORD');
             }
 
             const isSamePassword = await admin.verifyPassword(newPassword);
             if (isSamePassword) {
-                throw new AppError('La nueva contraseña debe ser diferente a la actual', 400, 'SAME_PASSWORD');
+                throw new ErrorAplicacion('La nueva contraseña debe ser diferente a la actual', 400, 'SAME_PASSWORD');
             }
 
             await admin.hashPassword(newPassword);
-            await this.persistAdminState(admin);
+            await this.persistirEstadoAdministrador(admin);
 
             console.log(`✅ Contraseña cambiada exitosamente para: ${username}`);
 
@@ -193,32 +193,32 @@ class AdminService {
             };
         } catch (error) {
             console.error('❌ Error en cambio de contraseña:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error en cambio de contraseña', 500, 'PASSWORD_CHANGE_ERROR');
+            throw new ErrorAplicacion('Error en cambio de contraseña', 500, 'PASSWORD_CHANGE_ERROR');
         }
     }
 
-    static async createAdmin(adminData) {
+    static async crearAdministrador(adminData) {
         try {
-            const admin = new Admin(adminData);
+            const admin = new Administrador(adminData);
             const validation = admin.isValid();
 
             if (!validation.isValid) {
-                throw new AppError(`Datos de administrador inválidos: ${validation.errors.join(', ')}`, 400, 'INVALID_ADMIN_DATA');
+                throw new ErrorAplicacion(`Datos de administrador inválidos: ${validation.errors.join(', ')}`, 400, 'INVALID_ADMIN_DATA');
             }
 
-            const existing = await this.findByUsername(admin.username);
+            const existing = await this.buscarPorNombreUsuario(admin.username);
             if (existing) {
-                throw new AppError('Ya existe un administrador con ese username', 409, 'ADMIN_ALREADY_EXISTS');
+                throw new ErrorAplicacion('Ya existe un administrador con ese username', 409, 'ADMIN_ALREADY_EXISTS');
             }
 
             if (adminData.plainPassword) {
                 await admin.hashPassword(adminData.plainPassword);
             }
 
-            await database.run(
+            await servicioBaseDatos.ejecutar(
                 `INSERT INTO admins (username, password, created_at, updated_at, last_login, login_attempts, lock_until)
                  VALUES ($1, $2, $3, $4, $5, $6, $7)`,
                 [
@@ -236,18 +236,18 @@ class AdminService {
             return admin.toSafeJSON();
         } catch (error) {
             console.error('❌ Error creando administrador:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al crear administrador', 500, 'ADMIN_CREATE_ERROR');
+            throw new ErrorAplicacion('Error al crear administrador', 500, 'ADMIN_CREATE_ERROR');
         }
     }
 
-    static async updateAdmin(username, updateData) {
+    static async actualizarAdministrador(username, updateData) {
         try {
-            const existingAdmin = await this.findByUsername(username);
+            const existingAdmin = await this.buscarPorNombreUsuario(username);
             if (!existingAdmin) {
-                throw new AppError('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
+                throw new ErrorAplicacion('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
             }
 
             const mergedData = {
@@ -260,9 +260,9 @@ class AdminService {
                 lockUntil: typeof updateData.lockUntil !== 'undefined' ? updateData.lockUntil : existingAdmin.lockUntil
             };
 
-            const updatedAdmin = new Admin(mergedData);
+            const updatedAdmin = new Administrador(mergedData);
 
-            const result = await database.run(
+            const result = await servicioBaseDatos.ejecutar(
                 `UPDATE admins
                  SET password = $1,
                      updated_at = $2,
@@ -281,58 +281,58 @@ class AdminService {
             );
 
             if (result.rowCount === 0) {
-                throw new AppError('No se pudo actualizar el administrador', 500, 'UPDATE_FAILED');
+                throw new ErrorAplicacion('No se pudo actualizar el administrador', 500, 'UPDATE_FAILED');
             }
 
             console.log(`✅ Administrador actualizado: ${updatedAdmin.username}`);
             return updatedAdmin;
         } catch (error) {
             console.error('❌ Error actualizando administrador:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al actualizar administrador', 500, 'ADMIN_UPDATE_ERROR');
+            throw new ErrorAplicacion('Error al actualizar administrador', 500, 'ADMIN_UPDATE_ERROR');
         }
     }
 
-    static async deleteAdmin(username) {
+    static async eliminarAdministrador(username) {
         try {
-            const admins = await this.getAllAdmins();
+            const admins = await this.obtenerTodosLosAdministradores();
             if (admins.length <= 1) {
-                throw new AppError(
+                throw new ErrorAplicacion(
                     'No se puede eliminar el último administrador del sistema',
                     400,
                     'CANNOT_DELETE_LAST_ADMIN'
                 );
             }
 
-            const existingAdmin = await this.findByUsername(username);
+            const existingAdmin = await this.buscarPorNombreUsuario(username);
             if (!existingAdmin) {
-                throw new AppError('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
+                throw new ErrorAplicacion('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
             }
 
-            const result = await database.run(
+            const result = await servicioBaseDatos.ejecutar(
                 'DELETE FROM admins WHERE username = $1',
                 [existingAdmin.username]
             );
 
             if (result.rowCount === 0) {
-                throw new AppError('No se pudo eliminar el administrador', 500, 'DELETE_FAILED');
+                throw new ErrorAplicacion('No se pudo eliminar el administrador', 500, 'DELETE_FAILED');
             }
 
             console.log(`🗑️ Administrador eliminado: ${existingAdmin.username}`);
             return true;
         } catch (error) {
             console.error('❌ Error eliminando administrador:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al eliminar administrador', 500, 'ADMIN_DELETE_ERROR');
+            throw new ErrorAplicacion('Error al eliminar administrador', 500, 'ADMIN_DELETE_ERROR');
         }
     }
 
-    static async persistAdminState(admin) {
-        await database.run(
+    static async persistirEstadoAdministrador(admin) {
+        await servicioBaseDatos.ejecutar(
             `UPDATE admins
              SET password = $1,
                  updated_at = $2,
@@ -351,11 +351,11 @@ class AdminService {
         );
     }
 
-    static async unlockAdmin(username) {
+    static async desbloquearAdministrador(username) {
         try {
-            const admin = await this.findByUsername(username);
+            const admin = await this.buscarPorNombreUsuario(username);
             if (!admin) {
-                throw new AppError('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
+                throw new ErrorAplicacion('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
             }
 
             if (!admin.isLocked()) {
@@ -380,16 +380,16 @@ class AdminService {
             };
         } catch (error) {
             console.error('❌ Error desbloqueando cuenta:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al desbloquear cuenta', 500, 'UNLOCK_ERROR');
+            throw new ErrorAplicacion('Error al desbloquear cuenta', 500, 'UNLOCK_ERROR');
         }
     }
 
-    static async getAdminStats() {
+    static async obtenerEstadisticasAdministradores() {
         try {
-            const admins = await this.getAllAdmins();
+            const admins = await this.obtenerTodosLosAdministradores();
 
             if (admins.length === 0) {
                 return {
@@ -437,22 +437,22 @@ class AdminService {
             return stats;
         } catch (error) {
             console.error('❌ Error obteniendo estadísticas de administradores:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al obtener estadísticas', 500, 'ADMIN_STATS_ERROR');
+            throw new ErrorAplicacion('Error al obtener estadísticas', 500, 'ADMIN_STATS_ERROR');
         }
     }
 
-    static async resetPassword(username, newPassword) {
+    static async restablecerContrasena(username, newPassword) {
         try {
-            const admin = await this.findByUsername(username);
+            const admin = await this.buscarPorNombreUsuario(username);
             if (!admin) {
-                throw new AppError('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
+                throw new ErrorAplicacion('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
             }
 
             if (newPassword.length < config.VALIDATION.MIN_PASSWORD_LENGTH) {
-                throw new AppError(
+                throw new ErrorAplicacion(
                     `La contraseña debe tener al menos ${config.VALIDATION.MIN_PASSWORD_LENGTH} caracteres`,
                     400,
                     'PASSWORD_TOO_SHORT'
@@ -462,7 +462,7 @@ class AdminService {
             await admin.hashPassword(newPassword);
             admin.loginAttempts = 0;
             admin.lockUntil = null;
-            await this.persistAdminState(admin);
+            await this.persistirEstadoAdministrador(admin);
 
             console.log(`🔄 Contraseña reseteada para: ${username}`);
 
@@ -473,12 +473,12 @@ class AdminService {
             };
         } catch (error) {
             console.error('❌ Error reseteando contraseña:', error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError('Error al resetear contraseña', 500, 'PASSWORD_RESET_ERROR');
+            throw new ErrorAplicacion('Error al resetear contraseña', 500, 'PASSWORD_RESET_ERROR');
         }
     }
 }
 
-module.exports = AdminService;
+module.exports = ServicioAdministracion;
