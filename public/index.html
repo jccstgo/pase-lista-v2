@@ -14,26 +14,32 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #f1a3a3 0%, #9e6666 100%);
-            min-height: 100vh;
+            min-height: 100dvh;
+            height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            padding: 60px 20px;
+            padding: clamp(12px, 4vh, 40px) clamp(16px, 6vw, 40px);
+            overflow: hidden;
         }
 
         .container {
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            padding: 40px;
-            max-width: 400px;
-            width: 90%;
+            padding: clamp(20px, 4.4vh, 36px) clamp(20px, 5vw, 36px);
+            max-width: min(420px, 96%);
+            width: 100%;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: clamp(14px, 2.6vh, 22px);
         }
 
         .escudo-header {
-            width: 200px;
+            width: min(170px, 42vw);
             height: auto;
             margin: 0 auto 15px;
             display: block;
@@ -41,21 +47,32 @@
 
         .institution-name {
             color: #B22222;
-            font-size: 20px;
+            font-size: clamp(18px, 2.8vh, 20px);
             font-weight: 600;
-            margin-bottom: 20px;
+            margin-bottom: clamp(10px, 2vh, 16px);
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
+        h3 {
+            margin: 0;
+        }
+
+        .page-subtitle {
+            color: #555;
+            font-size: clamp(17px, 3vh, 21px);
+            font-weight: 600;
+            margin-bottom: clamp(10px, 1.8vh, 16px);
+        }
+
         h1 {
             color: #333;
-            margin-bottom: 30px;
-            font-size: 28px;
+            margin-bottom: 10px;
+            font-size: clamp(22px, 4vh, 28px);
         }
 
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: clamp(14px, 2.5vh, 18px);
             text-align: left;
         }
 
@@ -68,7 +85,7 @@
 
         input[type="text"], input[type="password"] {
             width: 100%;
-            padding: 15px;
+            padding: clamp(11px, 2.2vh, 14px);
             border: 2px solid #ddd;
             border-radius: 10px;
             font-size: 16px;
@@ -83,16 +100,16 @@
 
         .btn {
             width: 100%;
-            padding: 15px;
+            padding: clamp(13px, 2.4vh, 15px);
             background: linear-gradient(135deg, #66baea, #4b91a2);
             color: white;
             border: none;
             border-radius: 10px;
-            font-size: 18px;
+            font-size: clamp(16px, 2.6vh, 18px);
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-bottom: 10px;
+            margin-bottom: clamp(6px, 1vh, 12px);
         }
 
         .btn:hover {
@@ -111,8 +128,8 @@
         }
 
         .message {
-            margin-top: 20px;
-            padding: 15px;
+            margin-top: clamp(10px, 2vh, 16px);
+            padding: clamp(12px, 2vh, 15px);
             border-radius: 10px;
             font-weight: 600;
             display: none;
@@ -138,15 +155,15 @@
 
         .loading {
             display: none;
-            margin-top: 15px;
+            margin-top: clamp(10px, 2vh, 14px);
         }
 
         .spinner {
             border: 3px solid #f3f3f3;
             border-top: 3px solid #ea7566;
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 28px;
+            height: 28px;
             animation: spin 1s linear infinite;
             margin: 0 auto;
         }
@@ -157,8 +174,8 @@
         }
 
         .time-info {
-            margin-top: 20px;
-            padding: 15px;
+            margin-top: clamp(12px, 2vh, 16px);
+            padding: clamp(10px, 1.8vh, 14px);
             background-color: #f8f9fa;
             border-radius: 10px;
             font-size: 14px;
@@ -189,13 +206,121 @@
         }
 
         .location-info {
-            margin-top: 10px;
-            padding: 10px;
+            margin-top: clamp(6px, 1.5vh, 10px);
+            padding: clamp(8px, 1.5vh, 10px);
             background: #e3f2fd;
             border-radius: 8px;
             font-size: 12px;
             color: #1976d2;
             display: none;
+        }
+
+        @media (max-height: 720px) {
+            body {
+                padding-top: clamp(10px, 2.6vh, 22px);
+                padding-bottom: clamp(10px, 2.6vh, 22px);
+            }
+
+            .container {
+                border-radius: 18px;
+                gap: clamp(12px, 2.2vh, 18px);
+            }
+
+            .institution-name {
+                margin-bottom: 10px;
+                font-size: clamp(16px, 2.6vh, 18px);
+            }
+        }
+
+        @media (max-height: 640px) {
+            .container {
+                padding: clamp(16px, 3.6vh, 26px) clamp(18px, 5vw, 30px);
+                gap: clamp(10px, 2vh, 16px);
+            }
+
+            .escudo-header {
+                width: min(140px, 38vw);
+                margin-bottom: 8px;
+            }
+
+            h1 {
+                font-size: clamp(19px, 3.2vh, 23px);
+            }
+
+            .btn {
+                font-size: clamp(15px, 2.4vh, 16px);
+            }
+        }
+
+        @media (max-height: 580px) {
+            body {
+                padding: clamp(10px, 2.2vh, 18px) clamp(14px, 5vw, 26px);
+            }
+
+            .container {
+                border-radius: 16px;
+                padding: clamp(14px, 3.2vh, 24px) clamp(16px, 5vw, 26px);
+            }
+
+            .institution-name {
+                letter-spacing: 0.5px;
+            }
+
+            .form-group {
+                margin-bottom: clamp(12px, 2vh, 16px);
+            }
+
+            input[type="text"],
+            input[type="password"] {
+                padding: clamp(10px, 2vh, 13px);
+                font-size: 15px;
+            }
+
+            .btn {
+                padding: clamp(11px, 2.2vh, 14px);
+            }
+
+            .time-info {
+                font-size: 13px;
+            }
+
+            .admin-link {
+                top: 16px;
+                right: 16px;
+                padding: 8px 12px;
+            }
+        }
+
+        @media (max-height: 540px) {
+            body {
+                padding: clamp(8px, 2vh, 16px) clamp(12px, 5vw, 24px);
+            }
+
+            .container {
+                padding: clamp(12px, 2.8vh, 22px) clamp(14px, 5vw, 24px);
+                gap: clamp(8px, 1.6vh, 14px);
+            }
+
+            .escudo-header {
+                width: min(120px, 34vw);
+            }
+
+            .institution-name,
+            .page-subtitle {
+                font-size: clamp(15px, 2.4vh, 17px);
+            }
+
+            h1 {
+                font-size: clamp(18px, 3vh, 22px);
+            }
+
+            .btn {
+                font-size: clamp(14px, 2.2vh, 15px);
+            }
+
+            .admin-link {
+                font-size: 12px;
+            }
         }
 
         .admin-key-section {
@@ -234,16 +359,20 @@
 
         @media (max-width: 480px) {
             body {
-                padding: 80px 16px;
+                padding: clamp(12px, 5vh, 24px) 16px;
             }
 
             .container {
-                padding: 28px 18px;
+                padding: clamp(18px, 5vh, 28px) clamp(16px, 6vw, 24px);
                 margin: 0;
             }
 
             h1 {
-                font-size: 24px;
+                font-size: clamp(19px, 5vw, 23px);
+            }
+
+            .btn {
+                font-size: clamp(15px, 4.5vw, 17px);
             }
 
             .admin-link {
@@ -261,9 +390,7 @@
         <img src="/assets/esg.png" alt="Escuela Superior de Guerra" class="escudo-header">
         
         <div class="institution-name">Escuela Superior de Guerra</div>
-        <br>
-        <h3>Registro de Asistencia</h3>
-        <br>
+        <h3 class="page-subtitle">Registro de Asistencia</h3>
         
         <!-- Sección de clave administrativa (oculta por defecto) -->
         <div class="admin-key-section" id="adminKeySection">
