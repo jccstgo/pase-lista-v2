@@ -3,6 +3,86 @@
 // ================================
 
 let solicitandoAccesoTecnico = false;
+let modalAccesoTecnicoAbierto = false;
+
+async function mostrarDialogoContrasenaTecnica() {
+    const modal = document.getElementById('techAccessModal');
+    const form = document.getElementById('techAccessModalForm');
+    const input = document.getElementById('techAccessModalPassword');
+    const cancelButton = document.getElementById('techAccessModalCancel');
+    const errorMessage = document.getElementById('techAccessModalError');
+
+    if (!modal || !form || !input || !cancelButton) {
+        console.error('⚠️ No se encontraron los elementos del modal de acceso técnico.');
+        return { password: null, reason: 'unavailable' };
+    }
+
+    if (modalAccesoTecnicoAbierto) {
+        return { password: null, reason: 'in-progress' };
+    }
+
+    modalAccesoTecnicoAbierto = true;
+
+    return new Promise(resolve => {
+        const mostrarError = (mensaje) => {
+            if (!errorMessage) {
+                return;
+            }
+
+            errorMessage.textContent = mensaje || '';
+            errorMessage.style.display = mensaje ? 'block' : 'none';
+        };
+
+        const finalizar = (valor, reason) => {
+            modal.classList.add('hidden');
+            form.removeEventListener('submit', onSubmit);
+            cancelButton.removeEventListener('click', onCancel);
+            modal.removeEventListener('click', onOverlayClick);
+            document.removeEventListener('keydown', onKeyDown);
+            mostrarError('');
+            input.value = '';
+            modalAccesoTecnicoAbierto = false;
+            resolve({ password: valor, reason });
+        };
+
+        const onSubmit = (evento) => {
+            evento.preventDefault();
+            const valor = input.value.trim();
+
+            if (!valor) {
+                mostrarError('Debes ingresar la contraseña técnica.');
+                input.focus();
+                return;
+            }
+
+            finalizar(valor, 'submitted');
+        };
+
+        const onCancel = () => finalizar(null, 'cancelled');
+
+        const onOverlayClick = (evento) => {
+            if (evento.target === modal) {
+                finalizar(null, 'cancelled');
+            }
+        };
+
+        const onKeyDown = (evento) => {
+            if (evento.key === 'Escape') {
+                evento.preventDefault();
+                finalizar(null, 'cancelled');
+            }
+        };
+
+        mostrarError('');
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => input.focus());
+
+        form.addEventListener('submit', onSubmit);
+        cancelButton.addEventListener('click', onCancel);
+        modal.addEventListener('click', onOverlayClick);
+        document.addEventListener('keydown', onKeyDown);
+    });
+}
 
 async function solicitarAccesoTecnico() {
     if (typeof tieneAccesoTecnico === 'function' && tieneAccesoTecnico()) {
@@ -21,17 +101,18 @@ async function solicitarAccesoTecnico() {
     solicitandoAccesoTecnico = true;
 
     try {
-        const contrasenaTecnica = prompt('Ingresa la contraseña técnica para acceder al panel de administración avanzada:');
+        const resultadoDialogo = await mostrarDialogoContrasenaTecnica();
 
-        if (contrasenaTecnica === null) {
-            mostrarMensaje('techAccessMessage', 'Solicitud de acceso técnico cancelada.', 'warning');
+        if (!resultadoDialogo || resultadoDialogo.reason !== 'submitted' || !resultadoDialogo.password) {
+            if (resultadoDialogo?.reason === 'cancelled') {
+                mostrarMensaje('techAccessMessage', 'Solicitud de acceso técnico cancelada.', 'warning');
+            } else if (resultadoDialogo?.reason === 'unavailable') {
+                mostrarMensaje('techAccessMessage', 'No se pudo mostrar el formulario de acceso técnico.', 'error');
+            }
             return false;
         }
 
-        if (!contrasenaTecnica || !contrasenaTecnica.trim()) {
-            mostrarMensaje('techAccessMessage', 'Debes ingresar la contraseña técnica.', 'error');
-            return false;
-        }
+        const contrasenaTecnica = resultadoDialogo.password.trim();
 
         const response = await fetch('/api/auth/tech-access', {
             method: 'POST',
@@ -39,7 +120,7 @@ async function solicitarAccesoTecnico() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify({ technicalPassword: contrasenaTecnica.trim() })
+            body: JSON.stringify({ technicalPassword: contrasenaTecnica })
         });
 
         const data = await response.json();
@@ -108,7 +189,11 @@ async function manejarInicioSesion(evento) {
                 mostrarPestana(pestanaAdminActiva.dataset.tab, pestanaAdminActiva, grupo);
             }
             if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
-                mostrarMensaje('techAccessMessage', 'Para administrar restricciones y cargar información ingresa la contraseña técnica desde la pestaña Administración.', 'info');
+                const managementSection = document.getElementById('managementSection');
+                const adminVisible = managementSection && !managementSection.classList.contains('hidden');
+                if (adminVisible) {
+                    mostrarMensaje('techAccessMessage', 'Para administrar restricciones y cargar información ingresa la contraseña técnica desde la pestaña Administración.', 'info');
+                }
             }
         } else {
             const mensajeError = data.error || data.message || 'Error de autenticación';
@@ -184,6 +269,82 @@ async function manejarCambioContrasena(evento) {
     } finally {
         botonCambio.disabled = false;
         botonCambio.textContent = 'Cambiar Contraseña';
+    }
+}
+
+async function manejarCambioAccesoTecnico(evento) {
+    evento.preventDefault();
+
+    if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
+        mostrarMensaje('technicalAccessMessage', 'Debes habilitar el acceso técnico para modificar esta configuración.', 'error');
+        await solicitarAccesoTecnico();
+        return;
+    }
+
+    const contrasenaActual = document.getElementById('currentTechPassword').value.trim();
+    const nuevaContrasena = document.getElementById('newTechPassword').value.trim();
+    const confirmacionContrasena = document.getElementById('confirmTechPassword').value.trim();
+
+    if (!contrasenaActual) {
+        mostrarMensaje('technicalAccessMessage', 'Debes ingresar la contraseña técnica actual', 'error');
+        return;
+    }
+
+    if (!nuevaContrasena) {
+        mostrarMensaje('technicalAccessMessage', 'Debes ingresar una nueva contraseña técnica', 'error');
+        return;
+    }
+
+    if (contrasenaActual === nuevaContrasena) {
+        mostrarMensaje('technicalAccessMessage', 'La nueva contraseña técnica debe ser diferente a la actual', 'error');
+        return;
+    }
+
+    if (nuevaContrasena !== confirmacionContrasena) {
+        mostrarMensaje('technicalAccessMessage', 'Las contraseñas técnicas no coinciden', 'error');
+        return;
+    }
+
+    if (nuevaContrasena.length < 6) {
+        mostrarMensaje('technicalAccessMessage', 'La contraseña técnica debe tener al menos 6 caracteres', 'error');
+        return;
+    }
+
+    const botonActualizacion = document.getElementById('updateTechnicalAccessBtn');
+    if (botonActualizacion) {
+        botonActualizacion.disabled = true;
+        botonActualizacion.textContent = 'Actualizando...';
+    }
+
+    try {
+        const response = await fetch('/api/admin/technical-access/password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ currentPassword: contrasenaActual, newPassword: nuevaContrasena })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            mostrarMensaje('technicalAccessMessage', data.message || 'Contraseña técnica actualizada correctamente', 'success');
+            document.getElementById('technicalAccessForm').reset();
+        } else if (response.status === 403) {
+            mostrarMensaje('technicalAccessMessage', data.error || 'Acceso técnico requerido', 'error');
+            mostrarMensaje('techAccessMessage', 'Ingresa la contraseña técnica para continuar con esta acción.', 'error');
+            await solicitarAccesoTecnico();
+        } else {
+            mostrarMensaje('technicalAccessMessage', data.error || data.message || 'No se pudo actualizar la contraseña técnica', 'error');
+        }
+    } catch (error) {
+        mostrarMensaje('technicalAccessMessage', 'Error de conexión al actualizar la contraseña técnica', 'error');
+    } finally {
+        if (botonActualizacion) {
+            botonActualizacion.disabled = false;
+            botonActualizacion.textContent = 'Actualizar Acceso Técnico';
+        }
     }
 }
 
@@ -559,6 +720,7 @@ async function limpiarBaseEstudiantes() {
 // ================================
 window.manejarInicioSesion = manejarInicioSesion;
 window.manejarCambioContrasena = manejarCambioContrasena;
+window.manejarCambioAccesoTecnico = manejarCambioAccesoTecnico;
 window.manejarEnvioRestricciones = manejarEnvioRestricciones;
 window.mostrarFormularioCrearClave = mostrarFormularioCrearClave;
 window.ocultarFormularioCrearClave = ocultarFormularioCrearClave;

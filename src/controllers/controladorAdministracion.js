@@ -5,6 +5,7 @@ const ServicioSistema = require('../services/servicioSistema');
 const ServicioConfiguracion = require('../services/servicioConfiguracion');
 const ServicioClavesAdministrativas = require('../services/servicioClavesAdministrativas');
 const ServicioDispositivos = require('../services/servicioDispositivos');
+const ServicioAccesoTecnico = require('../services/servicioAccesoTecnico');
 const { manejadorAsincrono } = require('../middleware/manejadorErrores');
 
 class ControladorAdministracion {
@@ -94,7 +95,7 @@ class ControladorAdministracion {
      */
     static cambiarContrasena = manejadorAsincrono(async (req, res) => {
         console.log('🔐 Petición de cambio de contraseña');
-        
+
         const { currentPassword, newPassword } = req.body;
         const username = req.admin.username;
         
@@ -104,6 +105,23 @@ class ControladorAdministracion {
             success: true,
             message: result.message,
             timestamp: result.timestamp
+        });
+    });
+
+    /**
+     * Actualizar contraseña de acceso técnico
+     * POST /api/admin/technical-access/password
+     */
+    static actualizarContrasenaAccesoTecnico = manejadorAsincrono(async (req, res) => {
+        console.log('🛠️ Petición de actualización de contraseña técnica');
+
+        const { currentPassword, newPassword } = req.body || {};
+        const resultado = await ServicioAccesoTecnico.actualizarContrasena(currentPassword, newPassword);
+
+        res.status(200).json({
+            success: true,
+            message: 'Contraseña técnica actualizada correctamente',
+            updatedAt: resultado.updatedAt
         });
     });
 

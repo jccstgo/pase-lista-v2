@@ -4,6 +4,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const changePasswordForm = document.getElementById('changePasswordForm');
+    const technicalAccessForm = document.getElementById('technicalAccessForm');
     const restrictionsForm = document.getElementById('restrictionsForm');
     const locationCheckbox = document.getElementById('locationRestrictionEnabled');
     const tabs = Array.from(document.querySelectorAll('.tab'));
@@ -16,6 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (changePasswordForm) {
         changePasswordForm.addEventListener('submit', manejarCambioContrasena);
+    }
+
+    if (technicalAccessForm) {
+        technicalAccessForm.addEventListener('submit', manejarCambioAccesoTecnico);
     }
 
     if (restrictionsForm) {
