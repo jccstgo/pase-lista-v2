@@ -267,7 +267,12 @@ class ServicioAsistencias {
                     timestamp: asistencia.timestamp,
                     status: 'Presente (En lista)',
                     formattedTime: asistencia.obtenerHoraFormateada()
-                }));
+                }))
+                .sort((a, b) => {
+                    const fechaA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+                    const fechaB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+                    return fechaA - fechaB;
+                });
 
             const matriculasPresentes = new Set(asistencias.map(asistencia => asistencia.matricula));
             const ausentes = estudiantes
@@ -279,7 +284,14 @@ class ServicioAsistencias {
                     timestamp: null,
                     status: 'Ausente',
                     formattedTime: '-'
-                }));
+                }))
+                .sort((a, b) => {
+                    const comparacionGrupo = a.grupo.localeCompare(b.grupo);
+                    if (comparacionGrupo !== 0) {
+                        return comparacionGrupo;
+                    }
+                    return a.nombre.localeCompare(b.nombre);
+                });
 
             const listadoBase = {
                 fecha: fechaObjetivo,
@@ -288,9 +300,9 @@ class ServicioAsistencias {
                     month: 'long',
                     day: 'numeric'
                 }),
-                presentesRegistrados: presentesRegistrados.sort((a, b) => a.nombre.localeCompare(b.nombre)),
+                presentesRegistrados,
                 presentesFueraDeLista: [],
-                faltistas: ausentes.sort((a, b) => a.nombre.localeCompare(b.nombre)),
+                faltistas: ausentes,
                 resumen: {
                     totalEstudiantes: estudiantes.length,
                     presentes: presentesRegistrados.length,
