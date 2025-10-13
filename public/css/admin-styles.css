@@ -363,6 +363,12 @@ input:focus, select:focus {
     min-width: 220px;
 }
 
+.detailed-list-search-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .detailed-list-search label {
     font-weight: 600;
     font-size: 13px;
@@ -376,6 +382,11 @@ input:focus, select:focus {
     font-size: 14px;
     min-width: 220px;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.detailed-list-search-button {
+    white-space: nowrap;
+    padding: 8px 16px;
 }
 
 .detailed-list-search input:focus {

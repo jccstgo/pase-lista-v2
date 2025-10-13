@@ -3,6 +3,7 @@
 // ================================
 let ultimaListaDetallada = null;
 let filtroListaDetallada = '';
+let valorBusquedaListaDetallada = '';
 
 function escaparHTML(texto) {
     const mapaCaracteres = {
@@ -157,6 +158,7 @@ async function cargarListaDetallada() {
 
 function mostrarListaDetallada(datos) {
     ultimaListaDetallada = datos ?? {};
+    valorBusquedaListaDetallada = filtroListaDetallada;
     renderizarListaDetallada();
 }
 
@@ -224,7 +226,10 @@ function renderizarListaDetallada() {
             <div class="detailed-list-actions">
                 <div class="detailed-list-search">
                     <label for="filtroListaDetallada">🔍 Buscar en la lista</label>
-                    <input type="search" id="filtroListaDetallada" placeholder="Busca por nombre, matrícula o grupo" autocomplete="off" spellcheck="false" />
+                    <div class="detailed-list-search-controls">
+                        <input type="search" id="filtroListaDetallada" placeholder="Busca por nombre, matrícula o grupo" autocomplete="off" spellcheck="false" />
+                        <button type="button" id="aplicarFiltroListaDetalladaBtn" class="btn btn-primary detailed-list-search-button">Buscar</button>
+                    </div>
                 </div>
                 <button type="button" class="btn btn-secondary" id="descargarListaDetalladaBtn">⬇️ Descargar listado</button>
             </div>
@@ -271,12 +276,29 @@ function renderizarListaDetallada() {
 
     const campoBusqueda = document.getElementById('filtroListaDetallada');
     if (campoBusqueda) {
-        campoBusqueda.value = filtroListaDetallada;
+        campoBusqueda.value = valorBusquedaListaDetallada;
         campoBusqueda.addEventListener('input', event => {
-            filtroListaDetallada = event.target.value;
-            renderizarListaDetallada();
+            valorBusquedaListaDetallada = event.target.value;
+        });
+        campoBusqueda.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                aplicarFiltroListaDetallada();
+            }
         });
     }
+
+    const botonAplicarFiltro = document.getElementById('aplicarFiltroListaDetalladaBtn');
+    if (botonAplicarFiltro) {
+        botonAplicarFiltro.addEventListener('click', aplicarFiltroListaDetallada);
+    }
+}
+
+function aplicarFiltroListaDetallada() {
+    const nuevoFiltro = (valorBusquedaListaDetallada || '').trim();
+    filtroListaDetallada = nuevoFiltro;
+    valorBusquedaListaDetallada = nuevoFiltro;
+    renderizarListaDetallada();
 }
 
 function crearTablaDetallada(registros) {
