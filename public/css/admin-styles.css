@@ -373,13 +373,14 @@ input:focus, select:focus {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    min-width: 220px;
+    width: 100%;
 }
 
 .detailed-list-search-controls {
-    display: flex;
-    gap: 8px;
-    align-items: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 150px);
+    gap: 10px 12px;
+    align-items: stretch;
 }
 
 .detailed-list-clear-button {
@@ -398,13 +399,55 @@ input:focus, select:focus {
     border: 1px solid #dfe3e6;
     border-radius: 6px;
     font-size: 14px;
-    min-width: 220px;
+    min-width: 0;
+    width: 100%;
+    grid-column: 1 / -1;
+    grid-row: 1 / 2;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.detailed-list-search-button,
+.detailed-list-clear-button {
+    width: 100%;
+    justify-self: stretch;
 }
 
 .detailed-list-search-button {
     white-space: nowrap;
     padding: 8px 16px;
+    background: #7fe2a0;
+    color: #1c4b2b;
+    box-shadow: none;
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+}
+
+.detailed-list-search-button:hover {
+    background: #73d495;
+    transform: none;
+}
+
+.detailed-list-search-button:focus-visible {
+    outline: 3px solid rgba(28, 75, 43, 0.35);
+    outline-offset: 2px;
+}
+
+.detailed-list-clear-button {
+    background: #f5c7c7;
+    color: #742c2c;
+    box-shadow: none;
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+}
+
+.detailed-list-clear-button:hover {
+    background: #f1b4b4;
+    transform: none;
+}
+
+.detailed-list-clear-button:focus-visible {
+    outline: 3px solid rgba(116, 44, 44, 0.25);
+    outline-offset: 2px;
 }
 
 .detailed-list-search input:focus {
@@ -428,6 +471,33 @@ input:focus, select:focus {
     color: #596275;
     font-size: 14px;
     margin: 10px 0;
+}
+
+@media (max-width: 768px) {
+    .detailed-tab-header,
+    .detailed-list-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .detailed-tab-download,
+    .detailed-list-actions {
+        width: 100%;
+    }
+
+    .detailed-list-actions {
+        align-items: stretch;
+    }
+
+    .detailed-list-search-controls {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .detailed-tab-download {
+        white-space: normal;
+    }
 }
 
 .detailed-list-title {
