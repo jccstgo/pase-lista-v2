@@ -14,13 +14,24 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #f1a3a3 0%, #9e6666 100%);
+            min-height: 100vh;
             min-height: 100dvh;
-            height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
             padding: clamp(12px, 4vh, 40px) clamp(16px, 6vw, 40px);
+            transition: padding 0.3s ease;
+        }
+
+        body.compact-layout,
+        body.keyboard-active {
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+
+        body.keyboard-active {
+            padding-top: clamp(8px, 4vh, 28px);
         }
 
         .container {
@@ -29,7 +40,7 @@
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             padding: clamp(20px, 4.4vh, 36px) clamp(20px, 5vw, 36px);
             max-width: min(420px, 96%);
-            max-height: 98dvh;
+            max-height: min(680px, 92vh);
             width: 100%;
             text-align: center;
             display: flex;
@@ -37,6 +48,16 @@
             align-items: stretch;
             gap: clamp(14px, 2.6vh, 22px);
             overflow-y: auto;
+            scrollbar-gutter: stable;
+        }
+
+        body.compact-layout .container,
+        body.keyboard-active .container {
+            max-height: none;
+        }
+
+        body.compact-layout .container {
+            margin-top: clamp(18px, 5vh, 32px);
         }
 
         .escudo-header {
@@ -92,6 +113,7 @@
             font-size: 16px;
             transition: all 0.3s ease;
             outline: none;
+            scroll-margin-top: 90px;
         }
 
         input[type="text"]:focus, input[type="password"]:focus {
@@ -382,6 +404,18 @@
                 background: rgba(0, 0, 0, 0.35);
             }
         }
+
+        @media (max-height: 720px) {
+            body {
+                align-items: flex-start;
+                justify-content: flex-start;
+            }
+
+            .container {
+                margin-top: clamp(16px, 5vh, 28px);
+                gap: clamp(12px, 2vh, 18px);
+            }
+        }
     </style>
 </head>
 <body>
@@ -446,6 +480,7 @@
         let ubicacionActual = null;
         let configuracionPublica = null;
         let huellaDispositivo = null;
+        let restaurarVistaTimeout = null;
 
         function generarHuellaDispositivo() {
             const canvas = document.createElement('canvas');
@@ -472,6 +507,62 @@
             return Math.abs(hash).toString(16).substring(0, 16);
         }
 
+        function actualizarModoCompacto() {
+            if (window.innerHeight < 680) {
+                document.body.classList.add('compact-layout');
+            } else {
+                document.body.classList.remove('compact-layout');
+            }
+        }
+
+        function activarVistaTeclado() {
+            if (window.matchMedia('(pointer: coarse)').matches) {
+                document.body.classList.add('keyboard-active');
+            }
+        }
+
+        function desactivarVistaTeclado() {
+            document.body.classList.remove('keyboard-active');
+        }
+
+        function manejarEnfoqueEntrada(evento) {
+            const esTactil = window.matchMedia('(pointer: coarse)').matches;
+            activarVistaTeclado();
+
+            if (esTactil && evento?.target?.scrollIntoView) {
+                setTimeout(() => {
+                    try {
+                        evento.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } catch (error) {
+                        // Ignorar navegadores que no soportan opciones avanzadas
+                        evento.target.scrollIntoView();
+                    }
+                }, 120);
+            }
+        }
+
+        function manejarSalidaEntrada() {
+            if (restaurarVistaTimeout) {
+                clearTimeout(restaurarVistaTimeout);
+            }
+
+            restaurarVistaTimeout = setTimeout(() => {
+                const elementoActivo = document.activeElement;
+                if (!elementoActivo || elementoActivo.tagName !== 'INPUT') {
+                    desactivarVistaTeclado();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }, 180);
+        }
+
+        function inicializarAdaptacionEntradas() {
+            const entradas = document.querySelectorAll('input[type="text"], input[type="password"]');
+            entradas.forEach((entrada) => {
+                entrada.addEventListener('focus', manejarEnfoqueEntrada);
+                entrada.addEventListener('blur', manejarSalidaEntrada);
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             huellaDispositivo = generarHuellaDispositivo();
             console.log('🔍 Huella del dispositivo:', huellaDispositivo);
@@ -479,6 +570,34 @@
             cargarConfiguracionPublica();
             actualizarHora();
             setInterval(actualizarHora, 1000);
+
+            inicializarAdaptacionEntradas();
+            actualizarModoCompacto();
+
+            window.addEventListener('resize', () => {
+                actualizarModoCompacto();
+                if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
+                    desactivarVistaTeclado();
+                }
+            });
+
+            window.addEventListener('orientationchange', () => {
+                setTimeout(() => {
+                    actualizarModoCompacto();
+                    if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
+                        desactivarVistaTeclado();
+                    }
+                }, 220);
+            });
+
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', () => {
+                    actualizarModoCompacto();
+                    if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
+                        desactivarVistaTeclado();
+                    }
+                });
+            }
 
             document.getElementById('matricula').focus();
             document.getElementById('attendanceForm').addEventListener('submit', manejarEnvioAsistencia);
