@@ -6,6 +6,26 @@ class ServicioClavesAdministrativas {
         return true;
     }
 
+    static async contarClavesActivas() {
+        try {
+            const resultado = await servicioBaseDatos.obtenerUno(
+                `SELECT COUNT(*)::int AS total FROM admin_keys WHERE is_active = TRUE`
+            );
+
+            if (!resultado || typeof resultado.total === 'undefined' || resultado.total === null) {
+                return 0;
+            }
+
+            const total = Number(resultado.total);
+            return Number.isNaN(total) ? 0 : total;
+        } catch (error) {
+            console.error('❌ Error contando claves administrativas activas:', error);
+            throw error instanceof ErrorAplicacion
+                ? error
+                : new ErrorAplicacion('No se pudieron contar las claves administrativas activas', 500, 'ADMIN_KEYS_COUNT_ERROR');
+        }
+    }
+
     static async obtenerTodasLasClaves() {
         try {
             const rows = await servicioBaseDatos.obtenerTodos(
