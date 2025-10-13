@@ -2,6 +2,67 @@
 // MANEJADORES DE EVENTOS - PANEL ADMINISTRATIVO
 // ================================
 
+let solicitandoAccesoTecnico = false;
+
+async function solicitarAccesoTecnico() {
+    if (typeof tieneAccesoTecnico === 'function' && tieneAccesoTecnico()) {
+        return true;
+    }
+
+    if (!authToken) {
+        mostrarMensaje('techAccessMessage', 'Debes iniciar sesión antes de solicitar acceso técnico.', 'error');
+        return false;
+    }
+
+    if (solicitandoAccesoTecnico) {
+        return false;
+    }
+
+    solicitandoAccesoTecnico = true;
+
+    try {
+        const contrasenaTecnica = prompt('Ingresa la contraseña técnica para acceder al panel de administración avanzada:');
+
+        if (contrasenaTecnica === null) {
+            mostrarMensaje('techAccessMessage', 'Solicitud de acceso técnico cancelada.', 'warning');
+            return false;
+        }
+
+        if (!contrasenaTecnica || !contrasenaTecnica.trim()) {
+            mostrarMensaje('techAccessMessage', 'Debes ingresar la contraseña técnica.', 'error');
+            return false;
+        }
+
+        const response = await fetch('/api/auth/tech-access', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ technicalPassword: contrasenaTecnica.trim() })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success && data.data?.token) {
+            actualizarTokenAdmin(data.data.token);
+            mostrarMensaje('techAccessMessage', 'Acceso técnico habilitado correctamente.', 'success');
+            if (typeof cargarConfiguracionSistema === 'function') {
+                await cargarConfiguracionSistema();
+            }
+            return true;
+        }
+
+        mostrarMensaje('techAccessMessage', data.error || data.message || 'Contraseña técnica inválida', 'error');
+        return false;
+    } catch (error) {
+        mostrarMensaje('techAccessMessage', 'Error verificando la contraseña técnica', 'error');
+        return false;
+    } finally {
+        solicitandoAccesoTecnico = false;
+    }
+}
+
 // ================================
 // MANEJADOR DE INICIO DE SESIÓN
 // ================================
@@ -27,14 +88,13 @@ async function manejarInicioSesion(evento) {
         const data = await response.json();
 
         if (response.ok && data.success && data.data?.token) {
-            authToken = data.data.token;
-            localStorage.setItem('adminToken', authToken);
+            actualizarTokenAdmin(data.data.token);
             mostrarSeccionAdministracion();
             const pestanaResultados = document.querySelector('.dashboard-tab[data-target="resultsSection"]');
             if (pestanaResultados) {
-                mostrarSeccionTablero('resultsSection', pestanaResultados);
+                await mostrarSeccionTablero('resultsSection', pestanaResultados);
             } else {
-                mostrarSeccionTablero('resultsSection');
+                await mostrarSeccionTablero('resultsSection');
             }
             await cargarPanelAdministrativo();
             actualizarInformacionSistema();
@@ -46,6 +106,9 @@ async function manejarInicioSesion(evento) {
             if (pestanaAdminActiva) {
                 const grupo = pestanaAdminActiva.dataset.group || 'admin';
                 mostrarPestana(pestanaAdminActiva.dataset.tab, pestanaAdminActiva, grupo);
+            }
+            if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
+                mostrarMensaje('techAccessMessage', 'Para administrar restricciones y cargar información ingresa la contraseña técnica desde la pestaña Administración.', 'info');
             }
         } else {
             const mensajeError = data.error || data.message || 'Error de autenticación';
@@ -63,6 +126,12 @@ async function manejarInicioSesion(evento) {
 
 async function manejarCambioContrasena(evento) {
     evento.preventDefault();
+
+    if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
+        mostrarMensaje('techAccessMessage', 'Debes habilitar el acceso técnico para cambiar la contraseña del administrador.', 'error');
+        await solicitarAccesoTecnico();
+        return;
+    }
 
     const contrasenaActual = document.getElementById('currentPassword').value;
     const nuevaContrasena = document.getElementById('newPassword').value;
@@ -103,6 +172,10 @@ async function manejarCambioContrasena(evento) {
                     cerrarSesion();
                 }
             }, 2000);
+        } else if (response.status === 403) {
+            mostrarMensaje('passwordMessage', data.error || 'Acceso técnico requerido', 'error');
+            mostrarMensaje('techAccessMessage', 'Ingresa la contraseña técnica para continuar con esta acción.', 'error');
+            await solicitarAccesoTecnico();
         } else {
             mostrarMensaje('passwordMessage', data.error, 'error');
         }
@@ -124,6 +197,14 @@ async function manejarEnvioRestricciones(evento) {
     const botonGuardar = document.getElementById('saveRestrictionsBtn');
     botonGuardar.disabled = true;
     botonGuardar.textContent = 'Guardando...';
+
+    if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
+        mostrarMensaje('techAccessMessage', 'Debes habilitar el acceso técnico para modificar las restricciones del sistema.', 'error');
+        botonGuardar.disabled = false;
+        botonGuardar.textContent = 'Guardar Configuración';
+        await solicitarAccesoTecnico();
+        return;
+    }
 
     try {
         const formData = new FormData(document.getElementById('restrictionsForm'));
@@ -153,6 +234,10 @@ async function manejarEnvioRestricciones(evento) {
             mostrarMensaje('restrictionsMessage', 'Configuración guardada exitosamente', 'success');
             configuracionSistema = configuracion;
             llenarFormularioRestricciones();
+        } else if (response.status === 403) {
+            mostrarMensaje('restrictionsMessage', data.error || 'Acceso técnico requerido', 'error');
+            mostrarMensaje('techAccessMessage', 'La contraseña técnica es necesaria para guardar la configuración.', 'error');
+            await solicitarAccesoTecnico();
         } else {
             mostrarMensaje('restrictionsMessage', data.error, 'error');
         }
@@ -180,6 +265,12 @@ function ocultarFormularioCrearClave() {
 }
 
 async function crearClaveAdministrativa() {
+    if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
+        mostrarMensaje('techAccessMessage', 'Debes habilitar el acceso técnico para crear nuevas claves administrativas.', 'error');
+        await solicitarAccesoTecnico();
+        return;
+    }
+
     const clave = document.getElementById('newAdminKey').value.trim().toUpperCase();
     const descripcion = document.getElementById('keyDescription').value.trim();
 
@@ -209,6 +300,9 @@ async function crearClaveAdministrativa() {
             ocultarFormularioCrearClave();
             await cargarClavesAdministrativas();
             alert('Clave administrativa creada exitosamente');
+        } else if (response.status === 403) {
+            mostrarMensaje('techAccessMessage', data.error || 'Acceso técnico requerido para crear claves.', 'error');
+            await solicitarAccesoTecnico();
         } else {
             alert('Error: ' + data.error);
         }
@@ -219,6 +313,12 @@ async function crearClaveAdministrativa() {
 
 async function desactivarClaveAdministrativa(clave) {
     if (!confirm(`¿Estás seguro de desactivar la clave "${clave}"?`)) {
+        return;
+    }
+
+    if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
+        mostrarMensaje('techAccessMessage', 'Debes habilitar el acceso técnico para modificar las claves administrativas.', 'error');
+        await solicitarAccesoTecnico();
         return;
     }
 
@@ -233,6 +333,9 @@ async function desactivarClaveAdministrativa(clave) {
         if (response.ok) {
             await cargarClavesAdministrativas();
             alert('Clave administrativa desactivada exitosamente');
+        } else if (response.status === 403) {
+            mostrarMensaje('techAccessMessage', data.error || 'Acceso técnico requerido para modificar claves.', 'error');
+            await solicitarAccesoTecnico();
         } else {
             alert('Error: ' + data.error);
         }
@@ -340,6 +443,12 @@ async function subirEstudiantes() {
         return;
     }
 
+    if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
+        mostrarMensaje('techAccessMessage', 'Debes habilitar el acceso técnico para cargar una nueva lista de personal.', 'error');
+        await solicitarAccesoTecnico();
+        return;
+    }
+
     const botonSubir = document.getElementById('uploadBtn');
     botonSubir.disabled = true;
     botonSubir.textContent = 'Subiendo...';
@@ -369,6 +478,10 @@ async function subirEstudiantes() {
                     mostrarMensaje('uploadMessage', '⚠️ Los dispositivos registrados han sido reiniciados debido a la nueva lista de personal', 'warning');
                 }, 3000);
             }
+        } else if (response.status === 403) {
+            mostrarMensaje('uploadMessage', data.error || 'Acceso técnico requerido para subir la lista de personal', 'error');
+            mostrarMensaje('techAccessMessage', 'Ingresa la contraseña técnica antes de actualizar la base de datos.', 'error');
+            await solicitarAccesoTecnico();
         } else {
             mostrarMensaje('uploadMessage', data.error, 'error');
         }
@@ -383,6 +496,12 @@ async function subirEstudiantes() {
 async function limpiarBaseEstudiantes() {
     if (!authToken) {
         mostrarMensaje('uploadMessage', 'Debes iniciar sesión para realizar esta acción', 'error');
+        return;
+    }
+
+    if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
+        mostrarMensaje('techAccessMessage', 'Debes habilitar el acceso técnico para limpiar la base de datos de personal.', 'error');
+        await solicitarAccesoTecnico();
         return;
     }
 
@@ -418,6 +537,10 @@ async function limpiarBaseEstudiantes() {
                 cargarListaDetallada(),
                 cargarDispositivos()
             ]);
+        } else if (response.status === 403) {
+            mostrarMensaje('uploadMessage', data.error || 'Acceso técnico requerido para limpiar la base de datos', 'error');
+            mostrarMensaje('techAccessMessage', 'Ingresa la contraseña técnica para realizar acciones críticas.', 'error');
+            await solicitarAccesoTecnico();
         } else {
             mostrarMensaje('uploadMessage', data.error || 'No se pudo limpiar la base de datos', 'error');
         }
@@ -454,3 +577,4 @@ window.deactivateAdminKey = desactivarClaveAdministrativa;
 window.previewCSV = previsualizarCSV;
 window.uploadStudents = subirEstudiantes;
 window.clearStudentsDatabase = limpiarBaseEstudiantes;
+window.solicitarAccesoTecnico = solicitarAccesoTecnico;

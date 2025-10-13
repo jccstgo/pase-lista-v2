@@ -1,6 +1,8 @@
 const ServicioAdministracion = require('../services/servicioAdministracion');
-const { manejadorAsincrono } = require('../middleware/manejadorErrores');
-const { verificarToken, generarToken } = require('../middleware/autenticacion');
+const ServicioAccesoTecnico = require('../services/servicioAccesoTecnico');
+const { manejadorAsincrono, ErrorAplicacion } = require('../middleware/manejadorErrores');
+const { verificarToken } = require('../middleware/autenticacion');
+const config = require('../config/server');
 
 class ControladorAutenticacion {
     /**
@@ -21,7 +23,8 @@ class ControladorAutenticacion {
                 token: result.token,
                 admin: result.admin,
                 expiresIn: result.expiresIn,
-                loginTime: new Date().toISOString()
+                loginTime: new Date().toISOString(),
+                technicalAccess: result.technicalAccess === true
             }
         });
     });
@@ -76,15 +79,21 @@ class ControladorAutenticacion {
                 });
             }
 
+            const hasTechnicalAccess = decoded.technicalAccess === true ||
+                (Array.isArray(decoded.scopes) && decoded.scopes.includes('technical'));
+
             res.status(200).json({
                 success: true,
                 data: {
                     valid: true,
                     admin: admin.toSafeJSON(),
+                    technicalAccess: hasTechnicalAccess,
                     tokenInfo: {
                         username: decoded.username,
                         issuedAt: new Date(decoded.iat * 1000).toISOString(),
-                        expiresAt: new Date(decoded.exp * 1000).toISOString()
+                        expiresAt: new Date(decoded.exp * 1000).toISOString(),
+                        scopes: decoded.scopes || ['admin'],
+                        technicalAccess: hasTechnicalAccess
                     }
                 }
             });
@@ -154,10 +163,14 @@ class ControladorAutenticacion {
                 });
             }
 
-            // Generar nuevo token
-            const newToken = generarToken({
-                username: admin.username,
-                refreshTime: new Date().toISOString()
+            const existingScopes = Array.isArray(decoded.scopes) ? decoded.scopes : ['admin'];
+            const technicalAccess = decoded.technicalAccess === true || existingScopes.includes('technical');
+
+            const newToken = ServicioAdministracion.crearTokenSesion(admin.username, {
+                loginTime: decoded.loginTime || new Date().toISOString(),
+                scopes: existingScopes,
+                technicalAccess,
+                extraPayload: { refreshTime: new Date().toISOString() }
             });
 
             res.status(200).json({
@@ -166,7 +179,8 @@ class ControladorAutenticacion {
                 data: {
                     token: newToken,
                     admin: admin.toSafeJSON(),
-                    refreshTime: new Date().toISOString()
+                    refreshTime: new Date().toISOString(),
+                    technicalAccess
                 }
             });
         } catch (error) {
@@ -181,9 +195,14 @@ class ControladorAutenticacion {
                     const admin = await ServicioAdministracion.buscarPorNombreUsuario(expiredDecoded.username);
                     
                     if (admin && !admin.isLocked()) {
-                        const newToken = generarToken({
-                            username: admin.username,
-                            refreshTime: new Date().toISOString()
+                        const scopes = Array.isArray(expiredDecoded.scopes) ? expiredDecoded.scopes : ['admin'];
+                        const technicalAccess = expiredDecoded.technicalAccess === true || scopes.includes('technical');
+
+                        const newToken = ServicioAdministracion.crearTokenSesion(admin.username, {
+                            loginTime: expiredDecoded.loginTime || new Date().toISOString(),
+                            scopes,
+                            technicalAccess,
+                            extraPayload: { refreshTime: new Date().toISOString() }
                         });
 
                         return res.status(200).json({
@@ -192,7 +211,8 @@ class ControladorAutenticacion {
                             data: {
                                 token: newToken,
                                 admin: admin.toSafeJSON(),
-                                refreshTime: new Date().toISOString()
+                                refreshTime: new Date().toISOString(),
+                                technicalAccess
                             }
                         });
                     }
@@ -213,7 +233,7 @@ class ControladorAutenticacion {
      */
     static cerrarSesion = manejadorAsincrono(async (req, res) => {
         console.log('👋 Logout de administrador');
-        
+
         // En un sistema con JWT stateless, el logout se maneja del lado del cliente
         // Aquí podríamos agregar el token a una blacklist si fuera necesario
         
@@ -222,6 +242,49 @@ class ControladorAutenticacion {
             message: 'Logout exitoso',
             data: {
                 logoutTime: new Date().toISOString()
+            }
+        });
+    });
+
+    /**
+     * Habilitar acceso técnico adicional para la sesión actual
+     * POST /api/auth/tech-access
+     */
+    static habilitarAccesoTecnico = manejadorAsincrono(async (req, res) => {
+        console.log('🛠️ Solicitud de acceso técnico adicional');
+
+        const { technicalPassword, techPassword, password } = req.body || {};
+        const contrasenaTecnica = technicalPassword || techPassword || password;
+
+        await ServicioAccesoTecnico.verificarContrasena(contrasenaTecnica);
+
+        const username = req.admin?.username;
+        if (!username) {
+            throw new ErrorAplicacion('Sesión inválida', 401, 'INVALID_SESSION');
+        }
+
+        const admin = await ServicioAdministracion.buscarPorNombreUsuario(username);
+        if (!admin) {
+            throw new ErrorAplicacion('Administrador no encontrado', 404, 'ADMIN_NOT_FOUND');
+        }
+
+        const scopes = Array.isArray(req.admin?.scopes) ? req.admin.scopes : ['admin'];
+        const loginTime = req.admin?.loginTime || new Date().toISOString();
+
+        const token = ServicioAdministracion.crearTokenSesion(admin.username, {
+            loginTime,
+            scopes: [...scopes, 'technical'],
+            technicalAccess: true
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Acceso técnico habilitado',
+            data: {
+                token,
+                admin: admin.toSafeJSON(),
+                technicalAccess: true,
+                expiresIn: config.JWT_EXPIRES_IN
             }
         });
     });
@@ -272,7 +335,10 @@ class ControladorAutenticacion {
         const authHeader = req.headers.authorization;
         const token = authHeader.split(' ')[1];
         const decoded = verificarToken(token);
-        
+
+        const hasTechnicalAccess = decoded.technicalAccess === true ||
+            (Array.isArray(decoded.scopes) && decoded.scopes.includes('technical'));
+
         const sessionInfo = {
             admin: admin.toSafeJSON(),
             session: {
@@ -280,16 +346,19 @@ class ControladorAutenticacion {
                 issuedAt: new Date(decoded.iat * 1000).toISOString(),
                 expiresAt: new Date(decoded.exp * 1000).toISOString(),
                 timeRemaining: decoded.exp - Math.floor(Date.now() / 1000),
-                isNearExpiry: (decoded.exp - Math.floor(Date.now() / 1000)) < 3600 // Menos de 1 hora
+                isNearExpiry: (decoded.exp - Math.floor(Date.now() / 1000)) < 3600, // Menos de 1 hora
+                scopes: decoded.scopes || ['admin'],
+                technicalAccess: hasTechnicalAccess
             },
             permissions: {
-                canManageStudents: true,
+                canManageStudents: hasTechnicalAccess,
                 canViewAttendance: true,
-                canManageSystem: true,
-                canExportData: true
+                canManageSystem: hasTechnicalAccess,
+                canExportData: hasTechnicalAccess,
+                technicalAccess: hasTechnicalAccess
             }
         };
-        
+
         res.status(200).json({
             success: true,
             data: sessionInfo

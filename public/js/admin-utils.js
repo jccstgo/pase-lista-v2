@@ -1,10 +1,64 @@
 // ================================
 // VARIABLES GLOBALES
 // ================================
-let authToken = localStorage.getItem('adminToken');
+let authToken = null;
 let estudiantesActuales = [];
 let configuracionSistema = {};
 let idIntervaloEstadisticas = null;
+let techAccessGranted = false;
+
+// ================================
+// GESTIÓN DE TOKEN Y ACCESO TÉCNICO
+// ================================
+function decodificarToken(token) {
+    if (!token || typeof token !== 'string') {
+        return null;
+    }
+
+    const partes = token.split('.');
+    if (partes.length < 2) {
+        return null;
+    }
+
+    try {
+        const base64 = partes[1].replace(/-/g, '+').replace(/_/g, '/');
+        const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
+        const payload = atob(padded);
+        return JSON.parse(payload);
+    } catch (error) {
+        return null;
+    }
+}
+
+function actualizarEstadoAccesoTecnicoDesdePayload(payload) {
+    const scopes = Array.isArray(payload?.scopes) ? payload.scopes : [];
+    techAccessGranted = payload?.technicalAccess === true || scopes.includes('technical');
+    return techAccessGranted;
+}
+
+function actualizarTokenAdmin(nuevoToken) {
+    if (nuevoToken) {
+        authToken = nuevoToken;
+        localStorage.setItem('adminToken', nuevoToken);
+        const payload = decodificarToken(nuevoToken);
+        actualizarEstadoAccesoTecnicoDesdePayload(payload || {});
+        return payload;
+    }
+
+    authToken = null;
+    techAccessGranted = false;
+    localStorage.removeItem('adminToken');
+    return null;
+}
+
+function tieneAccesoTecnico() {
+    return techAccessGranted === true;
+}
+
+const tokenInicial = localStorage.getItem('adminToken');
+if (tokenInicial) {
+    actualizarTokenAdmin(tokenInicial);
+}
 
 // ================================
 // UTILIDADES GENERALES
@@ -15,8 +69,7 @@ function mostrarSeccionAdministracion() {
 }
 
 function cerrarSesion() {
-    localStorage.removeItem('adminToken');
-    authToken = null;
+    actualizarTokenAdmin(null);
     if (idIntervaloEstadisticas) {
         clearInterval(idIntervaloEstadisticas);
         idIntervaloEstadisticas = null;
@@ -25,9 +78,38 @@ function cerrarSesion() {
     document.getElementById('adminSection').classList.add('hidden');
     document.getElementById('username').value = '';
     document.getElementById('password').value = '';
+
+    const techMessage = document.getElementById('techAccessMessage');
+    if (techMessage) {
+        techMessage.style.display = 'none';
+        techMessage.textContent = '';
+    }
 }
 
-function mostrarSeccionTablero(sectionId, triggerElement = null) {
+async function mostrarSeccionTablero(sectionId, triggerElement = null) {
+    if (sectionId === 'managementSection' && !tieneAccesoTecnico()) {
+        if (typeof solicitarAccesoTecnico === 'function') {
+            const accesoOtorgado = await solicitarAccesoTecnico();
+            if (!accesoOtorgado) {
+                if (triggerElement) {
+                    triggerElement.classList.remove('active');
+                }
+                const resultadosTab = document.querySelector('.dashboard-tab[data-target="resultsSection"]');
+                if (resultadosTab) {
+                    resultadosTab.classList.add('active');
+                }
+                const resultadosSeccion = document.getElementById('resultsSection');
+                if (resultadosSeccion) {
+                    resultadosSeccion.classList.remove('hidden');
+                }
+                return;
+            }
+        } else {
+            mostrarMensaje('techAccessMessage', 'Se requiere contraseña técnica para acceder a este panel.', 'error');
+            return;
+        }
+    }
+
     const sections = document.querySelectorAll('.dashboard-content');
     sections.forEach(section => section.classList.add('hidden'));
 
@@ -50,12 +132,19 @@ function mostrarSeccionTablero(sectionId, triggerElement = null) {
         cargarEstadisticas();
         cargarListaDetallada();
     } else if (sectionId === 'managementSection') {
-        cargarConfiguracionSistema();
-        actualizarInformacionSistema();
+        if (tieneAccesoTecnico()) {
+            cargarConfiguracionSistema();
+            actualizarInformacionSistema();
+        }
     }
 }
 
 function mostrarPestana(tabName, tabElement, group = 'default') {
+    if (group === 'admin' && !tieneAccesoTecnico()) {
+        mostrarMensaje('techAccessMessage', 'Debes ingresar la contraseña técnica para utilizar estas herramientas.', 'error');
+        return;
+    }
+
     const groupSelector = `.tab-content[data-group="${group}"]`;
     const groupTabsSelector = `.tab[data-group="${group}"]`;
 
@@ -93,14 +182,20 @@ function mostrarPestana(tabName, tabElement, group = 'default') {
             cargarListaDetallada();
             break;
         case 'restrictions':
-            cargarConfiguracionSistema();
-            cargarClavesAdministrativas();
+            if (tieneAccesoTecnico()) {
+                cargarConfiguracionSistema();
+                cargarClavesAdministrativas();
+            }
             break;
         case 'devices':
-            cargarDispositivos();
+            if (tieneAccesoTecnico()) {
+                cargarDispositivos();
+            }
             break;
         case 'settings':
-            actualizarInformacionSistema();
+            if (tieneAccesoTecnico()) {
+                actualizarInformacionSistema();
+            }
             break;
         default:
             break;
@@ -298,6 +393,10 @@ window.handleLocationRestrictionChange = manejarCambioRestriccionUbicacion;
 window.getCurrentLocation = obtenerUbicacionActual;
 window.ensureStatsPolling = asegurarActualizacionEstadisticas;
 window.showDashboardSection = mostrarSeccionTablero;
+window.actualizarTokenAdmin = actualizarTokenAdmin;
+window.obtenerTokenPayload = decodificarToken;
+window.tieneAccesoTecnico = tieneAccesoTecnico;
+window.hasTechnicalAccess = tieneAccesoTecnico;
 
 Object.defineProperty(window, 'estudiantesActuales', {
     get: () => estudiantesActuales,

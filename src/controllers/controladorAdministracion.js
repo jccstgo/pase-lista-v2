@@ -200,7 +200,8 @@ class ControladorAdministracion {
         console.log('⚙️ Petición de configuración del sistema');
 
         const systemConfig = await ServicioConfiguracion.obtenerConfiguracionSistema();
-        res.status(200).json(systemConfig);
+        const { technical_access_password_hash, ...publicConfig } = systemConfig || {};
+        res.status(200).json(publicConfig);
     });
 
     /**

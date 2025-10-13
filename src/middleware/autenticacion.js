@@ -96,9 +96,28 @@ const verificarToken = (token) => {
     return jwt.verify(token, config.JWT_SECRET);
 };
 
+/**
+ * Middleware para rutas que requieren privilegios técnicos
+ */
+const requerirAccesoTecnico = (req, res, next) => {
+    const scopes = Array.isArray(req.admin?.scopes) ? req.admin.scopes : [];
+    const tieneAcceso = req.admin?.technicalAccess === true || scopes.includes('technical');
+
+    if (!tieneAcceso) {
+        return res.status(403).json({
+            success: false,
+            error: 'Acceso técnico requerido',
+            code: 'TECH_ACCESS_REQUIRED'
+        });
+    }
+
+    next();
+};
+
 module.exports = {
     autenticarAdministrador,
     autenticacionOpcional,
     generarToken,
-    verificarToken
+    verificarToken,
+    requerirAccesoTecnico
 };

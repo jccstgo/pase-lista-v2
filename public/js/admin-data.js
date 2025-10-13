@@ -2,7 +2,12 @@
 // FUNCIONES DE DATOS Y RENDERIZADO
 // ================================
 async function cargarPanelAdministrativo() {
-    await cargarConfiguracionSistema();
+    if (typeof tieneAccesoTecnico === 'function' && tieneAccesoTecnico()) {
+        await cargarConfiguracionSistema();
+    } else {
+        configuracionSistema = {};
+    }
+
     await cargarEstadisticas();
     await cargarListaDetallada();
     asegurarActualizacionEstadisticas();
@@ -10,6 +15,9 @@ async function cargarPanelAdministrativo() {
 
 async function cargarConfiguracionSistema() {
     if (!authToken) return;
+    if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
+        return;
+    }
 
     try {
         const response = await fetch('/api/admin/config', {
@@ -19,8 +27,10 @@ async function cargarConfiguracionSistema() {
         if (response.ok) {
             configuracionSistema = await response.json();
             llenarFormularioRestricciones();
-        } else if (response.status === 401 || response.status === 403) {
+        } else if (response.status === 401) {
             cerrarSesion();
+        } else if (response.status === 403) {
+            mostrarMensaje('techAccessMessage', 'Tu sesión no tiene acceso técnico. Ingresa la contraseña técnica para continuar.', 'error');
         }
     } catch (error) {
         console.error('Error cargando configuración:', error);
@@ -199,6 +209,10 @@ function crearTablaDetallada(registros) {
 
 async function cargarDispositivos() {
     if (!authToken) return;
+    if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
+        mostrarMensaje('techAccessMessage', 'Acceso técnico requerido para consultar dispositivos.', 'error');
+        return;
+    }
 
     const indicadorDispositivos = document.getElementById('cargaDispositivos');
     if (indicadorDispositivos) {
@@ -211,6 +225,10 @@ async function cargarDispositivos() {
         });
 
         if (!response.ok) {
+            if (response.status === 403) {
+                mostrarMensaje('techAccessMessage', 'Tu sesión no cuenta con acceso técnico para ver los dispositivos.', 'error');
+                return;
+            }
             throw new Error('Error al cargar dispositivos');
         }
 
@@ -266,6 +284,10 @@ function mostrarDispositivos(dispositivos) {
 
 async function cargarClavesAdministrativas() {
     if (!authToken) return;
+    if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
+        mostrarMensaje('techAccessMessage', 'Acceso técnico requerido para gestionar claves administrativas.', 'error');
+        return;
+    }
 
     const contenedor = document.getElementById('adminKeysList');
     if (contenedor) {
@@ -283,6 +305,10 @@ async function cargarClavesAdministrativas() {
         });
 
         if (!response.ok) {
+            if (response.status === 403) {
+                mostrarMensaje('techAccessMessage', 'Tu sesión no cuenta con acceso técnico para ver las claves.', 'error');
+                return;
+            }
             throw new Error('Error al cargar claves administrativas');
         }
 
