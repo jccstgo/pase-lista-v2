@@ -271,7 +271,7 @@ class ControladorAutenticacion {
         // Obtener información del token desde el header
         const authHeader = req.headers.authorization;
         const token = authHeader.split(' ')[1];
-        const decoded = verifyToken(token);
+        const decoded = verificarToken(token);
         
         const sessionInfo = {
             admin: admin.toSafeJSON(),
