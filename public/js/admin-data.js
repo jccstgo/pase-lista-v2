@@ -5,6 +5,28 @@ let ultimaListaDetallada = null;
 let filtroListaDetallada = '';
 let valorBusquedaListaDetallada = '';
 
+function crearFechaLocal(fechaValor) {
+    if (!fechaValor) {
+        return null;
+    }
+
+    if (fechaValor instanceof Date && !Number.isNaN(fechaValor.getTime())) {
+        return fechaValor;
+    }
+
+    if (typeof fechaValor === 'string') {
+        const coincidenciaISO = fechaValor.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (coincidenciaISO) {
+            const [, anio, mes, dia] = coincidenciaISO;
+            const fecha = new Date(Number(anio), Number(mes) - 1, Number(dia));
+            return Number.isNaN(fecha.getTime()) ? null : fecha;
+        }
+    }
+
+    const fecha = new Date(fechaValor);
+    return Number.isNaN(fecha.getTime()) ? null : fecha;
+}
+
 function escaparHTML(texto) {
     const mapaCaracteres = {
         '&': '&amp;',
@@ -85,6 +107,14 @@ async function cargarEstadisticas() {
 
         const contenedorResumen = document.getElementById('contenidoResumen');
         if (contenedorResumen) {
+            const fechaValor = estadisticas.fecha ?? estadisticas.date ?? null;
+            const fechaObjeto = crearFechaLocal(fechaValor) ?? new Date();
+            const fechaFormateada = fechaObjeto.toLocaleDateString('es-MX', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
             contenedorResumen.innerHTML = `
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
                     <div style="padding: 20px; background: #f8f9fa; border-radius: 10px;">
@@ -103,11 +133,7 @@ async function cargarEstadisticas() {
                         <p style="color: #666; font-size: 12px;">Estado actual</p>
                     </div>
                     <div style="margin-top: 20px; padding: 15px; background: #e9ecef; border-radius: 10px;">
-                        <p style="margin: 0;"><strong>Fecha:</strong> ${new Date(estadisticas.fecha ?? estadisticas.date).toLocaleDateString('es-MX', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        })}</p>
+                        <p style="margin: 0;"><strong>Fecha:</strong> ${fechaFormateada}</p>
                     </div>
                 </div>
             `;
@@ -194,8 +220,8 @@ function renderizarListaDetallada() {
 
     const informacion = ultimaListaDetallada ?? {};
     const fechaValor = informacion?.fecha ?? informacion?.date ?? null;
-    const fechaObjeto = fechaValor ? new Date(fechaValor) : new Date();
-    const fechaValida = !Number.isNaN(fechaObjeto.getTime());
+    const fechaObjeto = crearFechaLocal(fechaValor) ?? (fechaValor ? null : new Date());
+    const fechaValida = fechaObjeto instanceof Date && !Number.isNaN(fechaObjeto.getTime());
     const fechaLegible = fechaValida
         ? fechaObjeto.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })
         : 'Sin fecha disponible';
@@ -374,10 +400,12 @@ function descargarListaDetallada() {
         ? (ultimaListaDetallada.faltistas ?? ultimaListaDetallada.absent)
         : [];
 
-    const fechaValor = ultimaListaDetallada.fecha ?? ultimaListaDetallada.date ?? new Date().toISOString();
-    const fechaObjeto = new Date(fechaValor);
-    const fechaValida = !Number.isNaN(fechaObjeto.getTime());
-    const fechaISO = fechaValida ? fechaObjeto.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    const fechaValor = ultimaListaDetallada.fecha ?? ultimaListaDetallada.date ?? new Date();
+    const fechaObjeto = crearFechaLocal(fechaValor) ?? new Date();
+    const fechaValida = fechaObjeto instanceof Date && !Number.isNaN(fechaObjeto.getTime());
+    const fechaISO = fechaValida
+        ? `${fechaObjeto.getFullYear()}-${String(fechaObjeto.getMonth() + 1).padStart(2, '0')}-${String(fechaObjeto.getDate()).padStart(2, '0')}`
+        : new Date().toISOString().split('T')[0];
 
     const lineas = [];
     lineas.push('Tipo,Matrícula,Nombre,Grupo,Estado,Hora,Ubicación,Dispositivo');
