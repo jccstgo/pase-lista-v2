@@ -370,16 +370,6 @@
             display: inline-block;
         }
 
-        .restrictions-info {
-            margin-top: 15px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            font-size: 12px;
-            color: #666;
-            text-align: left;
-        }
-
         @media (max-width: 480px) {
             body {
                 padding: clamp(12px, 5vh, 24px) 16px;
@@ -451,10 +441,10 @@
             </button>
         </form>
         
-        <div class="toggle-link" onclick="alternarSeccionClaveAdministrativa()">
+        <div class="toggle-link" id="adminKeyToggle" style="display: none;" onclick="alternarSeccionClaveAdministrativa()">
             🔑 Tengo clave de supervisor
         </div>
-        
+
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <p>Registrando asistencia...</p>
@@ -466,17 +456,26 @@
             <strong>📍 Ubicación:</strong> <span id="coordinates">Obteniendo...</span><br>
             <span id="locationStatus">Estado: Pendiente</span>
         </div>
-        
-        <div class="restrictions-info" id="restrictionsInfo">
-            <!-- Se llenará dinámicamente -->
-        </div>
-        
         <div class="time-info">
             <div id="currentTime"></div>
         </div>
     </div>
 
     <script>
+        const actualizarAlturaViewport = () => {
+            const fuenteAltura = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            const vh = fuenteAltura * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        };
+
+        actualizarAlturaViewport();
+        window.addEventListener('resize', actualizarAlturaViewport);
+        window.addEventListener('orientationchange', actualizarAlturaViewport);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', actualizarAlturaViewport);
+            window.visualViewport.addEventListener('scroll', actualizarAlturaViewport);
+        }
+
         let ubicacionActual = null;
         let configuracionPublica = null;
         let huellaDispositivo = null;
@@ -608,7 +607,7 @@
                 const respuesta = await fetch('/api/config');
                 configuracionPublica = await respuesta.json();
 
-                actualizarInformacionRestricciones();
+                actualizarVisibilidadClaveSupervisor();
 
                 if (configuracionPublica.location_restriction_enabled) {
                     document.getElementById('locationBtn').style.display = 'block';
@@ -619,30 +618,38 @@
             }
         }
 
-        function actualizarInformacionRestricciones() {
-            const contenedor = document.getElementById('restrictionsInfo');
-            let html = '<strong>🛡️ Restricciones Activas:</strong><br>';
+        function actualizarVisibilidadClaveSupervisor() {
+            const toggle = document.getElementById('adminKeyToggle');
+            const seccionClave = document.getElementById('adminKeySection');
+            const inputClave = document.getElementById('adminKey');
 
-            if (configuracionPublica.location_restriction_enabled) {
-                html += '📍 Verificación de ubicación requerida<br>';
+            if (!toggle || !seccionClave || !inputClave) {
+                return;
             }
 
-            if (configuracionPublica.device_restriction_enabled) {
-                html += '📱 Un registro por dispositivo<br>';
+            const restriccionesActivas = Boolean(configuracionPublica && (
+                configuracionPublica.location_restriction_enabled || configuracionPublica.device_restriction_enabled
+            ));
+            const clavesDisponibles = Boolean(configuracionPublica && configuracionPublica.has_active_admin_keys);
+            const bypassHabilitado = Boolean(configuracionPublica && configuracionPublica.admin_key_bypass_enabled);
+
+            const debeMostrar = restriccionesActivas && clavesDisponibles && bypassHabilitado;
+
+            if (!debeMostrar) {
+                toggle.style.display = 'none';
+                seccionClave.style.display = 'none';
+                inputClave.value = '';
+                return;
             }
 
-            if (!configuracionPublica.location_restriction_enabled && !configuracionPublica.device_restriction_enabled) {
-                html += 'Ninguna restricción activa';
-            }
-
-            if (configuracionPublica.admin_key_bypass_enabled) {
-                html += '<br><small>🔑 Las claves de supervisor pueden saltarse las restricciones</small>';
-            }
-
-            contenedor.innerHTML = html;
+            toggle.style.display = 'inline-block';
         }
 
         function alternarSeccionClaveAdministrativa() {
+            const toggle = document.getElementById('adminKeyToggle');
+            if (!toggle || toggle.style.display === 'none') {
+                return;
+            }
             const seccion = document.getElementById('adminKeySection');
             const visible = seccion.style.display === 'block';
             seccion.style.display = visible ? 'none' : 'block';
