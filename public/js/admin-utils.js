@@ -87,6 +87,14 @@ function cerrarSesion() {
 }
 
 async function mostrarSeccionTablero(sectionId, triggerElement = null) {
+    const techMessage = document.getElementById('techAccessMessage');
+    const managementSection = document.getElementById('managementSection');
+
+    if (sectionId !== 'managementSection' && techMessage) {
+        techMessage.style.display = 'none';
+        techMessage.textContent = '';
+    }
+
     if (sectionId === 'managementSection' && !tieneAccesoTecnico()) {
         if (typeof solicitarAccesoTecnico === 'function') {
             const accesoOtorgado = await solicitarAccesoTecnico();
@@ -133,15 +141,27 @@ async function mostrarSeccionTablero(sectionId, triggerElement = null) {
         cargarListaDetallada();
     } else if (sectionId === 'managementSection') {
         if (tieneAccesoTecnico()) {
+            if (techMessage) {
+                techMessage.style.display = 'none';
+                techMessage.textContent = '';
+            }
             cargarConfiguracionSistema();
             actualizarInformacionSistema();
+            const pestanaAdminActiva = document.querySelector('.tab[data-group="admin"].active') || document.querySelector('.tab[data-group="admin"]');
+            if (pestanaAdminActiva) {
+                mostrarPestana(pestanaAdminActiva.dataset.tab, pestanaAdminActiva, 'admin');
+            }
         }
     }
 }
 
 function mostrarPestana(tabName, tabElement, group = 'default') {
     if (group === 'admin' && !tieneAccesoTecnico()) {
-        mostrarMensaje('techAccessMessage', 'Debes ingresar la contraseña técnica para utilizar estas herramientas.', 'error');
+        const managementSection = document.getElementById('managementSection');
+        const adminVisible = managementSection && !managementSection.classList.contains('hidden');
+        if (adminVisible) {
+            mostrarMensaje('techAccessMessage', 'Debes ingresar la contraseña técnica para utilizar estas herramientas.', 'error');
+        }
         return;
     }
 

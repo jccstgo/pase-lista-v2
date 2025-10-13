@@ -189,7 +189,11 @@ async function manejarInicioSesion(evento) {
                 mostrarPestana(pestanaAdminActiva.dataset.tab, pestanaAdminActiva, grupo);
             }
             if (typeof tieneAccesoTecnico === 'function' && !tieneAccesoTecnico()) {
-                mostrarMensaje('techAccessMessage', 'Para administrar restricciones y cargar información ingresa la contraseña técnica desde la pestaña Administración.', 'info');
+                const managementSection = document.getElementById('managementSection');
+                const adminVisible = managementSection && !managementSection.classList.contains('hidden');
+                if (adminVisible) {
+                    mostrarMensaje('techAccessMessage', 'Para administrar restricciones y cargar información ingresa la contraseña técnica desde la pestaña Administración.', 'info');
+                }
             }
         } else {
             const mensajeError = data.error || data.message || 'Error de autenticación';
