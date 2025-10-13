@@ -228,8 +228,10 @@ function renderizarListaDetallada() {
                     <label for="filtroListaDetallada">🔍 Buscar en la lista</label>
                     <div class="detailed-list-search-controls">
                         <input type="search" id="filtroListaDetallada" placeholder="Busca por nombre, matrícula o grupo" autocomplete="off" spellcheck="false" />
-                        <button type="button" id="aplicarFiltroListaDetalladaBtn" class="btn btn-primary detailed-list-search-button">Buscar</button>
-                        <button type="button" id="limpiarFiltroListaDetalladaBtn" class="btn btn-light detailed-list-clear-button">Limpiar</button>
+                        <div class="detailed-list-button-row">
+                            <button type="button" id="limpiarFiltroListaDetalladaBtn" class="btn btn-light detailed-list-clear-button">Limpiar</button>
+                            <button type="button" id="aplicarFiltroListaDetalladaBtn" class="btn btn-primary detailed-list-search-button">Buscar</button>
+                        </div>
                     </div>
                 </div>
             </div>
