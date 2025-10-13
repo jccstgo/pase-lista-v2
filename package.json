@@ -10,11 +10,11 @@
     "lint": "eslint src/"
   },
   "keywords": [
-    "attendance",
+    "asistencia",
     "nodejs",
     "express",
     "csv",
-    "military"
+    "militar"
   ],
   "author": "Tu Nombre",
   "license": "MIT",
