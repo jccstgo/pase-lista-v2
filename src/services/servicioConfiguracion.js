@@ -1,6 +1,7 @@
 const servicioBaseDatos = require('./servicioBaseDatos');
 const config = require('../config/server');
 const { ErrorAplicacion } = require('../middleware/manejadorErrores');
+const ServicioClavesAdministrativas = require('./servicioClavesAdministrativas');
 
 class ServicioConfiguracion {
     static async asegurarInicializacion() {
@@ -116,12 +117,20 @@ class ServicioConfiguracion {
     }
 
     static async obtenerConfiguracionPublica() {
-        const configData = await this.obtenerConfiguracionSistema();
+        const [configData, totalClavesActivas] = await Promise.all([
+            this.obtenerConfiguracionSistema(),
+            ServicioClavesAdministrativas.contarClavesActivas().catch(error => {
+                console.error('⚠️ No se pudo obtener el conteo de claves activas:', error);
+                return 0;
+            })
+        ]);
 
         return {
             location_restriction_enabled: configData.location_restriction_enabled === 'true',
             device_restriction_enabled: configData.device_restriction_enabled === 'true',
             admin_key_bypass_enabled: configData.admin_key_bypass_enabled === 'true',
+            has_active_admin_keys: totalClavesActivas > 0,
+            active_admin_keys: totalClavesActivas,
             location_name: configData.location_name || '',
             location_latitude: configData.location_latitude || '',
             location_longitude: configData.location_longitude || '',
