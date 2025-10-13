@@ -553,6 +553,10 @@ tbody tr:hover {
     z-index: 2000;
 }
 
+.modal-overlay.hidden {
+    display: none;
+}
+
 .modal-content {
     background: #ffffff;
     border-radius: 12px;
