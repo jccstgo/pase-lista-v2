@@ -3,9 +3,9 @@ const config = require('../config/server');
 const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
 class ServicioConfiguracion {
-    static async ensureInitialized() {
+    static async asegurarInicializacion() {
         try {
-            const rows = await servicioBaseDatos.all('SELECT key FROM system_config');
+            const rows = await servicioBaseDatos.obtenerTodos('SELECT key FROM system_config');
             const existingKeys = new Set(rows.map(row => row.key));
             const timestamp = new Date().toISOString();
 
@@ -13,7 +13,7 @@ class ServicioConfiguracion {
             Object.entries(config.DEFAULT_SYSTEM_CONFIG).forEach(([key, value]) => {
                 if (!existingKeys.has(key)) {
                     operations.push(
-                        servicioBaseDatos.run(
+                        servicioBaseDatos.ejecutar(
                             `INSERT INTO system_config (key, value, updated_at)
                              VALUES ($1, $2, $3)
                              ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
@@ -30,11 +30,11 @@ class ServicioConfiguracion {
         }
     }
 
-    static async getSystemConfig() {
+    static async obtenerConfiguracionSistema() {
         try {
-            await this.ensureInitialized();
+            await this.asegurarInicializacion();
 
-            const rows = await servicioBaseDatos.all('SELECT key, value, updated_at FROM system_config');
+            const rows = await servicioBaseDatos.obtenerTodos('SELECT key, value, updated_at FROM system_config');
             const baseConfig = { ...config.DEFAULT_SYSTEM_CONFIG };
             let updatedAt = null;
 
@@ -63,9 +63,9 @@ class ServicioConfiguracion {
         }
     }
 
-    static async saveSystemConfig(newConfig = {}) {
+    static async guardarConfiguracionSistema(newConfig = {}) {
         try {
-            await this.ensureInitialized();
+            await this.asegurarInicializacion();
 
             const sanitizedConfig = { ...config.DEFAULT_SYSTEM_CONFIG };
             const allowedKeys = new Set(Object.keys(config.DEFAULT_SYSTEM_CONFIG));
@@ -84,9 +84,9 @@ class ServicioConfiguracion {
                 sanitizedConfig[cleanKey] = cleanValue;
             });
 
-            sanitizedConfig.location_restriction_enabled = this.normalizeBoolean(sanitizedConfig.location_restriction_enabled);
-            sanitizedConfig.device_restriction_enabled = this.normalizeBoolean(sanitizedConfig.device_restriction_enabled);
-            sanitizedConfig.admin_key_bypass_enabled = this.normalizeBoolean(sanitizedConfig.admin_key_bypass_enabled);
+            sanitizedConfig.location_restriction_enabled = this.normalizarBooleano(sanitizedConfig.location_restriction_enabled);
+            sanitizedConfig.device_restriction_enabled = this.normalizarBooleano(sanitizedConfig.device_restriction_enabled);
+            sanitizedConfig.admin_key_bypass_enabled = this.normalizarBooleano(sanitizedConfig.admin_key_bypass_enabled);
 
             const radius = parseFloat(sanitizedConfig.location_radius_km);
             if (Number.isNaN(radius) || radius <= 0) {
@@ -97,7 +97,7 @@ class ServicioConfiguracion {
 
             const timestamp = new Date().toISOString();
 
-            await servicioBaseDatos.transaction(async (client) => {
+            await servicioBaseDatos.transaccion(async (client) => {
                 for (const [key, value] of Object.entries(sanitizedConfig)) {
                     await client.query(
                         `INSERT INTO system_config (key, value, updated_at)
@@ -115,8 +115,8 @@ class ServicioConfiguracion {
         }
     }
 
-    static async getPublicConfig() {
-        const configData = await this.getSystemConfig();
+    static async obtenerConfiguracionPublica() {
+        const configData = await this.obtenerConfiguracionSistema();
 
         return {
             location_restriction_enabled: configData.location_restriction_enabled === 'true',
@@ -130,7 +130,7 @@ class ServicioConfiguracion {
         };
     }
 
-    static normalizeBoolean(value) {
+    static normalizarBooleano(value) {
         if (typeof value === 'boolean') {
             return value ? 'true' : 'false';
         }

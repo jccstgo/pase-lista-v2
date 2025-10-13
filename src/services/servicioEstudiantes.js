@@ -28,7 +28,7 @@ class ServicioEstudiantes {
      */
     static async obtenerTodosLosEstudiantes() {
         try {
-            const filas = await servicioBaseDatos.all(
+            const filas = await servicioBaseDatos.obtenerTodos(
                 `SELECT matricula, nombre, grupo, created_at, updated_at
                  FROM students
                  ORDER BY LOWER(nombre) ASC, nombre ASC`
@@ -56,7 +56,7 @@ class ServicioEstudiantes {
             }
 
             const matriculaNormalizada = new Estudiante({ matricula }).matricula;
-            const fila = await servicioBaseDatos.get(
+            const fila = await servicioBaseDatos.obtenerUno(
                 `SELECT matricula, nombre, grupo, created_at, updated_at
                  FROM students
                  WHERE matricula = $1`,
@@ -90,7 +90,7 @@ class ServicioEstudiantes {
             }
 
             const grupoNormalizado = new Estudiante({ grupo }).grupo;
-            const filas = await servicioBaseDatos.all(
+            const filas = await servicioBaseDatos.obtenerTodos(
                 `SELECT matricula, nombre, grupo, created_at, updated_at
                  FROM students
                  WHERE grupo = $1
@@ -160,12 +160,12 @@ class ServicioEstudiantes {
             }
 
             try {
-                await servicioBaseDatos.backupDatabase('students');
+                await servicioBaseDatos.respaldarBaseDatos('students');
             } catch (backupError) {
                 console.warn('⚠️ No se pudo crear respaldo de estudiantes:', backupError.message);
             }
 
-            await servicioBaseDatos.transaction(async (cliente) => {
+            await servicioBaseDatos.transaccion(async (cliente) => {
                 await cliente.query('DELETE FROM students');
 
                 for (const estudiante of estudiantesValidos) {
@@ -224,7 +224,7 @@ class ServicioEstudiantes {
                 throw new ErrorAplicacion(`Datos de estudiante inválidos: ${validacion.errors.join(', ')}`, 400, 'INVALID_STUDENT_DATA');
             }
 
-            const existing = await servicioBaseDatos.get(
+            const existing = await servicioBaseDatos.obtenerUno(
                 'SELECT matricula FROM students WHERE matricula = $1',
                 [estudiante.matricula]
             );
@@ -233,7 +233,7 @@ class ServicioEstudiantes {
                 throw new ErrorAplicacion(`Ya existe un estudiante con matrícula ${estudiante.matricula}`, 409, 'STUDENT_ALREADY_EXISTS');
             }
 
-            await servicioBaseDatos.run(
+            await servicioBaseDatos.ejecutar(
                 `INSERT INTO students (matricula, nombre, grupo, created_at, updated_at)
                  VALUES ($1, $2, $3, $4, $5)`,
                 [
@@ -284,7 +284,7 @@ class ServicioEstudiantes {
                 );
             }
 
-            const resultado = await servicioBaseDatos.run(
+            const resultado = await servicioBaseDatos.ejecutar(
                 `UPDATE students
                  SET nombre = $1,
                      grupo = $2,
@@ -323,7 +323,7 @@ class ServicioEstudiantes {
                 throw new ErrorAplicacion('Estudiante no encontrado', 404, 'STUDENT_NOT_FOUND');
             }
 
-            const resultado = await servicioBaseDatos.run(
+            const resultado = await servicioBaseDatos.ejecutar(
                 'DELETE FROM students WHERE matricula = $1',
                 [estudianteExistente.matricula]
             );
@@ -349,12 +349,12 @@ class ServicioEstudiantes {
     static async limpiarTodosLosEstudiantes() {
         try {
             try {
-                await servicioBaseDatos.backupDatabase('students-clear');
+                await servicioBaseDatos.respaldarBaseDatos('students-clear');
             } catch (errorRespaldo) {
                 console.warn('⚠️ No se pudo crear respaldo antes de limpiar estudiantes:', errorRespaldo.message);
             }
 
-            const resultado = await servicioBaseDatos.clearTable('students');
+            const resultado = await servicioBaseDatos.limpiarTabla('students');
             console.log(`🧹 Base de datos de estudiantes limpiada. Registros eliminados: ${resultado.rowCount}`);
 
             return {
@@ -375,8 +375,8 @@ class ServicioEstudiantes {
      */
     static async obtenerEstadisticasEstudiantes() {
         try {
-            const totales = await servicioBaseDatos.get('SELECT COUNT(*) AS total FROM students');
-            const filasPorGrupo = await servicioBaseDatos.all(
+            const totales = await servicioBaseDatos.obtenerUno('SELECT COUNT(*) AS total FROM students');
+            const filasPorGrupo = await servicioBaseDatos.obtenerTodos(
                 `SELECT grupo, COUNT(*) AS total
                  FROM students
                  GROUP BY grupo
@@ -466,12 +466,12 @@ class ServicioEstudiantes {
                 const limite = Math.max(parseInt(filtros.limit, 10) || 10, 1);
                 const desplazamiento = (pagina - 1) * limite;
 
-                const filaTotal = await servicioBaseDatos.get(
+                const filaTotal = await servicioBaseDatos.obtenerUno(
                     `SELECT COUNT(*) AS total FROM students ${clausulaWhere}`,
                     valores
                 );
 
-                const filasPaginadas = await servicioBaseDatos.all(
+                const filasPaginadas = await servicioBaseDatos.obtenerTodos(
                     `SELECT matricula, nombre, grupo, created_at, updated_at
                      FROM students
                      ${clausulaWhere}
@@ -496,7 +496,7 @@ class ServicioEstudiantes {
                 };
             }
 
-            const filas = await servicioBaseDatos.all(
+            const filas = await servicioBaseDatos.obtenerTodos(
                 `SELECT matricula, nombre, grupo, created_at, updated_at
                  FROM students
                  ${clausulaWhere}

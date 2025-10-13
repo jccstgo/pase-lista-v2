@@ -12,7 +12,7 @@ class ControladorAutenticacion {
         
         const { username, password } = req.body;
         
-        const result = await ServicioAdministracion.authenticate(username, password);
+        const result = await ServicioAdministracion.autenticar(username, password);
         
         res.status(200).json({
             success: true,
@@ -57,7 +57,7 @@ class ControladorAutenticacion {
             const decoded = verificarToken(token);
             
             // Verificar que el usuario aún existe
-            const admin = await ServicioAdministracion.findByUsername(decoded.username);
+            const admin = await ServicioAdministracion.buscarPorNombreUsuario(decoded.username);
             
             if (!admin) {
                 return res.status(401).json({
@@ -138,7 +138,7 @@ class ControladorAutenticacion {
             const decoded = verificarToken(token);
             
             // Verificar que el usuario aún existe
-            const admin = await ServicioAdministracion.findByUsername(decoded.username);
+            const admin = await ServicioAdministracion.buscarPorNombreUsuario(decoded.username);
             
             if (!admin) {
                 return res.status(401).json({
@@ -178,7 +178,7 @@ class ControladorAutenticacion {
                 const hoursSinceExpired = (now - expiredTime) / (1000 * 60 * 60);
                 
                 if (hoursSinceExpired <= 24) { // Permitir renovación hasta 24h después de expirar
-                    const admin = await ServicioAdministracion.findByUsername(expiredDecoded.username);
+                    const admin = await ServicioAdministracion.buscarPorNombreUsuario(expiredDecoded.username);
                     
                     if (admin && !admin.isLocked()) {
                         const newToken = generarToken({
@@ -238,7 +238,7 @@ class ControladorAutenticacion {
         // El middleware de auth ya verificó el token y añadió req.admin
         const username = req.admin.username;
         
-        const result = await ServicioAdministracion.changePassword(username, currentPassword, newPassword);
+        const result = await ServicioAdministracion.cambiarContrasena(username, currentPassword, newPassword);
         
         res.status(200).json({
             success: true,
@@ -259,7 +259,7 @@ class ControladorAutenticacion {
         console.log('📋 Información de sesión');
         
         const username = req.admin.username;
-        const admin = await ServicioAdministracion.findByUsername(username);
+        const admin = await ServicioAdministracion.buscarPorNombreUsuario(username);
         
         if (!admin) {
             return res.status(401).json({
@@ -339,7 +339,7 @@ class ControladorAutenticacion {
         console.log('🔍 Consulta de intentos de login');
         
         const username = req.admin.username;
-        const admin = await ServicioAdministracion.findByUsername(username);
+        const admin = await ServicioAdministracion.buscarPorNombreUsuario(username);
         
         if (!admin) {
             return res.status(401).json({

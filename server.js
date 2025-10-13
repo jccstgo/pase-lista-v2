@@ -8,7 +8,7 @@ async function iniciarServidor() {
     try {
         // Inicializar el sistema (crear directorios, archivos base, etc.)
         console.log('🔄 Inicializando sistema...');
-        await ServicioSistema.initializeSystem();
+        await ServicioSistema.inicializarSistema();
 
         // Iniciar servidor
         const servidor = app.listen(PUERTO, () => {

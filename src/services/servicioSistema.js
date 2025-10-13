@@ -13,13 +13,13 @@ const config = require('../config/server');
 const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
 class ServicioSistema {
-    static async initializeSystem() {
+    static async inicializarSistema() {
         try {
             console.log('🔄 Iniciando proceso de inicialización del sistema...');
 
-            await this.createDataDirectory();
-            await this.initializeDatabaseResources();
-            await this.createDefaultAdmin();
+            await this.crearDirectorioDatos();
+            await this.inicializarRecursosBaseDatos();
+            await this.crearAdministradorPorDefecto();
 
             console.log('🎉 Sistema inicializado exitosamente');
             return true;
@@ -29,7 +29,7 @@ class ServicioSistema {
         }
     }
 
-    static async createDataDirectory() {
+    static async crearDirectorioDatos() {
         try {
             await fsp.mkdir(config.DATA_DIR, { recursive: true });
             console.log('✅ Directorio de datos verificado/creado');
@@ -39,13 +39,13 @@ class ServicioSistema {
         }
     }
 
-    static async initializeDatabaseResources() {
+    static async inicializarRecursosBaseDatos() {
         try {
             await Promise.all([
                 ServicioEstudiantes.validarIntegridadDatos().catch(() => ServicioEstudiantes.obtenerEstadisticasEstudiantes()),
-                ServicioConfiguracion.ensureInitialized(),
-                ServicioClavesAdministrativas.ensureInitialized(),
-                ServicioDispositivos.ensureInitialized()
+                ServicioConfiguracion.asegurarInicializacion(),
+                ServicioClavesAdministrativas.asegurarInicializacion(),
+                ServicioDispositivos.asegurarInicializacion()
             ]);
             console.log('✅ Recursos de base de datos verificados');
         } catch (error) {
@@ -54,9 +54,9 @@ class ServicioSistema {
         }
     }
 
-    static async createDefaultAdmin() {
+    static async crearAdministradorPorDefecto() {
         try {
-            const defaultAdmin = await ServicioAdministracion.findByUsername('admin');
+            const defaultAdmin = await ServicioAdministracion.buscarPorNombreUsuario('admin');
             if (defaultAdmin) {
                 console.log('✅ Administrador por defecto ya existe');
                 return defaultAdmin;
@@ -64,7 +64,7 @@ class ServicioSistema {
 
             console.log('👤 Creando administrador por defecto...');
             const newAdmin = await Administrador.createDefault();
-            await ServicioAdministracion.createAdmin({
+            await ServicioAdministracion.crearAdministrador({
                 username: newAdmin.username,
                 password: newAdmin.password,
                 createdAt: newAdmin.createdAt,
@@ -81,20 +81,20 @@ class ServicioSistema {
         }
     }
 
-    static async getSystemStatus() {
+    static async obtenerEstadoSistema() {
         try {
             const [estadisticasEstudiantes, estadisticasAdministradores, configuracionSistema, clavesAdministrativas, dispositivos, infoAdministrador] = await Promise.all([
                 ServicioEstudiantes.obtenerEstadisticasEstudiantes(),
-                ServicioAdministracion.getAdminStats(),
-                ServicioConfiguracion.getSystemConfig(),
-                ServicioClavesAdministrativas.getAllKeys(),
-                ServicioDispositivos.getAllDevices(),
-                this.checkAdminExists()
+                ServicioAdministracion.obtenerEstadisticasAdministradores(),
+                ServicioConfiguracion.obtenerConfiguracionSistema(),
+                ServicioClavesAdministrativas.obtenerTodasLasClaves(),
+                ServicioDispositivos.obtenerTodosLosDispositivos(),
+                this.verificarAdministradores()
             ]);
 
             const directorioDatos = path.resolve(config.DATA_DIR);
             const directorioRespaldos = path.join(directorioDatos, 'backups');
-            const existenRespaldos = await this.directoryExists(directorioRespaldos);
+            const existenRespaldos = await this.existeDirectorio(directorioRespaldos);
 
             return {
                 timestamp: new Date().toISOString(),
@@ -133,9 +133,9 @@ class ServicioSistema {
         }
     }
 
-    static async runSystemDiagnostics() {
+    static async ejecutarDiagnosticosSistema() {
         try {
-            const status = await this.getSystemStatus();
+            const status = await this.obtenerEstadoSistema();
             const issues = [];
 
             if (!status.admin.defaultAdminExists) {
@@ -164,7 +164,7 @@ class ServicioSistema {
         }
     }
 
-    static async createSystemBackup() {
+    static async crearRespaldoSistema() {
         try {
             const backupDir = path.join(config.DATA_DIR, 'backups');
             await fsp.mkdir(backupDir, { recursive: true });
@@ -172,10 +172,10 @@ class ServicioSistema {
             const [estudiantes, asistencias, administradores, configuracion, claves, dispositivos] = await Promise.all([
                 ServicioEstudiantes.obtenerTodosLosEstudiantes().then(lista => lista.map(estudiante => estudiante.toJSON())),
                 ServicioAsistencias.obtenerTodasLasAsistencias().then(lista => lista.map(asistencia => asistencia.toJSON())),
-                ServicioAdministracion.getAllAdmins().then(lista => lista.map(admin => admin.toJSON())),
-                ServicioConfiguracion.getSystemConfig(),
-                ServicioClavesAdministrativas.getAllKeys(),
-                ServicioDispositivos.getAllDevices()
+                ServicioAdministracion.obtenerTodosLosAdministradores().then(lista => lista.map(admin => admin.toJSON())),
+                ServicioConfiguracion.obtenerConfiguracionSistema(),
+                ServicioClavesAdministrativas.obtenerTodasLasClaves(),
+                ServicioDispositivos.obtenerTodosLosDispositivos()
             ]);
 
             const backupData = {
@@ -216,10 +216,10 @@ class ServicioSistema {
         }
     }
 
-    static async cleanupSystem() {
+    static async limpiarSistema() {
         try {
             const backupDir = path.join(config.DATA_DIR, 'backups');
-            if (!(await this.directoryExists(backupDir))) {
+            if (!(await this.existeDirectorio(backupDir))) {
                 return {
                     removedFiles: 0,
                     remainingFiles: 0,
@@ -256,9 +256,9 @@ class ServicioSistema {
         }
     }
 
-    static async checkAdminExists() {
+    static async verificarAdministradores() {
         try {
-            const admins = await ServicioAdministracion.getAllAdmins();
+            const admins = await ServicioAdministracion.obtenerTodosLosAdministradores();
             const defaultAdmin = admins.find(admin => admin.username === 'admin');
 
             return {
@@ -272,7 +272,7 @@ class ServicioSistema {
         }
     }
 
-    static async directoryExists(dirPath) {
+    static async existeDirectorio(dirPath) {
         try {
             await fsp.access(dirPath);
             return true;

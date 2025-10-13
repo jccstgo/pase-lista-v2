@@ -2,13 +2,13 @@ const servicioBaseDatos = require('./servicioBaseDatos');
 const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
 class ServicioClavesAdministrativas {
-    static async ensureInitialized() {
+    static async asegurarInicializacion() {
         return true;
     }
 
-    static async getAllKeys() {
+    static async obtenerTodasLasClaves() {
         try {
-            const rows = await servicioBaseDatos.all(
+            const rows = await servicioBaseDatos.obtenerTodos(
                 `SELECT key, description, is_active, created_at, deactivated_at
                  FROM admin_keys
                  ORDER BY created_at DESC`
@@ -27,9 +27,9 @@ class ServicioClavesAdministrativas {
         }
     }
 
-    static async createKey(key, description) {
+    static async crearClave(key, description) {
         try {
-            const normalizedKey = this.normalizeKey(key);
+            const normalizedKey = this.normalizarClave(key);
             const cleanDescription = (description || '').toString().trim();
 
             if (!normalizedKey) {
@@ -44,7 +44,7 @@ class ServicioClavesAdministrativas {
                 throw new ErrorAplicacion('La descripción es requerida', 400, 'ADMIN_KEY_DESCRIPTION_REQUIRED');
             }
 
-            const existing = await servicioBaseDatos.get(
+            const existing = await servicioBaseDatos.obtenerUno(
                 `SELECT key FROM admin_keys WHERE key = $1 AND is_active = TRUE`,
                 [normalizedKey]
             );
@@ -54,7 +54,7 @@ class ServicioClavesAdministrativas {
             }
 
             const timestamp = new Date().toISOString();
-            const row = await servicioBaseDatos.get(
+            const row = await servicioBaseDatos.obtenerUno(
                 `INSERT INTO admin_keys (key, description, is_active, created_at)
                  VALUES ($1, $2, TRUE, $3)
                  RETURNING key, description, is_active, created_at, deactivated_at`,
@@ -76,15 +76,15 @@ class ServicioClavesAdministrativas {
         }
     }
 
-    static async deactivateKey(key) {
+    static async desactivarClave(key) {
         try {
-            const normalizedKey = this.normalizeKey(key);
+            const normalizedKey = this.normalizarClave(key);
 
             if (!normalizedKey) {
                 throw new ErrorAplicacion('La clave es requerida', 400, 'ADMIN_KEY_REQUIRED');
             }
 
-            const existing = await servicioBaseDatos.get(
+            const existing = await servicioBaseDatos.obtenerUno(
                 `SELECT key, description, is_active, created_at, deactivated_at
                  FROM admin_keys
                  WHERE key = $1`,
@@ -105,7 +105,7 @@ class ServicioClavesAdministrativas {
                 };
             }
 
-            const result = await servicioBaseDatos.get(
+            const result = await servicioBaseDatos.obtenerUno(
                 `UPDATE admin_keys
                  SET is_active = FALSE,
                      deactivated_at = $2
@@ -129,11 +129,11 @@ class ServicioClavesAdministrativas {
         }
     }
 
-    static async clearAll() {
-        await servicioBaseDatos.run('DELETE FROM admin_keys');
+    static async limpiarTodasLasClaves() {
+        await servicioBaseDatos.ejecutar('DELETE FROM admin_keys');
     }
 
-    static normalizeKey(key) {
+    static normalizarClave(key) {
         if (!key) return '';
         return key.toString().trim().toUpperCase();
     }

@@ -55,7 +55,7 @@ class ControladorAdministracion {
 
         // Limpiar registros de asistencia al subir nueva lista
         await ServicioAsistencias.limpiarRegistrosAsistencias();
-        await ServicioDispositivos.clearAllDevices();
+        await ServicioDispositivos.limpiarTodosLosDispositivos();
 
         res.status(200).json({
             success: true,
@@ -79,7 +79,7 @@ class ControladorAdministracion {
 
         const result = await ServicioEstudiantes.limpiarTodosLosEstudiantes();
         await ServicioAsistencias.limpiarRegistrosAsistencias();
-        await ServicioDispositivos.clearAllDevices();
+        await ServicioDispositivos.limpiarTodosLosDispositivos();
 
         res.status(200).json({
             success: true,
@@ -98,7 +98,7 @@ class ControladorAdministracion {
         const { currentPassword, newPassword } = req.body;
         const username = req.admin.username;
         
-        const result = await ServicioAdministracion.changePassword(username, currentPassword, newPassword);
+        const result = await ServicioAdministracion.cambiarContrasena(username, currentPassword, newPassword);
         
         res.status(200).json({
             success: true,
@@ -115,7 +115,7 @@ class ControladorAdministracion {
         console.log('👤 Petición de perfil de administrador');
         
         const username = req.admin.username;
-        const admin = await ServicioAdministracion.findByUsername(username);
+        const admin = await ServicioAdministracion.buscarPorNombreUsuario(username);
         
         if (!admin) {
             return res.status(404).json({
@@ -137,7 +137,7 @@ class ControladorAdministracion {
     static obtenerEstadoSistema = manejadorAsincrono(async (req, res) => {
         console.log('🏥 Petición de estado del sistema');
         
-        const status = await ServicioSistema.getSystemStatus();
+        const status = await ServicioSistema.obtenerEstadoSistema();
         
         res.status(200).json({
             success: true,
@@ -152,7 +152,7 @@ class ControladorAdministracion {
     static ejecutarDiagnosticos = manejadorAsincrono(async (req, res) => {
         console.log('🔍 Petición de diagnósticos del sistema');
         
-        const diagnostics = await ServicioSistema.runSystemDiagnostics();
+        const diagnostics = await ServicioSistema.ejecutarDiagnosticosSistema();
         
         res.status(200).json({
             success: true,
@@ -167,7 +167,7 @@ class ControladorAdministracion {
     static crearRespaldo = manejadorAsincrono(async (req, res) => {
         console.log('💾 Petición de backup del sistema');
         
-        const backup = await ServicioSistema.createSystemBackup();
+        const backup = await ServicioSistema.crearRespaldoSistema();
         
         res.status(200).json({
             success: true,
@@ -183,7 +183,7 @@ class ControladorAdministracion {
     static limpiarSistema = manejadorAsincrono(async (req, res) => {
         console.log('🧹 Petición de limpieza del sistema');
 
-        const cleanup = await ServicioSistema.cleanupSystem();
+        const cleanup = await ServicioSistema.limpiarSistema();
 
         res.status(200).json({
             success: true,
@@ -199,7 +199,7 @@ class ControladorAdministracion {
     static obtenerConfiguracionSistema = manejadorAsincrono(async (req, res) => {
         console.log('⚙️ Petición de configuración del sistema');
 
-        const systemConfig = await ServicioConfiguracion.getSystemConfig();
+        const systemConfig = await ServicioConfiguracion.obtenerConfiguracionSistema();
         res.status(200).json(systemConfig);
     });
 
@@ -210,7 +210,7 @@ class ControladorAdministracion {
     static actualizarConfiguracionSistema = manejadorAsincrono(async (req, res) => {
         console.log('💾 Petición de guardado de configuración');
 
-        const updatedConfig = await ServicioConfiguracion.saveSystemConfig(req.body || {});
+        const updatedConfig = await ServicioConfiguracion.guardarConfiguracionSistema(req.body || {});
         res.status(200).json(updatedConfig);
     });
 
@@ -221,7 +221,7 @@ class ControladorAdministracion {
     static obtenerClavesAdministrativas = manejadorAsincrono(async (req, res) => {
         console.log('🔑 Petición de listado de claves administrativas');
 
-        const keys = await ServicioClavesAdministrativas.getAllKeys();
+        const keys = await ServicioClavesAdministrativas.obtenerTodasLasClaves();
         res.status(200).json(keys);
     });
 
@@ -233,7 +233,7 @@ class ControladorAdministracion {
         console.log('➕ Petición de creación de clave administrativa');
 
         const { key, description } = req.body || {};
-        const newKey = await ServicioClavesAdministrativas.createKey(key, description);
+        const newKey = await ServicioClavesAdministrativas.crearClave(key, description);
 
         res.status(201).json(newKey);
     });
@@ -246,7 +246,7 @@ class ControladorAdministracion {
         const { key } = req.params;
         console.log(`🗝️ Petición de desactivación de clave: ${key}`);
 
-        const updatedKey = await ServicioClavesAdministrativas.deactivateKey(key);
+        const updatedKey = await ServicioClavesAdministrativas.desactivarClave(key);
         res.status(200).json(updatedKey);
     });
 
@@ -257,7 +257,7 @@ class ControladorAdministracion {
     static obtenerDispositivosRegistrados = manejadorAsincrono(async (req, res) => {
         console.log('📱 Petición de dispositivos registrados');
 
-        const devices = await ServicioDispositivos.getAllDevices();
+        const devices = await ServicioDispositivos.obtenerTodosLosDispositivos();
         res.status(200).json(devices);
     });
 
@@ -343,7 +343,7 @@ class ControladorAdministracion {
     static obtenerEstadisticasAdministradores = manejadorAsincrono(async (req, res) => {
         console.log('👥 Petición de estadísticas de administradores');
         
-        const stats = await ServicioAdministracion.getAdminStats();
+        const stats = await ServicioAdministracion.obtenerEstadisticasAdministradores();
         
         res.status(200).json({
             success: true,
@@ -378,7 +378,7 @@ class ControladorAdministracion {
         // Obtener todos los datos
         const estudiantes = await ServicioEstudiantes.obtenerTodosLosEstudiantes();
         const asistencias = await ServicioAsistencias.obtenerTodasLasAsistencias();
-        const estadoSistema = await ServicioSistema.getSystemStatus();
+        const estadoSistema = await ServicioSistema.obtenerEstadoSistema();
 
         const datosExportacion = {
             exportInfo: {
@@ -436,7 +436,7 @@ class ControladorAdministracion {
         const [estadisticasEstudiantes, reporteAsistencias, estadoSistema] = await Promise.all([
             ServicioEstudiantes.obtenerEstadisticasEstudiantes(),
             ServicioAsistencias.obtenerReporteAsistencias(fechaInicio, fechaFin),
-            ServicioSistema.getSystemStatus()
+            ServicioSistema.obtenerEstadoSistema()
         ]);
 
         const totalEstudiantes = estadisticasEstudiantes.total ?? estadisticasEstudiantes.totalEstudiantes ?? 0;
@@ -505,7 +505,7 @@ class ControladorAdministracion {
         
         const [estadisticasHoy, estadoSistema] = await Promise.all([
             ServicioAsistencias.obtenerEstadisticasAsistencias(),
-            ServicioSistema.getSystemStatus()
+            ServicioSistema.obtenerEstadoSistema()
         ]);
 
         const presentesHoy = estadisticasHoy.presentesRegistrados ?? estadisticasHoy.presentRegistered ?? 0;

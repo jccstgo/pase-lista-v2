@@ -61,7 +61,7 @@ describe('Manejo de codificación en ServicioCsv', () => {
         const latin1Buffer = Buffer.from(csvContent, 'latin1');
         await fs.promises.writeFile(tempFile, latin1Buffer);
 
-        const rows = await ServicioCsv.readCSV(tempFile);
+        const rows = await ServicioCsv.leerCSV(tempFile);
 
         expect(rows).toHaveLength(2);
         expect(rows[0].nombre).toBe('José');

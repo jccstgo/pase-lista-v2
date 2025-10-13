@@ -16,7 +16,7 @@ class ServicioAsistencias {
 
     static async obtenerTodasLasAsistencias() {
         try {
-            const rows = await servicioBaseDatos.all(`
+            const rows = await servicioBaseDatos.obtenerTodos(`
                 SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
                 FROM attendances
                 ORDER BY recorded_at DESC
@@ -58,7 +58,7 @@ class ServicioAsistencias {
             }
 
             const fechaAsistencia = new Date().toISOString().split('T')[0];
-            const asistenciaExistente = await servicioBaseDatos.get(
+            const asistenciaExistente = await servicioBaseDatos.obtenerUno(
                 `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE matricula = $1 AND attendance_date = $2`,
@@ -76,7 +76,7 @@ class ServicioAsistencias {
             }
 
             const timestamp = new Date().toISOString();
-            const inserted = await servicioBaseDatos.get(
+            const inserted = await servicioBaseDatos.obtenerUno(
                 `INSERT INTO attendances (matricula, nombre, grupo, attendance_date, recorded_at, status, created_at, updated_at)
                  VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
                  RETURNING id, matricula, nombre, grupo, attendance_date, recorded_at, status`,
@@ -92,7 +92,7 @@ class ServicioAsistencias {
 
             const asistencia = this.mapearFilaAAsistencia(inserted);
 
-            await ServicioDispositivos.registerDeviceUsage({
+            await ServicioDispositivos.registrarUsoDispositivo({
                 matricula: estudiante.matricula,
                 deviceFingerprint: solicitud.deviceFingerprint,
                 userAgent: solicitud.userAgent
@@ -127,7 +127,7 @@ class ServicioAsistencias {
             const matriculaNormalizada = matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
             const fechaHoy = new Date().toISOString().split('T')[0];
 
-            const row = await servicioBaseDatos.get(
+            const row = await servicioBaseDatos.obtenerUno(
                 `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE matricula = $1 AND attendance_date = $2`,
@@ -144,7 +144,7 @@ class ServicioAsistencias {
     static async obtenerAsistenciasPorFecha(fecha = null) {
         try {
             const fechaObjetivo = fecha || new Date().toISOString().split('T')[0];
-            const rows = await servicioBaseDatos.all(
+            const rows = await servicioBaseDatos.obtenerTodos(
                 `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE attendance_date = $1
@@ -324,7 +324,7 @@ class ServicioAsistencias {
 
     static async limpiarRegistrosAsistencias() {
         try {
-            const result = await servicioBaseDatos.run('DELETE FROM attendances');
+            const result = await servicioBaseDatos.ejecutar('DELETE FROM attendances');
             console.log('🧹 Registros de asistencia limpiados en la base de datos');
             return result.rowCount;
         } catch (error) {
@@ -335,7 +335,7 @@ class ServicioAsistencias {
 
     static async obtenerReporteAsistencias(fechaInicio, fechaFin) {
         try {
-            const rows = await servicioBaseDatos.all(
+            const rows = await servicioBaseDatos.obtenerTodos(
                 `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE attendance_date BETWEEN $1 AND $2
@@ -449,7 +449,7 @@ class ServicioAsistencias {
     static async obtenerHistorialAsistenciasEstudiante(matricula, limite = 30) {
         try {
             const matriculaNormalizada = matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
-            const rows = await servicioBaseDatos.all(
+            const rows = await servicioBaseDatos.obtenerTodos(
                 `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  WHERE matricula = $1
@@ -610,7 +610,7 @@ class ServicioAsistencias {
 
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-            const rows = await servicioBaseDatos.all(
+            const rows = await servicioBaseDatos.obtenerTodos(
                 `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status
                  FROM attendances
                  ${whereClause}

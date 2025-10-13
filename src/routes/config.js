@@ -6,7 +6,7 @@ const router = express.Router();
 
 // Obtener configuración pública del sistema (para clientes)
 router.get('/', manejadorAsincrono(async (req, res) => {
-    const systemConfig = await ServicioConfiguracion.getPublicConfig();
+    const systemConfig = await ServicioConfiguracion.obtenerConfiguracionPublica();
     res.status(200).json(systemConfig);
 }));
 

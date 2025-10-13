@@ -2,13 +2,13 @@ const servicioBaseDatos = require('./servicioBaseDatos');
 const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
 class ServicioDispositivos {
-    static async ensureInitialized() {
+    static async asegurarInicializacion() {
         return true;
     }
 
-    static async getAllDevices() {
+    static async obtenerTodosLosDispositivos() {
         try {
-            const rows = await servicioBaseDatos.all(
+            const rows = await servicioBaseDatos.obtenerTodos(
                 `SELECT device_fingerprint, matricula, first_registration, last_used, user_agent
                  FROM devices
                  ORDER BY last_used DESC`
@@ -27,7 +27,7 @@ class ServicioDispositivos {
         }
     }
 
-    static async registerDeviceUsage({ matricula, deviceFingerprint, userAgent }) {
+    static async registrarUsoDispositivo({ matricula, deviceFingerprint, userAgent }) {
         try {
             const fingerprint = (deviceFingerprint || '').toString().trim();
             if (!fingerprint) {
@@ -38,7 +38,7 @@ class ServicioDispositivos {
             const userAgentValue = (userAgent || '').toString().trim();
             const timestamp = new Date().toISOString();
 
-            const row = await servicioBaseDatos.get(
+            const row = await servicioBaseDatos.obtenerUno(
                 `INSERT INTO devices (device_fingerprint, matricula, first_registration, last_used, user_agent)
                  VALUES ($1, $2, $3, $3, $4)
                  ON CONFLICT (device_fingerprint) DO UPDATE SET
@@ -62,8 +62,8 @@ class ServicioDispositivos {
         }
     }
 
-    static async clearAllDevices() {
-        await servicioBaseDatos.run('DELETE FROM devices');
+    static async limpiarTodosLosDispositivos() {
+        await servicioBaseDatos.ejecutar('DELETE FROM devices');
     }
 }
 
