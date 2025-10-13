@@ -14,8 +14,8 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #f1a3a3 0%, #9e6666 100%);
-            min-height: 100dvh;
-            height: 100dvh;
+            min-height: calc(var(--vh, 1vh) * 100);
+            height: calc(var(--vh, 1vh) * 100);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -29,7 +29,7 @@
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             padding: clamp(20px, 4.4vh, 36px) clamp(20px, 5vw, 36px);
             max-width: min(420px, 96%);
-            max-height: 98dvh;
+            max-height: calc(var(--vh, 1vh) * 100 - clamp(24px, 8vh, 80px));
             width: 100%;
             text-align: center;
             display: flex;
@@ -443,6 +443,20 @@
     </div>
 
     <script>
+        const actualizarAlturaViewport = () => {
+            const fuenteAltura = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            const vh = fuenteAltura * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        };
+
+        actualizarAlturaViewport();
+        window.addEventListener('resize', actualizarAlturaViewport);
+        window.addEventListener('orientationchange', actualizarAlturaViewport);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', actualizarAlturaViewport);
+            window.visualViewport.addEventListener('scroll', actualizarAlturaViewport);
+        }
+
         let ubicacionActual = null;
         let configuracionPublica = null;
         let huellaDispositivo = null;
