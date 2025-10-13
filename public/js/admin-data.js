@@ -1,6 +1,8 @@
 // ================================
 // FUNCIONES DE DATOS Y RENDERIZADO
 // ================================
+let ultimaListaDetallada = null;
+
 async function cargarPanelAdministrativo() {
     if (typeof tieneAccesoTecnico === 'function' && tieneAccesoTecnico()) {
         await cargarConfiguracionSistema();
@@ -151,28 +153,58 @@ function mostrarListaDetallada(datos) {
     const contenedor = document.getElementById('contenidoDetalle');
     if (!contenedor) return;
 
-    let html = '<div style="margin-bottom: 20px;">';
-    html += `<h3>Fecha: ${new Date(datos.fecha ?? datos.date).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</h3>`;
-    html += '</div>';
+    const informacion = datos ?? {};
+    ultimaListaDetallada = informacion;
 
-    const registrosPresentes = datos.presentesRegistrados ?? datos.presentRegistered;
+    const fechaValor = informacion?.fecha ?? informacion?.date ?? null;
+    const fechaObjeto = fechaValor ? new Date(fechaValor) : new Date();
+    const fechaValida = !Number.isNaN(fechaObjeto.getTime());
+    const fechaLegible = fechaValida
+        ? fechaObjeto.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'Sin fecha disponible';
+
+    const registrosPresentes = informacion.presentesRegistrados ?? informacion.presentRegistered;
+    const registrosFaltantes = informacion.faltistas ?? informacion.absent;
+    const hayRegistros = (Array.isArray(registrosPresentes) && registrosPresentes.length > 0) ||
+        (Array.isArray(registrosFaltantes) && registrosFaltantes.length > 0);
+
+    let html = `
+        <div class="detailed-list-header">
+            <div>
+                <h3 class="detailed-list-title">Fecha: ${fechaLegible}</h3>
+                <p class="detailed-list-subtitle">Descarga un archivo con la lista de presentes y faltistas mostrados en esta sección.</p>
+            </div>
+            <button type="button" class="btn btn-secondary" id="descargarListaDetalladaBtn">⬇️ Descargar listado</button>
+        </div>
+    `;
+
     if (Array.isArray(registrosPresentes) && registrosPresentes.length > 0) {
         html += '<h3 style="color: #2ecc71; margin: 20px 0 10px 0;">✅ Presentes (En Lista)</h3>';
         html += crearTablaDetallada(registrosPresentes);
     }
 
-    const registrosFaltantes = datos.faltistas ?? datos.absent;
     if (Array.isArray(registrosFaltantes) && registrosFaltantes.length > 0) {
         html += '<h3 style="color: #e74c3c; margin: 20px 0 10px 0;">❌ Faltistas</h3>';
         html += crearTablaDetallada(registrosFaltantes);
     }
 
-    if ((!Array.isArray(registrosPresentes) || registrosPresentes.length === 0) &&
-        (!Array.isArray(registrosFaltantes) || registrosFaltantes.length === 0)) {
+    if (!hayRegistros) {
         html += '<p>No hay registros disponibles para la fecha seleccionada.</p>';
     }
 
     contenedor.innerHTML = html;
+
+    const botonDescarga = document.getElementById('descargarListaDetalladaBtn');
+    if (botonDescarga) {
+        botonDescarga.addEventListener('click', descargarListaDetallada);
+        if (!hayRegistros) {
+            botonDescarga.disabled = true;
+            botonDescarga.title = 'No hay registros para descargar.';
+        } else {
+            botonDescarga.disabled = false;
+            botonDescarga.title = 'Descargar archivo con presentes y faltistas.';
+        }
+    }
 }
 
 function crearTablaDetallada(registros) {
@@ -205,6 +237,75 @@ function crearTablaDetallada(registros) {
 
     html += '</tbody></table></div>';
     return html;
+}
+
+function prepararCampoCSV(valor) {
+    if (valor === null || valor === undefined) {
+        return '""';
+    }
+
+    const texto = String(valor).replace(/\r?\n|\r/g, ' ').trim();
+    const escapado = texto.replace(/"/g, '""');
+    return `"${escapado}"`;
+}
+
+function descargarListaDetallada() {
+    if (!ultimaListaDetallada) {
+        return;
+    }
+
+    const registrosPresentes = Array.isArray(ultimaListaDetallada.presentesRegistrados ?? ultimaListaDetallada.presentRegistered)
+        ? (ultimaListaDetallada.presentesRegistrados ?? ultimaListaDetallada.presentRegistered)
+        : [];
+    const registrosFaltantes = Array.isArray(ultimaListaDetallada.faltistas ?? ultimaListaDetallada.absent)
+        ? (ultimaListaDetallada.faltistas ?? ultimaListaDetallada.absent)
+        : [];
+
+    const fechaValor = ultimaListaDetallada.fecha ?? ultimaListaDetallada.date ?? new Date().toISOString();
+    const fechaObjeto = new Date(fechaValor);
+    const fechaValida = !Number.isNaN(fechaObjeto.getTime());
+    const fechaISO = fechaValida ? fechaObjeto.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+
+    const lineas = [];
+    lineas.push('Tipo,Matrícula,Nombre,Grupo,Estado,Hora,Ubicación,Dispositivo');
+
+    const agregarRegistros = (registros, tipo) => {
+        registros.forEach(registro => {
+            const horaFormateada = registro.timestamp
+                ? new Date(registro.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                : '';
+            const fila = [
+                prepararCampoCSV(tipo),
+                prepararCampoCSV(registro.matricula || ''),
+                prepararCampoCSV(decodificarCaracteresEspeciales(registro.nombre || '')),
+                prepararCampoCSV(decodificarCaracteresEspeciales((registro.grupo || '')).toUpperCase()),
+                prepararCampoCSV(registro.status || ''),
+                prepararCampoCSV(horaFormateada),
+                prepararCampoCSV(registro.location || ''),
+                prepararCampoCSV(registro.device || '')
+            ].join(',');
+            lineas.push(fila);
+        });
+    };
+
+    if (registrosPresentes.length > 0) {
+        agregarRegistros(registrosPresentes, 'Presente');
+    }
+
+    if (registrosFaltantes.length > 0) {
+        agregarRegistros(registrosFaltantes, 'Faltista');
+    }
+
+    const contenido = lineas.join('\n');
+    const blob = new Blob([`\uFEFF${contenido}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const enlaceDescarga = document.createElement('a');
+    enlaceDescarga.href = url;
+    enlaceDescarga.download = `lista-detallada-${fechaISO}.csv`;
+    document.body.appendChild(enlaceDescarga);
+    enlaceDescarga.click();
+    document.body.removeChild(enlaceDescarga);
+    URL.revokeObjectURL(url);
 }
 
 async function cargarDispositivos() {
@@ -373,3 +474,4 @@ window.loadDetailedList = cargarListaDetallada;
 window.loadDevices = cargarDispositivos;
 window.loadAdminKeys = cargarClavesAdministrativas;
 window.displayAdminKeys = mostrarClavesAdministrativas;
+window.descargarListaDetallada = descargarListaDetallada;
