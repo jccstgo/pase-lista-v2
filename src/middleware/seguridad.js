@@ -1,7 +1,7 @@
 /**
  * Middleware de headers de seguridad para producción
  */
-const securityHeaders = (req, res, next) => {
+const encabezadosSeguridad = (req, res, next) => {
     // Prevenir sniffing de MIME types
     res.setHeader('X-Content-Type-Options', 'nosniff');
     
@@ -48,41 +48,41 @@ const securityHeaders = (req, res, next) => {
 /**
  * Middleware de rate limiting básico
  */
-const rateLimitMap = new Map();
+const mapaLimiteTasa = new Map();
 
-const rateLimit = (options = {}) => {
+const limiteTasa = (opciones = {}) => {
     const {
         windowMs = 15 * 60 * 1000, // 15 minutos
         maxRequests = 100, // máximo 100 requests por ventana
         message = 'Demasiadas solicitudes desde esta IP'
-    } = options;
-    
+    } = opciones;
+
     return (req, res, next) => {
-        const key = req.ip || req.connection.remoteAddress || 'unknown';
+        const llave = req.ip || req.connection.remoteAddress || 'unknown';
         const now = Date.now();
-        
+
         // Limpiar entradas antiguas
         const cutoff = now - windowMs;
-        for (const [ip, data] of rateLimitMap.entries()) {
+        for (const [ip, data] of mapaLimiteTasa.entries()) {
             data.requests = data.requests.filter(time => time > cutoff);
             if (data.requests.length === 0) {
-                rateLimitMap.delete(ip);
+                mapaLimiteTasa.delete(ip);
             }
         }
-        
+
         // Obtener o crear entrada para esta IP
-        if (!rateLimitMap.has(key)) {
-            rateLimitMap.set(key, { requests: [] });
+        if (!mapaLimiteTasa.has(llave)) {
+            mapaLimiteTasa.set(llave, { requests: [] });
         }
-        
-        const ipData = rateLimitMap.get(key);
-        
+
+        const datosIp = mapaLimiteTasa.get(llave);
+
         // Filtrar requests dentro de la ventana
-        ipData.requests = ipData.requests.filter(time => time > cutoff);
-        
+        datosIp.requests = datosIp.requests.filter(time => time > cutoff);
+
         // Verificar si excede el límite
-        if (ipData.requests.length >= maxRequests) {
-            console.warn(`⚠️ Rate limit excedido para IP: ${key}`);
+        if (datosIp.requests.length >= maxRequests) {
+            console.warn(`⚠️ Límite de solicitudes excedido para IP: ${llave}`);
             return res.status(429).json({
                 success: false,
                 error: message,
@@ -90,15 +90,15 @@ const rateLimit = (options = {}) => {
                 retryAfter: Math.ceil(windowMs / 1000)
             });
         }
-        
+
         // Agregar este request
-        ipData.requests.push(now);
-        
+        datosIp.requests.push(now);
+
         // Headers informativos
         res.setHeader('X-RateLimit-Limit', maxRequests);
-        res.setHeader('X-RateLimit-Remaining', maxRequests - ipData.requests.length);
+        res.setHeader('X-RateLimit-Remaining', maxRequests - datosIp.requests.length);
         res.setHeader('X-RateLimit-Reset', new Date(now + windowMs).toISOString());
-        
+
         next();
     };
 };
@@ -106,7 +106,7 @@ const rateLimit = (options = {}) => {
 /**
  * Rate limiting específico para login (más estricto)
  */
-const loginRateLimit = rateLimit({
+const limiteTasaInicioSesion = limiteTasa({
     windowMs: 15 * 60 * 1000, // 15 minutos
     maxRequests: 5, // máximo 5 intentos de login por IP
     message: 'Demasiados intentos de login desde esta IP. Intente nuevamente en 15 minutos.'
@@ -115,7 +115,7 @@ const loginRateLimit = rateLimit({
 /**
  * Rate limiting para rutas de API (moderado)
  */
-const apiRateLimit = rateLimit({
+const limiteTasaApi = limiteTasa({
     windowMs: 1 * 60 * 1000, // 1 minuto
     maxRequests: 30, // 30 requests por minuto
     message: 'Demasiadas solicitudes a la API. Intente nuevamente en un momento.'
@@ -124,15 +124,15 @@ const apiRateLimit = rateLimit({
 /**
  * Middleware de validación de IP
  */
-const ipWhitelist = (allowedIPs = []) => {
+const listaBlancaIp = (ipsPermitidas = []) => {
     return (req, res, next) => {
-        if (allowedIPs.length === 0) {
+        if (ipsPermitidas.length === 0) {
             return next(); // Si no hay whitelist, permitir todo
         }
-        
+
         const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
-        
-        if (!allowedIPs.includes(clientIP)) {
+
+        if (!ipsPermitidas.includes(clientIP)) {
             console.warn(`⚠️ Acceso denegado desde IP no autorizada: ${clientIP}`);
             return res.status(403).json({
                 success: false,
@@ -148,8 +148,8 @@ const ipWhitelist = (allowedIPs = []) => {
 /**
  * Middleware de detección de ataques básicos
  */
-const attackDetection = (req, res, next) => {
-    const suspiciousPatterns = [
+const deteccionAtaques = (req, res, next) => {
+    const patronesSospechosos = [
         // SQL Injection patterns
         /(\b(union|select|insert|update|delete|drop|create|alter|exec|execute)\b)/i,
         /(\b(or|and)\s+\d+\s*=\s*\d+)/i,
@@ -167,16 +167,16 @@ const attackDetection = (req, res, next) => {
         // Command injection
         /(\||&|;|\$\(|\`)/
     ];
-    
-    const checkString = (str) => {
-        if (typeof str !== 'string') return false;
-        return suspiciousPatterns.some(pattern => pattern.test(str));
+
+    const verificarCadena = (valor) => {
+        if (typeof valor !== 'string') return false;
+        return patronesSospechosos.some(patron => patron.test(valor));
     };
-    
+
     // Verificar parámetros de query
-    for (const [key, value] of Object.entries(req.query || {})) {
-        if (checkString(key) || checkString(value)) {
-            console.warn(`⚠️ Patrón sospechoso detectado en query: ${key}=${value} - IP: ${req.ip}`);
+    for (const [clave, valor] of Object.entries(req.query || {})) {
+        if (verificarCadena(clave) || verificarCadena(valor)) {
+            console.warn(`⚠️ Patrón sospechoso detectado en query: ${clave}=${valor} - IP: ${req.ip}`);
             return res.status(400).json({
                 success: false,
                 error: 'Solicitud contiene datos sospechosos',
@@ -187,8 +187,8 @@ const attackDetection = (req, res, next) => {
     
     // Verificar body
     if (req.body) {
-        const bodyStr = JSON.stringify(req.body);
-        if (checkString(bodyStr)) {
+        const cuerpoCadena = JSON.stringify(req.body);
+        if (verificarCadena(cuerpoCadena)) {
             console.warn(`⚠️ Patrón sospechoso detectado en body - IP: ${req.ip}`);
             return res.status(400).json({
                 success: false,
@@ -197,10 +197,10 @@ const attackDetection = (req, res, next) => {
             });
         }
     }
-    
+
     // Verificar headers sospechosos
     const userAgent = req.headers['user-agent'] || '';
-    if (userAgent.length > 1000 || checkString(userAgent)) {
+    if (userAgent.length > 1000 || verificarCadena(userAgent)) {
         console.warn(`⚠️ User-Agent sospechoso: ${userAgent.substring(0, 100)} - IP: ${req.ip}`);
         return res.status(400).json({
             success: false,
@@ -215,25 +215,25 @@ const attackDetection = (req, res, next) => {
 /**
  * Middleware de detección de bots básico
  */
-const botDetection = (req, res, next) => {
+const deteccionBots = (req, res, next) => {
     const userAgent = (req.headers['user-agent'] || '').toLowerCase();
     
-    const commonBots = [
+    const botsComunes = [
         'bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python-requests',
         'googlebot', 'bingbot', 'slurp', 'duckduckbot', 'baiduspider',
         'yandexbot', 'facebookexternalhit', 'twitterbot'
     ];
-    
-    const isBot = commonBots.some(botPattern => userAgent.includes(botPattern));
-    
-    if (isBot) {
+
+    const esBot = botsComunes.some(patronBot => userAgent.includes(patronBot));
+
+    if (esBot) {
         console.log(`🤖 Bot detectado: ${userAgent.substring(0, 50)} - IP: ${req.ip}`);
-        
+
         // Para bots legítimos, permitir solo ciertas rutas
-        const allowedBotRoutes = ['/api/health', '/robots.txt', '/sitemap.xml'];
-        const isAllowedRoute = allowedBotRoutes.some(route => req.path.startsWith(route));
-        
-        if (!isAllowedRoute) {
+        const rutasPermitidasParaBots = ['/api/health', '/robots.txt', '/sitemap.xml'];
+        const rutaPermitida = rutasPermitidasParaBots.some(ruta => req.path.startsWith(ruta));
+
+        if (!rutaPermitida) {
             return res.status(403).json({
                 success: false,
                 error: 'Acceso de bots no permitido en esta ruta',
@@ -248,7 +248,7 @@ const botDetection = (req, res, next) => {
 /**
  * Middleware de CORS personalizado para el sistema
  */
-const corsHandler = (req, res, next) => {
+const manejadorCors = (req, res, next) => {
     const allowedOrigins = [
         'http://localhost:3000',
         'http://localhost:3001',
@@ -276,12 +276,12 @@ const corsHandler = (req, res, next) => {
 };
 
 module.exports = {
-    securityHeaders,
-    rateLimit,
-    loginRateLimit,
-    apiRateLimit,
-    ipWhitelist,
-    attackDetection,
-    botDetection,
-    corsHandler
+    encabezadosSeguridad,
+    limiteTasa,
+    limiteTasaInicioSesion,
+    limiteTasaApi,
+    listaBlancaIp,
+    deteccionAtaques,
+    deteccionBots,
+    manejadorCors
 };

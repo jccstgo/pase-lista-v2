@@ -3,14 +3,17 @@ const fsSync = require('fs');
 const { Readable } = require('stream');
 const csv = require('csv-parser');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
-const { AppError } = require('../middleware/errorHandler');
-const { decodePotentiallyMisencodedText, decodeBufferToText } = require('../utils/encoding');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
+const {
+    decodificarTextoPotencialmenteIncorrecto,
+    decodificarBufferATexto
+} = require('../utils/codificacion');
 
-class CSVService {
+class ServicioCsv {
     /**
      * Verificar si un archivo existe
      */
-    static async fileExists(filePath) {
+    static async archivoExiste(filePath) {
         try {
             await fs.access(filePath);
             return true;
@@ -22,21 +25,21 @@ class CSVService {
     /**
      * Crear directorio si no existe
      */
-    static async ensureDirectory(dirPath) {
+    static async asegurarDirectorio(dirPath) {
         try {
             await fs.mkdir(dirPath, { recursive: true });
             console.log(`✅ Directorio ${dirPath} creado/verificado`);
             return true;
         } catch (error) {
             console.error(`❌ Error creando directorio ${dirPath}:`, error);
-            throw new AppError(`Error creando directorio: ${error.message}`, 500, 'DIRECTORY_ERROR');
+            throw new ErrorAplicacion(`Error creando directorio: ${error.message}`, 500, 'DIRECTORY_ERROR');
         }
     }
 
     /**
      * Leer archivo CSV
      */
-    static async readCSV(filePath) {
+    static async leerCSV(filePath) {
         if (!fsSync.existsSync(filePath)) {
             console.log(`⚠️ Archivo no encontrado: ${filePath}, retornando array vacío`);
             return [];
@@ -46,10 +49,10 @@ class CSVService {
 
         try {
             const fileBuffer = await fs.readFile(filePath);
-            decodedContent = decodeBufferToText(fileBuffer);
+            decodedContent = decodificarBufferATexto(fileBuffer);
         } catch (error) {
             console.error(`❌ Error leyendo ${filePath}:`, error);
-            throw new AppError(`Error leyendo CSV: ${error.message}`, 500, 'CSV_READ_ERROR');
+            throw new ErrorAplicacion(`Error leyendo CSV: ${error.message}`, 500, 'CSV_READ_ERROR');
         }
 
         return new Promise((resolve, reject) => {
@@ -64,20 +67,20 @@ class CSVService {
                         }
 
                         const trimmed = header.replace(/^\uFEFF/, '').trim();
-                        return decodePotentiallyMisencodedText(trimmed);
+                        return decodificarTextoPotencialmenteIncorrecto(trimmed);
                     }
                 }))
                 .on('data', (data) => {
                     const cleanData = {};
                     Object.keys(data).forEach(key => {
-                        const cleanKey = decodePotentiallyMisencodedText(
+                        const cleanKey = decodificarTextoPotencialmenteIncorrecto(
                             key.replace(/^\uFEFF/, '').trim()
                         );
                         const value = data[key];
 
                         if (typeof value === 'string') {
                             const trimmedValue = value.trim();
-                            cleanData[cleanKey] = decodePotentiallyMisencodedText(trimmedValue);
+                            cleanData[cleanKey] = decodificarTextoPotencialmenteIncorrecto(trimmedValue);
                         } else {
                             cleanData[cleanKey] = value;
                         }
@@ -94,7 +97,7 @@ class CSVService {
                 })
                 .on('error', (error) => {
                     console.error(`❌ Error procesando CSV ${filePath}:`, error);
-                    reject(new AppError(`Error leyendo CSV: ${error.message}`, 500, 'CSV_READ_ERROR'));
+                    reject(new ErrorAplicacion(`Error leyendo CSV: ${error.message}`, 500, 'CSV_READ_ERROR'));
                 });
         });
     }
@@ -102,24 +105,24 @@ class CSVService {
     /**
      * Escribir archivo CSV
      */
-    static async writeCSV(filePath, data, headers) {
+    static async escribirCSV(filePath, data, headers) {
         try {
             // Validar parámetros
             if (!filePath || !headers) {
-                throw new AppError('Ruta de archivo y headers son requeridos', 400, 'INVALID_PARAMETERS');
+                throw new ErrorAplicacion('Ruta de archivo y headers son requeridos', 400, 'INVALID_PARAMETERS');
             }
 
             if (!Array.isArray(data)) {
-                throw new AppError('Los datos deben ser un array', 400, 'INVALID_DATA_TYPE');
+                throw new ErrorAplicacion('Los datos deben ser un array', 400, 'INVALID_DATA_TYPE');
             }
 
             if (!Array.isArray(headers)) {
-                throw new AppError('Los headers deben ser un array', 400, 'INVALID_HEADERS_TYPE');
+                throw new ErrorAplicacion('Los headers deben ser un array', 400, 'INVALID_HEADERS_TYPE');
             }
 
             // Crear directorio padre si no existe
             const dirPath = require('path').dirname(filePath);
-            await this.ensureDirectory(dirPath);
+            await this.asegurarDirectorio(dirPath);
             
             const writer = createCsvWriter({
                 path: filePath,
@@ -133,17 +136,17 @@ class CSVService {
             return true;
         } catch (error) {
             console.error(`❌ Error escribiendo ${filePath}:`, error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError(`Error escribiendo CSV: ${error.message}`, 500, 'CSV_WRITE_ERROR');
+            throw new ErrorAplicacion(`Error escribiendo CSV: ${error.message}`, 500, 'CSV_WRITE_ERROR');
         }
     }
 
     /**
      * Escribir CSV con solo headers (archivo vacío)
      */
-    static async writeEmptyCSV(filePath, headers) {
+    static async escribirCSVVacio(filePath, headers) {
         try {
             const headerLine = headers.map(h => h.title || h.id).join(',');
             await fs.writeFile(filePath, headerLine + '\n', 'utf8');
@@ -151,40 +154,40 @@ class CSVService {
             return true;
         } catch (error) {
             console.error(`❌ Error creando archivo vacío ${filePath}:`, error);
-            throw new AppError(`Error creando archivo CSV vacío: ${error.message}`, 500, 'CSV_CREATE_ERROR');
+            throw new ErrorAplicacion(`Error creando archivo CSV vacío: ${error.message}`, 500, 'CSV_CREATE_ERROR');
         }
     }
 
     /**
      * Agregar registro a CSV existente
      */
-    static async appendToCSV(filePath, newRecord, headers) {
+    static async agregarAlCSV(filePath, newRecord, headers) {
         try {
             // Leer registros existentes
-            const existingRecords = await this.readCSV(filePath);
-            
+            const existingRecords = await this.leerCSV(filePath);
+
             // Agregar nuevo registro
             const allRecords = [...existingRecords, newRecord];
-            
+
             // Escribir todo de nuevo
-            await this.writeCSV(filePath, allRecords, headers);
-            
+            await this.escribirCSV(filePath, allRecords, headers);
+
             return allRecords.length;
         } catch (error) {
             console.error(`❌ Error agregando registro a ${filePath}:`, error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError(`Error agregando a CSV: ${error.message}`, 500, 'CSV_APPEND_ERROR');
+            throw new ErrorAplicacion(`Error agregando a CSV: ${error.message}`, 500, 'CSV_APPEND_ERROR');
         }
     }
 
     /**
      * Buscar registros en CSV
      */
-    static async findInCSV(filePath, searchCriteria) {
+    static async buscarEnCSV(filePath, searchCriteria) {
         try {
-            const records = await this.readCSV(filePath);
+            const records = await this.leerCSV(filePath);
             
             if (!searchCriteria || Object.keys(searchCriteria).length === 0) {
                 return records;
@@ -205,19 +208,19 @@ class CSVService {
             });
         } catch (error) {
             console.error(`❌ Error buscando en ${filePath}:`, error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError(`Error buscando en CSV: ${error.message}`, 500, 'CSV_SEARCH_ERROR');
+            throw new ErrorAplicacion(`Error buscando en CSV: ${error.message}`, 500, 'CSV_SEARCH_ERROR');
         }
     }
 
     /**
      * Actualizar registro en CSV
      */
-    static async updateInCSV(filePath, searchCriteria, updateData, headers) {
+    static async actualizarEnCSV(filePath, searchCriteria, updateData, headers) {
         try {
-            const records = await this.readCSV(filePath);
+            const records = await this.leerCSV(filePath);
             let updated = false;
             
             const updatedRecords = records.map(record => {
@@ -232,28 +235,28 @@ class CSVService {
                 
                 return record;
             });
-            
+
             if (updated) {
-                await this.writeCSV(filePath, updatedRecords, headers);
+                await this.escribirCSV(filePath, updatedRecords, headers);
                 console.log(`✅ Registro actualizado en ${filePath}`);
             }
-            
+
             return updated;
         } catch (error) {
             console.error(`❌ Error actualizando en ${filePath}:`, error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError(`Error actualizando CSV: ${error.message}`, 500, 'CSV_UPDATE_ERROR');
+            throw new ErrorAplicacion(`Error actualizando CSV: ${error.message}`, 500, 'CSV_UPDATE_ERROR');
         }
     }
 
     /**
      * Eliminar registros de CSV
      */
-    static async deleteFromCSV(filePath, searchCriteria, headers) {
+    static async eliminarDelCSV(filePath, searchCriteria, headers) {
         try {
-            const records = await this.readCSV(filePath);
+            const records = await this.leerCSV(filePath);
             
             const filteredRecords = records.filter(record => {
                 return !Object.entries(searchCriteria).every(([key, value]) => 
@@ -262,28 +265,28 @@ class CSVService {
             });
             
             const deletedCount = records.length - filteredRecords.length;
-            
+
             if (deletedCount > 0) {
-                await this.writeCSV(filePath, filteredRecords, headers);
+                await this.escribirCSV(filePath, filteredRecords, headers);
                 console.log(`🗑️ ${deletedCount} registros eliminados de ${filePath}`);
             }
             
             return deletedCount;
         } catch (error) {
             console.error(`❌ Error eliminando de ${filePath}:`, error);
-            if (error instanceof AppError) {
+            if (error instanceof ErrorAplicacion) {
                 throw error;
             }
-            throw new AppError(`Error eliminando de CSV: ${error.message}`, 500, 'CSV_DELETE_ERROR');
+            throw new ErrorAplicacion(`Error eliminando de CSV: ${error.message}`, 500, 'CSV_DELETE_ERROR');
         }
     }
 
     /**
      * Obtener estadísticas de archivo CSV
      */
-    static async getCSVStats(filePath) {
+    static async obtenerEstadisticasCSV(filePath) {
         try {
-            const records = await this.readCSV(filePath);
+            const records = await this.leerCSV(filePath);
             const stats = await fs.stat(filePath);
             
             return {
@@ -294,14 +297,14 @@ class CSVService {
             };
         } catch (error) {
             console.error(`❌ Error obteniendo estadísticas de ${filePath}:`, error);
-            throw new AppError(`Error obteniendo estadísticas: ${error.message}`, 500, 'CSV_STATS_ERROR');
+            throw new ErrorAplicacion(`Error obteniendo estadísticas: ${error.message}`, 500, 'CSV_STATS_ERROR');
         }
     }
 
     /**
      * Hacer backup de archivo CSV
      */
-    static async backupCSV(filePath) {
+    static async respaldarCSV(filePath) {
         try {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const backupPath = `${filePath}.backup.${timestamp}`;
@@ -312,9 +315,9 @@ class CSVService {
             return backupPath;
         } catch (error) {
             console.error(`❌ Error creando backup de ${filePath}:`, error);
-            throw new AppError(`Error creando backup: ${error.message}`, 500, 'CSV_BACKUP_ERROR');
+            throw new ErrorAplicacion(`Error creando backup: ${error.message}`, 500, 'CSV_BACKUP_ERROR');
         }
     }
 }
 
-module.exports = CSVService;
+module.exports = ServicioCsv;

@@ -2,69 +2,69 @@ const fsp = require('fs/promises');
 const path = require('path');
 const os = require('os');
 
-const Admin = require('../models/Admin');
-const StudentService = require('./studentService');
-const AdminService = require('./adminService');
-const AttendanceService = require('./attendanceService');
-const ConfigService = require('./configService');
-const AdminKeyService = require('./adminKeyService');
-const DeviceService = require('./deviceService');
+const Administrador = require('../models/Administrador');
+const ServicioEstudiantes = require('./servicioEstudiantes');
+const ServicioAdministracion = require('./servicioAdministracion');
+const ServicioAsistencias = require('./servicioAsistencias');
+const ServicioConfiguracion = require('./servicioConfiguracion');
+const ServicioClavesAdministrativas = require('./servicioClavesAdministrativas');
+const ServicioDispositivos = require('./servicioDispositivos');
 const config = require('../config/server');
-const { AppError } = require('../middleware/errorHandler');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
-class SystemService {
-    static async initializeSystem() {
+class ServicioSistema {
+    static async inicializarSistema() {
         try {
             console.log('🔄 Iniciando proceso de inicialización del sistema...');
 
-            await this.createDataDirectory();
-            await this.initializeDatabaseResources();
-            await this.createDefaultAdmin();
+            await this.crearDirectorioDatos();
+            await this.inicializarRecursosBaseDatos();
+            await this.crearAdministradorPorDefecto();
 
             console.log('🎉 Sistema inicializado exitosamente');
             return true;
         } catch (error) {
             console.error('❌ Error fatal durante la inicialización:', error);
-            throw new AppError('Error crítico en inicialización del sistema', 500, 'SYSTEM_INIT_ERROR');
+            throw new ErrorAplicacion('Error crítico en inicialización del sistema', 500, 'SYSTEM_INIT_ERROR');
         }
     }
 
-    static async createDataDirectory() {
+    static async crearDirectorioDatos() {
         try {
             await fsp.mkdir(config.DATA_DIR, { recursive: true });
             console.log('✅ Directorio de datos verificado/creado');
         } catch (error) {
             console.error('❌ Error creando directorio de datos:', error);
-            throw new AppError('No se pudo crear directorio de datos', 500, 'DATA_DIR_ERROR');
+            throw new ErrorAplicacion('No se pudo crear directorio de datos', 500, 'DATA_DIR_ERROR');
         }
     }
 
-    static async initializeDatabaseResources() {
+    static async inicializarRecursosBaseDatos() {
         try {
             await Promise.all([
-                StudentService.validateDataIntegrity().catch(() => StudentService.getStudentStats()),
-                ConfigService.ensureInitialized(),
-                AdminKeyService.ensureInitialized(),
-                DeviceService.ensureInitialized()
+                ServicioEstudiantes.validarIntegridadDatos().catch(() => ServicioEstudiantes.obtenerEstadisticasEstudiantes()),
+                ServicioConfiguracion.asegurarInicializacion(),
+                ServicioClavesAdministrativas.asegurarInicializacion(),
+                ServicioDispositivos.asegurarInicializacion()
             ]);
             console.log('✅ Recursos de base de datos verificados');
         } catch (error) {
             console.error('❌ Error inicializando recursos de base de datos:', error);
-            throw error instanceof AppError ? error : new AppError('Error inicializando recursos del sistema', 500, 'DB_INIT_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('Error inicializando recursos del sistema', 500, 'DB_INIT_ERROR');
         }
     }
 
-    static async createDefaultAdmin() {
+    static async crearAdministradorPorDefecto() {
         try {
-            const defaultAdmin = await AdminService.findByUsername('admin');
+            const defaultAdmin = await ServicioAdministracion.buscarPorNombreUsuario('admin');
             if (defaultAdmin) {
                 console.log('✅ Administrador por defecto ya existe');
                 return defaultAdmin;
             }
 
             console.log('👤 Creando administrador por defecto...');
-            const newAdmin = await Admin.createDefault();
-            await AdminService.createAdmin({
+            const newAdmin = await Administrador.createDefault();
+            await ServicioAdministracion.crearAdministrador({
                 username: newAdmin.username,
                 password: newAdmin.password,
                 createdAt: newAdmin.createdAt,
@@ -77,24 +77,24 @@ class SystemService {
             return newAdmin;
         } catch (error) {
             console.error('❌ Error creando administrador por defecto:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo crear administrador por defecto', 500, 'DEFAULT_ADMIN_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo crear administrador por defecto', 500, 'DEFAULT_ADMIN_ERROR');
         }
     }
 
-    static async getSystemStatus() {
+    static async obtenerEstadoSistema() {
         try {
-            const [studentStats, adminStats, configData, adminKeys, devices, adminInfo] = await Promise.all([
-                StudentService.getStudentStats(),
-                AdminService.getAdminStats(),
-                ConfigService.getSystemConfig(),
-                AdminKeyService.getAllKeys(),
-                DeviceService.getAllDevices(),
-                this.checkAdminExists()
+            const [estadisticasEstudiantes, estadisticasAdministradores, configuracionSistema, clavesAdministrativas, dispositivos, infoAdministrador] = await Promise.all([
+                ServicioEstudiantes.obtenerEstadisticasEstudiantes(),
+                ServicioAdministracion.obtenerEstadisticasAdministradores(),
+                ServicioConfiguracion.obtenerConfiguracionSistema(),
+                ServicioClavesAdministrativas.obtenerTodasLasClaves(),
+                ServicioDispositivos.obtenerTodosLosDispositivos(),
+                this.verificarAdministradores()
             ]);
 
-            const dataDirectory = path.resolve(config.DATA_DIR);
-            const backupsDirectory = path.join(dataDirectory, 'backups');
-            const backupsExists = await this.directoryExists(backupsDirectory);
+            const directorioDatos = path.resolve(config.DATA_DIR);
+            const directorioRespaldos = path.join(directorioDatos, 'backups');
+            const existenRespaldos = await this.existeDirectorio(directorioRespaldos);
 
             return {
                 timestamp: new Date().toISOString(),
@@ -102,7 +102,7 @@ class SystemService {
                     node: process.version,
                     mode: config.NODE_ENV,
                     hostname: os.hostname(),
-                    dataDirectory,
+                    dataDirectory: directorioDatos,
                     database: config.DATABASE.SUMMARY
                 },
                 uptime: process.uptime(),
@@ -110,32 +110,32 @@ class SystemService {
                 storage: {
                     database: {
                         summary: config.DATABASE.SUMMARY,
-                        students: studentStats.total,
-                        admins: adminStats.totalAdmins,
-                        adminKeys: adminKeys.length,
-                        devices: devices.length
+                        students: estadisticasEstudiantes.total,
+                        admins: estadisticasAdministradores.totalAdmins,
+                        adminKeys: clavesAdministrativas.length,
+                        devices: dispositivos.length
                     },
                     dataDirectory: {
-                        path: dataDirectory,
+                        path: directorioDatos,
                         exists: true
                     },
                     backups: {
-                        path: backupsDirectory,
-                        exists: backupsExists
+                        path: directorioRespaldos,
+                        exists: existenRespaldos
                     }
                 },
-                admin: adminInfo,
-                configuration: configData
+                admin: infoAdministrador,
+                configuration: configuracionSistema
             };
         } catch (error) {
             console.error('❌ Error obteniendo estado del sistema:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo obtener estado del sistema', 500, 'SYSTEM_STATUS_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo obtener estado del sistema', 500, 'SYSTEM_STATUS_ERROR');
         }
     }
 
-    static async runSystemDiagnostics() {
+    static async ejecutarDiagnosticosSistema() {
         try {
-            const status = await this.getSystemStatus();
+            const status = await this.obtenerEstadoSistema();
             const issues = [];
 
             if (!status.admin.defaultAdminExists) {
@@ -160,22 +160,22 @@ class SystemService {
             };
         } catch (error) {
             console.error('❌ Error ejecutando diagnósticos:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudieron ejecutar los diagnósticos', 500, 'SYSTEM_DIAGNOSTICS_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudieron ejecutar los diagnósticos', 500, 'SYSTEM_DIAGNOSTICS_ERROR');
         }
     }
 
-    static async createSystemBackup() {
+    static async crearRespaldoSistema() {
         try {
             const backupDir = path.join(config.DATA_DIR, 'backups');
             await fsp.mkdir(backupDir, { recursive: true });
 
-            const [students, attendances, admins, systemConfig, adminKeys, devices] = await Promise.all([
-                StudentService.getAllStudents().then(list => list.map(student => student.toJSON())),
-                AttendanceService.getAllAttendances().then(list => list.map(attendance => attendance.toJSON())),
-                AdminService.getAllAdmins().then(list => list.map(admin => admin.toJSON())),
-                ConfigService.getSystemConfig(),
-                AdminKeyService.getAllKeys(),
-                DeviceService.getAllDevices()
+            const [estudiantes, asistencias, administradores, configuracion, claves, dispositivos] = await Promise.all([
+                ServicioEstudiantes.obtenerTodosLosEstudiantes().then(lista => lista.map(estudiante => estudiante.toJSON())),
+                ServicioAsistencias.obtenerTodasLasAsistencias().then(lista => lista.map(asistencia => asistencia.toJSON())),
+                ServicioAdministracion.obtenerTodosLosAdministradores().then(lista => lista.map(admin => admin.toJSON())),
+                ServicioConfiguracion.obtenerConfiguracionSistema(),
+                ServicioClavesAdministrativas.obtenerTodasLasClaves(),
+                ServicioDispositivos.obtenerTodosLosDispositivos()
             ]);
 
             const backupData = {
@@ -185,12 +185,12 @@ class SystemService {
                     mode: config.NODE_ENV
                 },
                 data: {
-                    students,
-                    attendance: attendances,
-                    admins,
-                    systemConfig,
-                    adminKeys,
-                    devices
+                    students: estudiantes,
+                    attendance: asistencias,
+                    admins: administradores,
+                    systemConfig: configuracion,
+                    adminKeys: claves,
+                    devices: dispositivos
                 }
             };
 
@@ -205,21 +205,21 @@ class SystemService {
                 file: backupFile,
                 size: Buffer.byteLength(backupJson, 'utf8'),
                 records: {
-                    students: students.length,
-                    attendance: attendances.length,
-                    admins: admins.length
+                    students: estudiantes.length,
+                    attendance: asistencias.length,
+                    admins: administradores.length
                 }
             };
         } catch (error) {
             console.error('❌ Error creando backup del sistema:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo crear el backup del sistema', 500, 'SYSTEM_BACKUP_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo crear el backup del sistema', 500, 'SYSTEM_BACKUP_ERROR');
         }
     }
 
-    static async cleanupSystem() {
+    static async limpiarSistema() {
         try {
             const backupDir = path.join(config.DATA_DIR, 'backups');
-            if (!(await this.directoryExists(backupDir))) {
+            if (!(await this.existeDirectorio(backupDir))) {
                 return {
                     removedFiles: 0,
                     remainingFiles: 0,
@@ -252,13 +252,13 @@ class SystemService {
             };
         } catch (error) {
             console.error('❌ Error limpiando sistema:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo completar la limpieza del sistema', 500, 'SYSTEM_CLEANUP_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo completar la limpieza del sistema', 500, 'SYSTEM_CLEANUP_ERROR');
         }
     }
 
-    static async checkAdminExists() {
+    static async verificarAdministradores() {
         try {
-            const admins = await AdminService.getAllAdmins();
+            const admins = await ServicioAdministracion.obtenerTodosLosAdministradores();
             const defaultAdmin = admins.find(admin => admin.username === 'admin');
 
             return {
@@ -268,11 +268,11 @@ class SystemService {
             };
         } catch (error) {
             console.error('❌ Error verificando administradores:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo verificar administradores', 500, 'ADMIN_CHECK_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo verificar administradores', 500, 'ADMIN_CHECK_ERROR');
         }
     }
 
-    static async directoryExists(dirPath) {
+    static async existeDirectorio(dirPath) {
         try {
             await fsp.access(dirPath);
             return true;
@@ -282,4 +282,4 @@ class SystemService {
     }
 }
 
-module.exports = SystemService;
+module.exports = ServicioSistema;
