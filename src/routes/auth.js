@@ -28,6 +28,9 @@ router.post('/refresh', ControladorAutenticacion.renovarToken);
 // Logout (invalidar token del lado cliente)
 router.post('/logout', ControladorAutenticacion.cerrarSesion);
 
+// Solicitar acceso técnico adicional
+router.post('/tech-access', autenticarAdministrador, ControladorAutenticacion.habilitarAccesoTecnico);
+
 // Validar fuerza de contraseña
 router.post('/validate-password', ControladorAutenticacion.validarContrasena);
 

@@ -72,6 +72,32 @@ class ServicioAdministracion {
         }
     }
 
+    static crearTokenSesion(username, opciones = {}) {
+        if (!username) {
+            throw new ErrorAplicacion('Username es requerido', 400, 'MISSING_USERNAME');
+        }
+
+        const scopes = new Set(Array.isArray(opciones.scopes) ? opciones.scopes.filter(Boolean) : []);
+        scopes.add('admin');
+
+        if (opciones.technicalAccess) {
+            scopes.add('technical');
+        }
+
+        const payload = {
+            username,
+            loginTime: opciones.loginTime || new Date().toISOString(),
+            scopes: Array.from(scopes),
+            technicalAccess: scopes.has('technical')
+        };
+
+        if (opciones.extraPayload && typeof opciones.extraPayload === 'object') {
+            Object.assign(payload, opciones.extraPayload);
+        }
+
+        return generarToken(payload);
+    }
+
     static async autenticar(username, password) {
         try {
             if (!username || !password) {
@@ -120,9 +146,10 @@ class ServicioAdministracion {
             admin.recordSuccessfulLogin();
             await this.persistirEstadoAdministrador(admin);
 
-            const token = generarToken({
-                username: admin.username,
-                loginTime: new Date().toISOString()
+            const token = this.crearTokenSesion(admin.username, {
+                loginTime: new Date().toISOString(),
+                scopes: ['admin'],
+                technicalAccess: false
             });
 
             console.log(`✅ Login exitoso para: ${username}`);
@@ -131,7 +158,8 @@ class ServicioAdministracion {
                 success: true,
                 token,
                 admin: admin.toSafeJSON(),
-                expiresIn: config.JWT_EXPIRES_IN
+                expiresIn: config.JWT_EXPIRES_IN,
+                technicalAccess: false
             };
         } catch (error) {
             console.error('❌ Error en autenticación:', error);
