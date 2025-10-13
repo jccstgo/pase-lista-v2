@@ -340,6 +340,19 @@ input:focus, select:focus {
     margin: 0;
 }
 
+.detailed-tab-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+.detailed-tab-download {
+    white-space: nowrap;
+}
+
 .detailed-list-header {
     display: flex;
     align-items: flex-start;
@@ -367,6 +380,11 @@ input:focus, select:focus {
     display: flex;
     gap: 8px;
     align-items: center;
+}
+
+.detailed-list-clear-button {
+    padding: 8px 14px;
+    white-space: nowrap;
 }
 
 .detailed-list-search label {

@@ -229,9 +229,9 @@ function renderizarListaDetallada() {
                     <div class="detailed-list-search-controls">
                         <input type="search" id="filtroListaDetallada" placeholder="Busca por nombre, matrícula o grupo" autocomplete="off" spellcheck="false" />
                         <button type="button" id="aplicarFiltroListaDetalladaBtn" class="btn btn-primary detailed-list-search-button">Buscar</button>
+                        <button type="button" id="limpiarFiltroListaDetalladaBtn" class="btn btn-light detailed-list-clear-button">Limpiar</button>
                     </div>
                 </div>
-                <button type="button" class="btn btn-secondary" id="descargarListaDetalladaBtn">⬇️ Descargar listado</button>
             </div>
         </div>
     `;
@@ -264,7 +264,10 @@ function renderizarListaDetallada() {
 
     const botonDescarga = document.getElementById('descargarListaDetalladaBtn');
     if (botonDescarga) {
-        botonDescarga.addEventListener('click', descargarListaDetallada);
+        if (!botonDescarga.dataset.listenerAsignado) {
+            botonDescarga.addEventListener('click', descargarListaDetallada);
+            botonDescarga.dataset.listenerAsignado = 'true';
+        }
         if (!hayRegistrosOriginales) {
             botonDescarga.disabled = true;
             botonDescarga.title = 'No hay registros para descargar.';
@@ -292,6 +295,12 @@ function renderizarListaDetallada() {
     if (botonAplicarFiltro) {
         botonAplicarFiltro.addEventListener('click', aplicarFiltroListaDetallada);
     }
+
+    const botonLimpiarFiltro = document.getElementById('limpiarFiltroListaDetalladaBtn');
+    if (botonLimpiarFiltro) {
+        botonLimpiarFiltro.addEventListener('click', limpiarFiltroListaDetallada);
+        botonLimpiarFiltro.disabled = !filtroActivo && valorBusquedaListaDetallada.trim() === '';
+    }
 }
 
 function aplicarFiltroListaDetallada() {
@@ -299,6 +308,16 @@ function aplicarFiltroListaDetallada() {
     filtroListaDetallada = nuevoFiltro;
     valorBusquedaListaDetallada = nuevoFiltro;
     renderizarListaDetallada();
+}
+
+function limpiarFiltroListaDetallada() {
+    filtroListaDetallada = '';
+    valorBusquedaListaDetallada = '';
+    renderizarListaDetallada();
+    const campoBusqueda = document.getElementById('filtroListaDetallada');
+    if (campoBusqueda) {
+        campoBusqueda.focus();
+    }
 }
 
 function crearTablaDetallada(registros) {
