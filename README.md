@@ -65,3 +65,15 @@ la conexión a PostgreSQL se rechazó porque la contraseña indicada no coincide
 4. Guarda los cambios y ejecuta de nuevo `npm start`.
 
 Si todavía aparece el error, verifica que el servidor de PostgreSQL esté en ejecución, que la base de datos exista y que el usuario tenga permisos de acceso. En Windows, revisa además el archivo `pg_hba.conf` para confirmar que permite conexiones locales con autenticación por contraseña.
+
+## Convenciones y lineamientos del proyecto
+
+Desde la versión localizada al español, todo el código fuente emplea identificadores, clases, métodos y mensajes en nuestro idioma. Para mantener la coherencia del repositorio:
+
+- Usa **PascalCase** en clases y controladores (`ControladorAsistencias`).
+- Prefiere **camelCase** en funciones, variables y manejadores (`registrarAsistencia`, `obtenerEstudiantePorId`).
+- Declara constantes en **MAYÚSCULAS_CON_GUIONES_BAJOS** (`TIEMPO_MAXIMO_SESION`).
+- Nombra archivos y módulos siguiendo kebab-case o snake_case según lo permita el ecosistema de Node.js (`servicio-asistencias.js`, `controlador_autenticacion.js`).
+- Conserva en inglés únicamente los contratos externos (dependencias NPM, variables de entorno, rutas públicas existentes) para evitar rupturas con integraciones.
+
+Cuando agregues nuevas funcionalidades, procura documentar las traducciones elegidas para términos técnicos en los comentarios o en esta sección para facilitar su reutilización en el resto del equipo.

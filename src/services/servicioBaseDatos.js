@@ -2,7 +2,7 @@ const { Pool } = require('pg');
 
 const config = require('../config/server');
 
-class DatabaseService {
+class ServicioBaseDatos {
     constructor() {
         this.allowedTables = new Set([
             'students',
@@ -24,12 +24,12 @@ class DatabaseService {
             console.error('❌ Error inesperado en la conexión de PostgreSQL:', error);
         });
 
-        this.ready = this.initialize();
+        this.listo = this.inicializar();
     }
 
-    async initialize() {
+    async inicializar() {
         try {
-            await this.initializeTables();
+            await this.inicializarTablas();
             console.log('✅ Conexión a PostgreSQL verificada');
         } catch (error) {
             console.error('❌ Error inicializando la base de datos PostgreSQL:', error);
@@ -37,7 +37,7 @@ class DatabaseService {
         }
     }
 
-    async initializeTables() {
+    async inicializarTablas() {
         await this.pool.query(`
             CREATE TABLE IF NOT EXISTS students (
                 matricula TEXT PRIMARY KEY,
@@ -113,53 +113,53 @@ class DatabaseService {
         await this.pool.query('CREATE INDEX IF NOT EXISTS idx_devices_matricula ON devices (matricula)');
     }
 
-    async query(text, params = []) {
-        await this.ready;
-        return this.pool.query(text, params);
+    async consultar(texto, parametros = []) {
+        await this.listo;
+        return this.pool.query(texto, parametros);
     }
 
-    async run(text, params = []) {
-        return this.query(text, params);
+    async ejecutar(texto, parametros = []) {
+        return this.consultar(texto, parametros);
     }
 
-    async get(text, params = []) {
-        const result = await this.query(text, params);
-        return result.rows[0] || null;
+    async obtenerUno(texto, parametros = []) {
+        const resultado = await this.consultar(texto, parametros);
+        return resultado.rows[0] || null;
     }
 
-    async all(text, params = []) {
-        const result = await this.query(text, params);
-        return result.rows;
+    async obtenerTodos(texto, parametros = []) {
+        const resultado = await this.consultar(texto, parametros);
+        return resultado.rows;
     }
 
-    async transaction(fn) {
-        await this.ready;
-        const client = await this.pool.connect();
+    async transaccion(fn) {
+        await this.listo;
+        const cliente = await this.pool.connect();
         try {
-            await client.query('BEGIN');
-            const result = await fn(client);
-            await client.query('COMMIT');
-            return result;
+            await cliente.query('BEGIN');
+            const resultado = await fn(cliente);
+            await cliente.query('COMMIT');
+            return resultado;
         } catch (error) {
-            await client.query('ROLLBACK');
+            await cliente.query('ROLLBACK');
             throw error;
         } finally {
-            client.release();
+            cliente.release();
         }
     }
 
-    async backupDatabase(label = 'backup') {
+    async respaldarBaseDatos(label = 'backup') {
         console.warn(`⚠️ Respaldo manual no disponible para PostgreSQL (${label})`);
         return null;
     }
 
-    async clearTable(tableName) {
-        if (!this.allowedTables.has(tableName)) {
-            throw new Error(`Operación no permitida en la tabla ${tableName}`);
+    async limpiarTabla(nombreTabla) {
+        if (!this.allowedTables.has(nombreTabla)) {
+            throw new Error(`Operación no permitida en la tabla ${nombreTabla}`);
         }
 
-        return this.run(`DELETE FROM ${tableName}`);
+        return this.ejecutar(`DELETE FROM ${nombreTabla}`);
     }
 }
 
-module.exports = new DatabaseService();
+module.exports = new ServicioBaseDatos();

@@ -1,14 +1,14 @@
-const database = require('./databaseService');
-const { AppError } = require('../middleware/errorHandler');
+const servicioBaseDatos = require('./servicioBaseDatos');
+const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
-class AdminKeyService {
-    static async ensureInitialized() {
+class ServicioClavesAdministrativas {
+    static async asegurarInicializacion() {
         return true;
     }
 
-    static async getAllKeys() {
+    static async obtenerTodasLasClaves() {
         try {
-            const rows = await database.all(
+            const rows = await servicioBaseDatos.obtenerTodos(
                 `SELECT key, description, is_active, created_at, deactivated_at
                  FROM admin_keys
                  ORDER BY created_at DESC`
@@ -23,38 +23,38 @@ class AdminKeyService {
             }));
         } catch (error) {
             console.error('❌ Error obteniendo claves administrativas:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudieron obtener las claves administrativas', 500, 'ADMIN_KEYS_LOAD_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudieron obtener las claves administrativas', 500, 'ADMIN_KEYS_LOAD_ERROR');
         }
     }
 
-    static async createKey(key, description) {
+    static async crearClave(key, description) {
         try {
-            const normalizedKey = this.normalizeKey(key);
+            const normalizedKey = this.normalizarClave(key);
             const cleanDescription = (description || '').toString().trim();
 
             if (!normalizedKey) {
-                throw new AppError('La clave es requerida', 400, 'ADMIN_KEY_REQUIRED');
+                throw new ErrorAplicacion('La clave es requerida', 400, 'ADMIN_KEY_REQUIRED');
             }
 
             if (normalizedKey.length < 4) {
-                throw new AppError('La clave debe tener al menos 4 caracteres', 400, 'ADMIN_KEY_TOO_SHORT');
+                throw new ErrorAplicacion('La clave debe tener al menos 4 caracteres', 400, 'ADMIN_KEY_TOO_SHORT');
             }
 
             if (!cleanDescription) {
-                throw new AppError('La descripción es requerida', 400, 'ADMIN_KEY_DESCRIPTION_REQUIRED');
+                throw new ErrorAplicacion('La descripción es requerida', 400, 'ADMIN_KEY_DESCRIPTION_REQUIRED');
             }
 
-            const existing = await database.get(
+            const existing = await servicioBaseDatos.obtenerUno(
                 `SELECT key FROM admin_keys WHERE key = $1 AND is_active = TRUE`,
                 [normalizedKey]
             );
 
             if (existing) {
-                throw new AppError('Ya existe una clave activa con ese nombre', 409, 'ADMIN_KEY_DUPLICATED');
+                throw new ErrorAplicacion('Ya existe una clave activa con ese nombre', 409, 'ADMIN_KEY_DUPLICATED');
             }
 
             const timestamp = new Date().toISOString();
-            const row = await database.get(
+            const row = await servicioBaseDatos.obtenerUno(
                 `INSERT INTO admin_keys (key, description, is_active, created_at)
                  VALUES ($1, $2, TRUE, $3)
                  RETURNING key, description, is_active, created_at, deactivated_at`,
@@ -72,19 +72,19 @@ class AdminKeyService {
             };
         } catch (error) {
             console.error('❌ Error creando clave administrativa:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo crear la clave administrativa', 500, 'ADMIN_KEY_CREATE_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo crear la clave administrativa', 500, 'ADMIN_KEY_CREATE_ERROR');
         }
     }
 
-    static async deactivateKey(key) {
+    static async desactivarClave(key) {
         try {
-            const normalizedKey = this.normalizeKey(key);
+            const normalizedKey = this.normalizarClave(key);
 
             if (!normalizedKey) {
-                throw new AppError('La clave es requerida', 400, 'ADMIN_KEY_REQUIRED');
+                throw new ErrorAplicacion('La clave es requerida', 400, 'ADMIN_KEY_REQUIRED');
             }
 
-            const existing = await database.get(
+            const existing = await servicioBaseDatos.obtenerUno(
                 `SELECT key, description, is_active, created_at, deactivated_at
                  FROM admin_keys
                  WHERE key = $1`,
@@ -92,7 +92,7 @@ class AdminKeyService {
             );
 
             if (!existing) {
-                throw new AppError('Clave administrativa no encontrada', 404, 'ADMIN_KEY_NOT_FOUND');
+                throw new ErrorAplicacion('Clave administrativa no encontrada', 404, 'ADMIN_KEY_NOT_FOUND');
             }
 
             if (existing.is_active === false) {
@@ -105,7 +105,7 @@ class AdminKeyService {
                 };
             }
 
-            const result = await database.get(
+            const result = await servicioBaseDatos.obtenerUno(
                 `UPDATE admin_keys
                  SET is_active = FALSE,
                      deactivated_at = $2
@@ -125,18 +125,18 @@ class AdminKeyService {
             };
         } catch (error) {
             console.error('❌ Error desactivando clave administrativa:', error);
-            throw error instanceof AppError ? error : new AppError('No se pudo desactivar la clave administrativa', 500, 'ADMIN_KEY_DEACTIVATE_ERROR');
+            throw error instanceof ErrorAplicacion ? error : new ErrorAplicacion('No se pudo desactivar la clave administrativa', 500, 'ADMIN_KEY_DEACTIVATE_ERROR');
         }
     }
 
-    static async clearAll() {
-        await database.run('DELETE FROM admin_keys');
+    static async limpiarTodasLasClaves() {
+        await servicioBaseDatos.ejecutar('DELETE FROM admin_keys');
     }
 
-    static normalizeKey(key) {
+    static normalizarClave(key) {
         if (!key) return '';
         return key.toString().trim().toUpperCase();
     }
 }
 
-module.exports = AdminKeyService;
+module.exports = ServicioClavesAdministrativas;
