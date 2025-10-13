@@ -377,10 +377,17 @@ input:focus, select:focus {
 }
 
 .detailed-list-search-controls {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 160px;
-    gap: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     align-items: stretch;
+}
+
+.detailed-list-button-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 .detailed-list-clear-button {
@@ -401,15 +408,12 @@ input:focus, select:focus {
     font-size: 14px;
     min-width: 0;
     width: 100%;
-    grid-column: 1 / 2;
-    grid-row: 1 / span 2;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .detailed-list-search-button,
 .detailed-list-clear-button {
-    width: 100%;
-    justify-self: stretch;
+    min-width: 150px;
 }
 
 .detailed-list-search-button {
@@ -418,8 +422,6 @@ input:focus, select:focus {
     background: #7fe2a0;
     color: #1c4b2b;
     box-shadow: none;
-    grid-column: 2 / 3;
-    grid-row: 1 / 2;
 }
 
 .detailed-list-search-button:hover {
@@ -436,8 +438,6 @@ input:focus, select:focus {
     background: #f5c7c7;
     color: #742c2c;
     box-shadow: none;
-    grid-column: 2 / 3;
-    grid-row: 2 / 3;
 }
 
 .detailed-list-clear-button:hover {
@@ -489,8 +489,7 @@ input:focus, select:focus {
         align-items: stretch;
     }
 
-    .detailed-list-search-controls {
-        display: flex;
+    .detailed-list-button-row {
         flex-direction: column;
         align-items: stretch;
     }
