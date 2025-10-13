@@ -378,13 +378,13 @@ input:focus, select:focus {
 
 .detailed-list-search-controls {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(120px, 150px);
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
     gap: 10px 12px;
     align-items: stretch;
 }
 
 .detailed-list-clear-button {
-    padding: 8px 14px;
+    padding: 8px 16px;
     white-space: nowrap;
 }
 
