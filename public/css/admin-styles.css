@@ -450,6 +450,10 @@ input:focus, select:focus {
     outline-offset: 2px;
 }
 
+.detailed-list-search-controls .btn {
+    flex: 0 0 auto;
+}
+
 .detailed-list-search input:focus {
     outline: none;
     border-color: #3498db;
