@@ -340,6 +340,25 @@ input:focus, select:focus {
     margin: 0;
 }
 
+.detailed-list-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.detailed-list-title {
+    margin: 0;
+}
+
+.detailed-list-subtitle {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
+}
+
 /* ================================
    TABLAS
    ================================ */
