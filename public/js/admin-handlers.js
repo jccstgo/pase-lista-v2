@@ -1,27 +1,27 @@
 // ================================
-// MANEJADORES DE EVENTOS - ADMIN PANEL
+// MANEJADORES DE EVENTOS - PANEL ADMINISTRATIVO
 // ================================
 
 // ================================
-// MANEJADOR DE LOGIN
+// MANEJADOR DE INICIO DE SESIÓN
 // ================================
 
-async function handleLogin(e) {
-    e.preventDefault();
-    
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    
-    if (!username || !password) {
-        showMessage('loginMessage', 'Usuario y contraseña son requeridos', 'error');
+async function manejarInicioSesion(evento) {
+    evento.preventDefault();
+
+    const usuario = document.getElementById('username').value;
+    const contrasena = document.getElementById('password').value;
+
+    if (!usuario || !contrasena) {
+        mostrarMensaje('loginMessage', 'Usuario y contraseña son requeridos', 'error');
         return;
     }
-    
+
     try {
         const response = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username: usuario, password: contrasena })
         });
 
         const data = await response.json();
@@ -29,31 +29,31 @@ async function handleLogin(e) {
         if (response.ok && data.success && data.data?.token) {
             authToken = data.data.token;
             localStorage.setItem('adminToken', authToken);
-            showAdminSection();
-            const resultsDashboardTab = document.querySelector('.dashboard-tab[data-target="resultsSection"]');
-            if (resultsDashboardTab) {
-                showDashboardSection('resultsSection', resultsDashboardTab);
+            mostrarSeccionAdministracion();
+            const pestanaResultados = document.querySelector('.dashboard-tab[data-target="resultsSection"]');
+            if (pestanaResultados) {
+                mostrarSeccionTablero('resultsSection', pestanaResultados);
             } else {
-                showDashboardSection('resultsSection');
+                mostrarSeccionTablero('resultsSection');
             }
-            await loadDashboard();
-            updateSystemInfo();
-            const overviewTab = document.querySelector('.tab[data-group="results"][data-tab="overview"]');
-            if (overviewTab) {
-                showTab('overview', overviewTab, 'results');
+            await cargarPanelAdministrativo();
+            actualizarInformacionSistema();
+            const pestanaResumen = document.querySelector('.tab[data-group="results"][data-tab="overview"]');
+            if (pestanaResumen) {
+                mostrarPestana('overview', pestanaResumen, 'results');
             }
-            const adminTab = document.querySelector('.tab[data-group="admin"].active') || document.querySelector('.tab[data-group="admin"]');
-            if (adminTab) {
-                const group = adminTab.dataset.group || 'admin';
-                showTab(adminTab.dataset.tab, adminTab, group);
+            const pestanaAdminActiva = document.querySelector('.tab[data-group="admin"].active') || document.querySelector('.tab[data-group="admin"]');
+            if (pestanaAdminActiva) {
+                const grupo = pestanaAdminActiva.dataset.group || 'admin';
+                mostrarPestana(pestanaAdminActiva.dataset.tab, pestanaAdminActiva, grupo);
             }
         } else {
-            const errorMessage = data.error || data.message || 'Error de autenticación';
-            showMessage('loginMessage', errorMessage, 'error');
+            const mensajeError = data.error || data.message || 'Error de autenticación';
+            mostrarMensaje('loginMessage', mensajeError, 'error');
         }
     } catch (error) {
         console.error('❌ Error de conexión:', error);
-        showMessage('loginMessage', 'Error de conexión: ' + error.message, 'error');
+        mostrarMensaje('loginMessage', 'Error de conexión: ' + error.message, 'error');
     }
 }
 
@@ -61,27 +61,27 @@ async function handleLogin(e) {
 // MANEJADOR DE CAMBIO DE CONTRASEÑA
 // ================================
 
-async function handleChangePassword(e) {
-    e.preventDefault();
-    
-    const currentPassword = document.getElementById('currentPassword').value;
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-    
-    if (newPassword !== confirmPassword) {
-        showMessage('passwordMessage', 'Las contraseñas no coinciden', 'error');
+async function manejarCambioContrasena(evento) {
+    evento.preventDefault();
+
+    const contrasenaActual = document.getElementById('currentPassword').value;
+    const nuevaContrasena = document.getElementById('newPassword').value;
+    const confirmacionContrasena = document.getElementById('confirmPassword').value;
+
+    if (nuevaContrasena !== confirmacionContrasena) {
+        mostrarMensaje('passwordMessage', 'Las contraseñas no coinciden', 'error');
         return;
     }
-    
-    if (newPassword.length < 6) {
-        showMessage('passwordMessage', 'La contraseña debe tener al menos 6 caracteres', 'error');
+
+    if (nuevaContrasena.length < 6) {
+        mostrarMensaje('passwordMessage', 'La contraseña debe tener al menos 6 caracteres', 'error');
         return;
     }
-    
-    const changePasswordBtn = document.getElementById('changePasswordBtn');
-    changePasswordBtn.disabled = true;
-    changePasswordBtn.textContent = 'Cambiando...';
-    
+
+    const botonCambio = document.getElementById('changePasswordBtn');
+    botonCambio.disabled = true;
+    botonCambio.textContent = 'Cambiando...';
+
     try {
         const response = await fetch('/api/admin/change-password', {
             method: 'POST',
@@ -89,28 +89,28 @@ async function handleChangePassword(e) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify({ currentPassword, newPassword })
+            body: JSON.stringify({ currentPassword: contrasenaActual, newPassword: nuevaContrasena })
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok) {
-            showMessage('passwordMessage', 'Contraseña cambiada exitosamente', 'success');
+            mostrarMensaje('passwordMessage', 'Contraseña cambiada exitosamente', 'success');
             document.getElementById('changePasswordForm').reset();
-            
+
             setTimeout(() => {
                 if (confirm('Contraseña cambiada exitosamente. ¿Deseas cerrar sesión para usar la nueva contraseña?')) {
-                    logout();
+                    cerrarSesion();
                 }
             }, 2000);
         } else {
-            showMessage('passwordMessage', data.error, 'error');
+            mostrarMensaje('passwordMessage', data.error, 'error');
         }
     } catch (error) {
-        showMessage('passwordMessage', 'Error de conexión', 'error');
+        mostrarMensaje('passwordMessage', 'Error de conexión', 'error');
     } finally {
-        changePasswordBtn.disabled = false;
-        changePasswordBtn.textContent = 'Cambiar Contraseña';
+        botonCambio.disabled = false;
+        botonCambio.textContent = 'Cambiar Contraseña';
     }
 }
 
@@ -118,51 +118,49 @@ async function handleChangePassword(e) {
 // MANEJADOR DE RESTRICCIONES
 // ================================
 
-async function handleRestrictionsSubmit(e) {
-    e.preventDefault();
-    
-    const saveBtn = document.getElementById('saveRestrictionsBtn');
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Guardando...';
-    
+async function manejarEnvioRestricciones(evento) {
+    evento.preventDefault();
+
+    const botonGuardar = document.getElementById('saveRestrictionsBtn');
+    botonGuardar.disabled = true;
+    botonGuardar.textContent = 'Guardando...';
+
     try {
         const formData = new FormData(document.getElementById('restrictionsForm'));
-        const config = {};
-        
-        // Convertir checkbox a string boolean
-        config.location_restriction_enabled = document.getElementById('locationRestrictionEnabled').checked ? 'true' : 'false';
-        config.device_restriction_enabled = document.getElementById('deviceRestrictionEnabled').checked ? 'true' : 'false';
-        config.admin_key_bypass_enabled = document.getElementById('adminKeyBypassEnabled').checked ? 'true' : 'false';
-        
-        // Otros campos
-        config.location_name = formData.get('location_name') || '';
-        config.location_latitude = formData.get('location_latitude') || '';
-        config.location_longitude = formData.get('location_longitude') || '';
-        config.location_radius_km = formData.get('location_radius_km') || '1';
-        
+        const configuracion = {};
+
+        configuracion.location_restriction_enabled = document.getElementById('locationRestrictionEnabled').checked ? 'true' : 'false';
+        configuracion.device_restriction_enabled = document.getElementById('deviceRestrictionEnabled').checked ? 'true' : 'false';
+        configuracion.admin_key_bypass_enabled = document.getElementById('adminKeyBypassEnabled').checked ? 'true' : 'false';
+
+        configuracion.location_name = formData.get('location_name') || '';
+        configuracion.location_latitude = formData.get('location_latitude') || '';
+        configuracion.location_longitude = formData.get('location_longitude') || '';
+        configuracion.location_radius_km = formData.get('location_radius_km') || '1';
+
         const response = await fetch('/api/admin/config', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify(config)
+            body: JSON.stringify(configuracion)
         });
-        
+
         const data = await response.json();
 
         if (response.ok) {
-            showMessage('restrictionsMessage', 'Configuración guardada exitosamente', 'success');
-            systemConfig = config;
-            populateRestrictionsForm();
+            mostrarMensaje('restrictionsMessage', 'Configuración guardada exitosamente', 'success');
+            configuracionSistema = configuracion;
+            llenarFormularioRestricciones();
         } else {
-            showMessage('restrictionsMessage', data.error, 'error');
+            mostrarMensaje('restrictionsMessage', data.error, 'error');
         }
     } catch (error) {
-        showMessage('restrictionsMessage', 'Error de conexión', 'error');
+        mostrarMensaje('restrictionsMessage', 'Error de conexión', 'error');
     } finally {
-        saveBtn.disabled = false;
-        saveBtn.textContent = 'Guardar Configuración';
+        botonGuardar.disabled = false;
+        botonGuardar.textContent = 'Guardar Configuración';
     }
 }
 
@@ -170,31 +168,31 @@ async function handleRestrictionsSubmit(e) {
 // MANEJADORES DE CLAVES ADMINISTRATIVAS
 // ================================
 
-function showCreateKeyForm() {
+function mostrarFormularioCrearClave() {
     document.getElementById('createKeyForm').classList.remove('hidden');
     document.getElementById('newAdminKey').focus();
 }
 
-function hideCreateKeyForm() {
+function ocultarFormularioCrearClave() {
     document.getElementById('createKeyForm').classList.add('hidden');
     document.getElementById('newAdminKey').value = '';
     document.getElementById('keyDescription').value = '';
 }
 
-async function createAdminKey() {
-    const key = document.getElementById('newAdminKey').value.trim().toUpperCase();
-    const description = document.getElementById('keyDescription').value.trim();
-    
-    if (!key || !description) {
+async function crearClaveAdministrativa() {
+    const clave = document.getElementById('newAdminKey').value.trim().toUpperCase();
+    const descripcion = document.getElementById('keyDescription').value.trim();
+
+    if (!clave || !descripcion) {
         alert('Por favor, completa todos los campos');
         return;
     }
-    
-    if (key.length < 4) {
+
+    if (clave.length < 4) {
         alert('La clave debe tener al menos 4 caracteres');
         return;
     }
-    
+
     try {
         const response = await fetch('/api/admin/admin-keys', {
             method: 'POST',
@@ -202,14 +200,14 @@ async function createAdminKey() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify({ key, description })
+            body: JSON.stringify({ key: clave, description: descripcion })
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok) {
-            hideCreateKeyForm();
-            await loadAdminKeys();
+            ocultarFormularioCrearClave();
+            await cargarClavesAdministrativas();
             alert('Clave administrativa creada exitosamente');
         } else {
             alert('Error: ' + data.error);
@@ -219,21 +217,21 @@ async function createAdminKey() {
     }
 }
 
-async function deactivateAdminKey(key) {
-    if (!confirm(`¿Estás seguro de desactivar la clave "${key}"?`)) {
+async function desactivarClaveAdministrativa(clave) {
+    if (!confirm(`¿Estás seguro de desactivar la clave "${clave}"?`)) {
         return;
     }
-    
+
     try {
-        const response = await fetch(`/api/admin/admin-keys/${key}`, {
+        const response = await fetch(`/api/admin/admin-keys/${clave}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok) {
-            await loadAdminKeys();
+            await cargarClavesAdministrativas();
             alert('Clave administrativa desactivada exitosamente');
         } else {
             alert('Error: ' + data.error);
@@ -247,105 +245,105 @@ async function deactivateAdminKey(key) {
 // MANEJADORES DE ARCHIVOS CSV
 // ================================
 
-async function previewCSV() {
-    const fileInput = document.getElementById('csvFile');
-    const file = fileInput.files[0];
+async function previsualizarCSV() {
+    const entradaArchivo = document.getElementById('csvFile');
+    const archivo = entradaArchivo.files[0];
 
-    if (!file) return;
+    if (!archivo) return;
 
-    let textContent = '';
+    let contenidoTexto = '';
 
     try {
-        textContent = typeof readFileAsTextWithEncoding === 'function'
-            ? await readFileAsTextWithEncoding(file)
-            : await file.text();
+        contenidoTexto = typeof leerArchivoComoTextoConCodificacion === 'function'
+            ? await leerArchivoComoTextoConCodificacion(archivo)
+            : await archivo.text();
     } catch (error) {
         console.error('❌ Error leyendo archivo CSV:', error);
-        showMessage('uploadMessage', 'No se pudo leer el archivo seleccionado', 'error');
+        mostrarMensaje('uploadMessage', 'No se pudo leer el archivo seleccionado', 'error');
         return;
     }
 
-    const normalizedText = textContent.replace(/\uFEFF/g, '');
-    const lines = normalizedText
+    const textoNormalizado = contenidoTexto.replace(/\uFEFF/g, '');
+    const lineas = textoNormalizado
         .split(/\r?\n/)
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
+        .map(linea => linea.trim())
+        .filter(linea => linea.length > 0);
 
-    if (lines.length === 0) {
-        showMessage('uploadMessage', 'El archivo está vacío', 'error');
+    if (lineas.length === 0) {
+        mostrarMensaje('uploadMessage', 'El archivo está vacío', 'error');
         return;
     }
-    
-    const rows = lines.map(line => {
-        const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
-        return columns;
+
+    const filas = lineas.map(linea => {
+        const columnas = linea.split(',').map(columna => columna.trim().replace(/"/g, ''));
+        return columnas;
     });
-    
-    const headers = rows[0];
-    const dataRows = rows.slice(1);
-    
-    const expectedHeaders = ['matricula', 'nombre', 'grupo'];
-    const hasRequiredHeaders = expectedHeaders.every(header => 
-        headers.some(h => h.toLowerCase() === header)
+
+    const encabezados = filas[0];
+    const datos = filas.slice(1);
+
+    const encabezadosEsperados = ['matricula', 'nombre', 'grupo'];
+    const tieneEncabezadosRequeridos = encabezadosEsperados.every(encabezado =>
+        encabezados.some(h => h.toLowerCase() === encabezado)
     );
-    
-    if (!hasRequiredHeaders) {
-        showMessage('uploadMessage', 
-            'Headers obligatorios faltantes. Se requieren: matricula, nombre, grupo. Se encontraron: ' + headers.join(', '), 
+
+    if (!tieneEncabezadosRequeridos) {
+        mostrarMensaje('uploadMessage',
+            'Encabezados obligatorios faltantes. Se requieren: matricula, nombre, grupo. Se encontraron: ' + encabezados.join(', '),
             'error');
         return;
     }
-    
-    currentStudents = dataRows.map(row => {
-        const student = {};
-        headers.forEach((header, index) => {
-            const cleanHeader = (header || '').toString().toLowerCase().trim();
-            const rawValue = (row[index] || '').toString().trim();
-            const cleanValue = decodeSpecialChars(rawValue);
-            student[cleanHeader] = cleanValue;
+
+    estudiantesActuales = datos.map(fila => {
+        const estudiante = {};
+        encabezados.forEach((encabezado, indice) => {
+            const encabezadoLimpio = (encabezado || '').toString().toLowerCase().trim();
+            const valorOriginal = (fila[indice] || '').toString().trim();
+            const valorLimpio = decodificarCaracteresEspeciales(valorOriginal);
+            estudiante[encabezadoLimpio] = valorLimpio;
         });
-        return student;
-    }).filter(student =>
-        student.matricula &&
-        student.matricula.trim() !== '' && 
-        student.nombre && 
-        student.nombre.trim() !== ''
+        return estudiante;
+    }).filter(estudiante =>
+        estudiante.matricula &&
+        estudiante.matricula.trim() !== '' &&
+        estudiante.nombre &&
+        estudiante.nombre.trim() !== ''
     );
-    
-    const preview = document.getElementById('csvPreview');
+
+    const vistaPrevia = document.getElementById('csvPreview');
     let html = '<div style="margin: 20px 0;">';
-    html += '<h3>Vista Previa (' + currentStudents.length + ' registros válidos)</h3>';
+    html += '<h3>Vista Previa (' + estudiantesActuales.length + ' registros válidos)</h3>';
     html += '<div class="table-container" style="max-height: 300px;">';
     html += '<table><thead><tr><th>Matrícula</th><th>Nombre</th><th>Grupo</th></tr></thead><tbody>';
 
-    currentStudents.slice(0, 10).forEach(student => {
+    estudiantesActuales.slice(0, 10).forEach(estudiante => {
         html += '<tr>';
-        html += '<td>' + student.matricula + '</td>';
-        html += '<td>' + decodeSpecialChars(student.nombre) + '</td>';
-        html += '<td>' + decodeSpecialChars(student.grupo || '-').toUpperCase() + '</td>';
+        html += '<td>' + estudiante.matricula + '</td>';
+        html += '<td>' + decodificarCaracteresEspeciales(estudiante.nombre) + '</td>';
+        html += '<td>' + decodificarCaracteresEspeciales(estudiante.grupo || '-').toUpperCase() + '</td>';
         html += '</tr>';
     });
-    
+
     html += '</tbody></table></div>';
-    if (currentStudents.length > 10) {
-        html += '<p style="color: #666; font-size: 14px;">Mostrando los primeros 10 de ' + currentStudents.length + ' registros</p>';
+    if (estudiantesActuales.length > 10) {
+        html += '<p style="color: #666; font-size: 14px;">Mostrando los primeros 10 de ' + estudiantesActuales.length + ' registros</p>';
     }
     html += '</div>';
-    
-    preview.innerHTML = html;
+
+    vistaPrevia.innerHTML = html;
     document.getElementById('uploadBtn').disabled = false;
 }
 
-async function uploadStudents() {
-    if (currentStudents.length === 0) {
-        showMessage('uploadMessage', 'No hay estudiantes para subir', 'error');
+async function subirEstudiantes() {
+    if (estudiantesActuales.length === 0) {
+        mostrarMensaje('uploadMessage', 'No hay estudiantes para subir', 'error');
         return;
     }
-    
-    const uploadBtn = document.getElementById('uploadBtn');
-    uploadBtn.disabled = true;
-    uploadBtn.textContent = 'Subiendo...';
-    
+
+    const botonSubir = document.getElementById('uploadBtn');
+    botonSubir.disabled = true;
+    botonSubir.textContent = 'Subiendo...';
+
     try {
         const response = await fetch('/api/admin/upload-students', {
             method: 'POST',
@@ -353,51 +351,50 @@ async function uploadStudents() {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + authToken
             },
-            body: JSON.stringify({ students: currentStudents })
+            body: JSON.stringify({ students: estudiantesActuales })
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok) {
-            showMessage('uploadMessage', data.message, 'success');
+            mostrarMensaje('uploadMessage', data.message, 'success');
             document.getElementById('csvFile').value = '';
             document.getElementById('csvPreview').innerHTML = '';
-            currentStudents = [];
-            
-            await loadStats();
-            
-            // Mostrar advertencia sobre reinicio de restricciones
-            if (systemConfig.device_restriction_enabled === 'true') {
+            estudiantesActuales = [];
+
+            await cargarEstadisticas();
+
+            if (configuracionSistema.device_restriction_enabled === 'true') {
                 setTimeout(() => {
-                    showMessage('uploadMessage', '⚠️ Los dispositivos registrados han sido reiniciados debido a la nueva lista de personal', 'warning');
+                    mostrarMensaje('uploadMessage', '⚠️ Los dispositivos registrados han sido reiniciados debido a la nueva lista de personal', 'warning');
                 }, 3000);
             }
         } else {
-            showMessage('uploadMessage', data.error, 'error');
+            mostrarMensaje('uploadMessage', data.error, 'error');
         }
     } catch (error) {
-        showMessage('uploadMessage', 'Error de conexión', 'error');
+        mostrarMensaje('uploadMessage', 'Error de conexión', 'error');
     } finally {
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = 'Subir Lista de Personal';
+        botonSubir.disabled = false;
+        botonSubir.textContent = 'Subir Lista de Personal';
     }
 }
 
-async function clearStudentsDatabase() {
+async function limpiarBaseEstudiantes() {
     if (!authToken) {
-        showMessage('uploadMessage', 'Debes iniciar sesión para realizar esta acción', 'error');
+        mostrarMensaje('uploadMessage', 'Debes iniciar sesión para realizar esta acción', 'error');
         return;
     }
 
-    const confirmation = confirm('¿Estás seguro de que deseas eliminar todos los registros de personal? Esta acción no se puede deshacer.');
-    if (!confirmation) {
+    const confirmacion = confirm('¿Estás seguro de que deseas eliminar todos los registros de personal? Esta acción no se puede deshacer.');
+    if (!confirmacion) {
         return;
     }
 
-    const clearBtn = document.getElementById('clearStudentsBtn');
-    if (clearBtn) {
-        clearBtn.disabled = true;
-        clearBtn.textContent = 'Limpiando...';
+    const botonLimpiar = document.getElementById('clearStudentsBtn');
+    if (botonLimpiar) {
+        botonLimpiar.disabled = true;
+        botonLimpiar.textContent = 'Limpiando...';
     }
 
     try {
@@ -411,25 +408,25 @@ async function clearStudentsDatabase() {
         const data = await response.json();
 
         if (response.ok) {
-            showMessage('uploadMessage', data.message || 'Base de datos limpiada correctamente', 'success');
+            mostrarMensaje('uploadMessage', data.message || 'Base de datos limpiada correctamente', 'success');
             document.getElementById('csvFile').value = '';
             document.getElementById('csvPreview').innerHTML = '';
-            currentStudents = [];
+            estudiantesActuales = [];
 
             await Promise.all([
-                loadStats(),
-                loadDetailedList(),
-                loadDevices()
+                cargarEstadisticas(),
+                cargarListaDetallada(),
+                cargarDispositivos()
             ]);
         } else {
-            showMessage('uploadMessage', data.error || 'No se pudo limpiar la base de datos', 'error');
+            mostrarMensaje('uploadMessage', data.error || 'No se pudo limpiar la base de datos', 'error');
         }
     } catch (error) {
-        showMessage('uploadMessage', 'Error de conexión al limpiar la base de datos', 'error');
+        mostrarMensaje('uploadMessage', 'Error de conexión al limpiar la base de datos', 'error');
     } finally {
-        if (clearBtn) {
-            clearBtn.disabled = false;
-            clearBtn.textContent = 'Limpiar Base de Datos de Personal';
+        if (botonLimpiar) {
+            botonLimpiar.disabled = false;
+            botonLimpiar.textContent = 'Limpiar Base de Datos de Personal';
         }
     }
 }
@@ -437,13 +434,23 @@ async function clearStudentsDatabase() {
 // ================================
 // EXPONER FUNCIONES NECESARIAS
 // ================================
-window.handleLogin = handleLogin;
-window.handleChangePassword = handleChangePassword;
-window.handleRestrictionsSubmit = handleRestrictionsSubmit;
-window.showCreateKeyForm = showCreateKeyForm;
-window.hideCreateKeyForm = hideCreateKeyForm;
-window.createAdminKey = createAdminKey;
-window.deactivateAdminKey = deactivateAdminKey;
-window.previewCSV = previewCSV;
-window.uploadStudents = uploadStudents;
-window.clearStudentsDatabase = clearStudentsDatabase;
+window.manejarInicioSesion = manejarInicioSesion;
+window.manejarCambioContrasena = manejarCambioContrasena;
+window.manejarEnvioRestricciones = manejarEnvioRestricciones;
+window.mostrarFormularioCrearClave = mostrarFormularioCrearClave;
+window.ocultarFormularioCrearClave = ocultarFormularioCrearClave;
+window.crearClaveAdministrativa = crearClaveAdministrativa;
+window.desactivarClaveAdministrativa = desactivarClaveAdministrativa;
+window.previsualizarCSV = previsualizarCSV;
+window.subirEstudiantes = subirEstudiantes;
+window.limpiarBaseEstudiantes = limpiarBaseEstudiantes;
+window.handleLogin = manejarInicioSesion;
+window.handleChangePassword = manejarCambioContrasena;
+window.handleRestrictionsSubmit = manejarEnvioRestricciones;
+window.showCreateKeyForm = mostrarFormularioCrearClave;
+window.hideCreateKeyForm = ocultarFormularioCrearClave;
+window.createAdminKey = crearClaveAdministrativa;
+window.deactivateAdminKey = desactivarClaveAdministrativa;
+window.previewCSV = previsualizarCSV;
+window.uploadStudents = subirEstudiantes;
+window.clearStudentsDatabase = limpiarBaseEstudiantes;
