@@ -1,17 +1,15 @@
 const express = require('express');
 const path = require('path');
-const config = require('./config/server');
-
-// Middlewares
+// Middleware
 const { encabezadosSeguridad } = require('./middleware/seguridad');
 const { manejadorErroresGlobal } = require('./middleware/manejadorErrores');
 const { registradorSolicitudes } = require('./middleware/registro');
 
-// Routes
-const attendanceRoutes = require('./routes/attendance');
-const adminRoutes = require('./routes/admin');
-const authRoutes = require('./routes/auth');
-const configRoutes = require('./routes/config');
+// Rutas
+const rutasAsistencias = require('./routes/attendance');
+const rutasAdministracion = require('./routes/admin');
+const rutasAutenticacion = require('./routes/auth');
+const rutasConfiguracion = require('./routes/config');
 
 const app = express();
 
@@ -19,13 +17,13 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Middlewares de seguridad
+// Middleware de seguridad
 if (process.env.NODE_ENV === 'production') {
     app.use(encabezadosSeguridad);
-    console.log('🛡️ Headers de seguridad activados para producción');
+    console.log('🛡️ Encabezados de seguridad activados para producción');
 }
 
-// Logger de requests
+// Registro de solicitudes en desarrollo
 if (process.env.NODE_ENV === 'development') {
     app.use(registradorSolicitudes);
 }
@@ -34,7 +32,7 @@ if (process.env.NODE_ENV === 'development') {
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/assets', express.static(path.join(__dirname, '../public/assets')));
 
-// Health check
+// Verificación de estado
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'OK',
@@ -44,11 +42,11 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// API Routes
-app.use('/api/config', configRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/admin', adminRoutes);
+// Rutas de API
+app.use('/api/config', rutasConfiguracion);
+app.use('/api/auth', rutasAutenticacion);
+app.use('/api/attendance', rutasAsistencias);
+app.use('/api/admin', rutasAdministracion);
 
 // Rutas de vistas
 app.get('/', (req, res, next) => {
