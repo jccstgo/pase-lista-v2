@@ -708,7 +708,29 @@ function generarPDFTablaEjecutiva({ titulo, subtitulo, columnas, filas }) {
         doc.putTotalPages(totalPagesExp);
     }
 
-    return doc.output('blob');
+    let contenidoPDF;
+    try {
+        contenidoPDF = doc.output('arraybuffer');
+    } catch (error) {
+        console.error('Error al generar la salida del PDF:', error);
+        return null;
+    }
+
+    if (!contenidoPDF) {
+        console.warn('La salida del PDF está vacía.');
+        return null;
+    }
+
+    if (contenidoPDF && typeof contenidoPDF.then === 'function') {
+        return contenidoPDF
+            .then(buffer => new Blob([buffer], { type: 'application/pdf' }))
+            .catch(error => {
+                console.error('Error al resolver la generación del PDF:', error);
+                return null;
+            });
+    }
+
+    return new Blob([contenidoPDF], { type: 'application/pdf' });
 }
 
 function normalizarTextoParaArchivo(texto) {
@@ -740,7 +762,7 @@ function descargarBlobComoArchivo(blob, nombreArchivo) {
     URL.revokeObjectURL(url);
 }
 
-function descargarRegistrosEnPDF(registros, opciones = {}) {
+async function descargarRegistrosEnPDF(registros, opciones = {}) {
     const lista = Array.isArray(registros) ? registros : [];
     if (lista.length === 0) {
         return;
@@ -771,15 +793,20 @@ function descargarRegistrosEnPDF(registros, opciones = {}) {
     }
 
     const subtitulo = partesSubtitulo.join(' — ');
-    const blobPDF = generarPDFTablaEjecutiva({
+    const blobPDF = await Promise.resolve(generarPDFTablaEjecutiva({
         titulo,
         subtitulo,
         columnas: tabla.columnas,
         filas: tabla.filas
-    });
+    }));
 
     if (!blobPDF) {
         console.warn('No se pudo generar el archivo PDF.');
+        return;
+    }
+
+    if (!(blobPDF instanceof Blob)) {
+        console.warn('La generación del PDF no devolvió un Blob válido.');
         return;
     }
 
