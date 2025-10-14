@@ -406,7 +406,7 @@ function renderizarListaDetallada() {
     if (presentesFiltrados.length > 0) {
         html += `
             <div class="detailed-section-header detailed-section-header-presentes">
-                <h3 class="detailed-section-title detailed-section-title-presentes">✅ Presentes (En Lista) — ${presentesFiltrados.length}</h3>
+                <h3 class="detailed-section-title detailed-section-title-presentes">✅ Presentes — ${presentesFiltrados.length}</h3>
                 <button
                     type="button"
                     class="detailed-section-download-button detailed-section-download-presentes"
