@@ -733,6 +733,14 @@ function generarPDFTablaEjecutiva({ titulo, subtitulo, columnas, filas }) {
     return new Blob([contenidoPDF], { type: 'application/pdf' });
 }
 
+function esThenable(valor) {
+    return (
+        (typeof valor === 'object' || typeof valor === 'function')
+        && valor !== null
+        && typeof valor.then === 'function'
+    );
+}
+
 function normalizarTextoParaArchivo(texto) {
     if (!texto) {
         return '';
@@ -793,28 +801,46 @@ async function descargarRegistrosEnPDF(registros, opciones = {}) {
     }
 
     const subtitulo = partesSubtitulo.join(' — ');
-    const blobPDF = await Promise.resolve(generarPDFTablaEjecutiva({
+    const resultadoGeneracion = generarPDFTablaEjecutiva({
         titulo,
         subtitulo,
         columnas: tabla.columnas,
         filas: tabla.filas
     }));
 
-    if (!blobPDF) {
+    if (!resultadoGeneracion) {
         console.warn('No se pudo generar el archivo PDF.');
         return;
     }
 
-    if (!(blobPDF instanceof Blob)) {
-        console.warn('La generación del PDF no devolvió un Blob válido.');
+    const manejarBlob = blobPDF => {
+        if (!blobPDF) {
+            console.warn('No se pudo generar el archivo PDF.');
+            return;
+        }
+
+        if (typeof Blob === 'function' && !(blobPDF instanceof Blob)) {
+            console.warn('La generación del PDF no devolvió un Blob válido.');
+            return;
+        }
+
+        const fechaParaArchivo = fechaISO || new Date().toISOString().split('T')[0];
+        const sufijoFiltro = filtro ? normalizarTextoParaArchivo(filtro) : '';
+        const nombreArchivo = `${prefijoArchivo}-${fechaParaArchivo}${sufijoFiltro ? `-${sufijoFiltro}` : ''}.pdf`;
+
+        descargarBlobComoArchivo(blobPDF, nombreArchivo);
+    };
+
+    if (esThenable(resultadoGeneracion)) {
+        resultadoGeneracion
+            .then(manejarBlob)
+            .catch(error => {
+                console.error('Error al generar el archivo PDF:', error);
+            });
         return;
     }
 
-    const fechaParaArchivo = fechaISO || new Date().toISOString().split('T')[0];
-    const sufijoFiltro = filtro ? normalizarTextoParaArchivo(filtro) : '';
-    const nombreArchivo = `${prefijoArchivo}-${fechaParaArchivo}${sufijoFiltro ? `-${sufijoFiltro}` : ''}.pdf`;
-
-    descargarBlobComoArchivo(blobPDF, nombreArchivo);
+    manejarBlob(resultadoGeneracion);
 }
 
 function prepararCampoCSV(valor) {
