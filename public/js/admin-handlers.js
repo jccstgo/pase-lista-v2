@@ -512,8 +512,24 @@ async function desactivarClaveAdministrativa(clave) {
 async function previsualizarCSV() {
     const entradaArchivo = document.getElementById('csvFile');
     const archivo = entradaArchivo.files[0];
+    const vistaPrevia = document.getElementById('csvPreview');
+    const botonSubir = document.getElementById('uploadBtn');
 
-    if (!archivo) return;
+    if (vistaPrevia) {
+        vistaPrevia.innerHTML = '';
+    }
+
+    if (botonSubir) {
+        botonSubir.disabled = true;
+        botonSubir.textContent = 'Subir Lista de Personal';
+    }
+
+    matriculasDuplicadas = [];
+
+    if (!archivo) {
+        estudiantesActuales = [];
+        return;
+    }
 
     let contenidoTexto = '';
 
@@ -558,6 +574,8 @@ async function previsualizarCSV() {
         return;
     }
 
+    const totalRegistrosLeidos = datos.length;
+
     estudiantesActuales = datos.map(fila => {
         const estudiante = {};
         encabezados.forEach((encabezado, indice) => {
@@ -574,15 +592,46 @@ async function previsualizarCSV() {
         estudiante.nombre.trim() !== ''
     );
 
-    const vistaPrevia = document.getElementById('csvPreview');
+    const registrosInvalidos = totalRegistrosLeidos - estudiantesActuales.length;
+
+    const conteoMatriculas = new Map();
+    estudiantesActuales.forEach(estudiante => {
+        const matriculaNormalizada = (estudiante.matricula || '').toString().trim().toLowerCase();
+        if (!matriculaNormalizada) {
+            return;
+        }
+
+        if (!conteoMatriculas.has(matriculaNormalizada)) {
+            conteoMatriculas.set(matriculaNormalizada, []);
+        }
+
+        conteoMatriculas.get(matriculaNormalizada).push(estudiante);
+    });
+
+    matriculasDuplicadas = Array.from(conteoMatriculas.entries())
+        .filter(([, registros]) => registros.length > 1)
+        .map(([, registros]) => ({
+            matricula: registros[0]?.matricula || '',
+            registros
+        }));
+
+    if (!vistaPrevia) {
+        return;
+    }
+
     let html = '<div style="margin: 20px 0;">';
     html += '<h3>Vista Previa (' + estudiantesActuales.length + ' registros válidos)</h3>';
+    html += '<p style="color: #555; margin: 8px 0 4px;">Registros leídos: <strong>' + totalRegistrosLeidos + '</strong></p>';
+    if (registrosInvalidos > 0) {
+        html += '<p style="color: #a35f00; margin: 4px 0;">Registros descartados por información incompleta: <strong>' + registrosInvalidos + '</strong></p>';
+    }
+
     html += '<div class="table-container" style="max-height: 300px;">';
     html += '<table><thead><tr><th>Matrícula</th><th>Nombre</th><th>Grupo</th></tr></thead><tbody>';
 
     estudiantesActuales.slice(0, 10).forEach(estudiante => {
         html += '<tr>';
-        html += '<td>' + estudiante.matricula + '</td>';
+        html += '<td>' + decodificarCaracteresEspeciales(estudiante.matricula) + '</td>';
         html += '<td>' + decodificarCaracteresEspeciales(estudiante.nombre) + '</td>';
         html += '<td>' + decodificarCaracteresEspeciales(estudiante.grupo || '-').toUpperCase() + '</td>';
         html += '</tr>';
@@ -592,15 +641,73 @@ async function previsualizarCSV() {
     if (estudiantesActuales.length > 10) {
         html += '<p style="color: #666; font-size: 14px;">Mostrando los primeros 10 de ' + estudiantesActuales.length + ' registros</p>';
     }
+
+    if (matriculasDuplicadas.length > 0) {
+        html += '<div style="margin-top: 20px; padding: 15px; border-radius: 8px; background: #fff4e5; border-left: 4px solid #f39c12;">';
+        html += '<h4 style="margin-bottom: 10px; color: #d35400;">⚠️ Matrículas duplicadas detectadas (' + matriculasDuplicadas.length + ')</h4>';
+        html += '<p style="margin-bottom: 10px; color: #a35f00;">Corrige las matrículas repetidas en el archivo antes de subir la lista de personal.</p>';
+        html += '<div class="table-container" style="max-height: 240px;">';
+        html += '<table><thead><tr><th>Matrícula</th><th>Nombre</th><th>Grupo</th><th># repetición</th></tr></thead><tbody>';
+
+        const maxFilasDuplicadas = 50;
+        let filasMostradas = 0;
+        matriculasDuplicadas.forEach(entrada => {
+            entrada.registros.forEach((registro, indice) => {
+                if (filasMostradas >= maxFilasDuplicadas) {
+                    return;
+                }
+
+                html += '<tr>';
+                html += '<td>' + decodificarCaracteresEspeciales(registro.matricula || '') + '</td>';
+                html += '<td>' + decodificarCaracteresEspeciales(registro.nombre || '') + '</td>';
+                html += '<td>' + decodificarCaracteresEspeciales((registro.grupo || '-').toString().toUpperCase()) + '</td>';
+                html += '<td style="text-align: center;">' + (indice + 1) + '</td>';
+                html += '</tr>';
+                filasMostradas += 1;
+            });
+        });
+
+        html += '</tbody></table></div>';
+        if (matriculasDuplicadas.some(entrada => entrada.registros.length > 2) || filasMostradas >= maxFilasDuplicadas) {
+            html += '<p style="color: #a35f00; font-size: 13px; margin-top: 10px;">Se muestran hasta ' + maxFilasDuplicadas + ' coincidencias duplicadas.</p>';
+        }
+        html += '</div>';
+    }
+
     html += '</div>';
 
     vistaPrevia.innerHTML = html;
-    document.getElementById('uploadBtn').disabled = false;
+
+    if (matriculasDuplicadas.length > 0) {
+        if (botonSubir) {
+            botonSubir.disabled = true;
+        }
+        mostrarMensaje('uploadMessage', 'Se detectaron ' + matriculasDuplicadas.length + ' matrículas duplicadas. Corrige el archivo antes de continuar.', 'error');
+    } else if (estudiantesActuales.length > 0) {
+        if (botonSubir) {
+            botonSubir.disabled = false;
+        }
+
+        const tipoMensaje = registrosInvalidos > 0 ? 'warning' : 'success';
+        let mensaje = 'Se leyeron ' + totalRegistrosLeidos + ' registros.';
+        mensaje += ' ' + estudiantesActuales.length + ' registros válidos listos para subir.';
+        if (registrosInvalidos > 0) {
+            mensaje += ' ' + registrosInvalidos + ' registros fueron descartados por información incompleta.';
+        }
+        mostrarMensaje('uploadMessage', mensaje, tipoMensaje);
+    } else {
+        mostrarMensaje('uploadMessage', 'No se encontraron registros válidos en el archivo seleccionado.', 'error');
+    }
 }
 
 async function subirEstudiantes() {
     if (estudiantesActuales.length === 0) {
         mostrarMensaje('uploadMessage', 'No hay estudiantes para subir', 'error');
+        return;
+    }
+
+    if (Array.isArray(matriculasDuplicadas) && matriculasDuplicadas.length > 0) {
+        mostrarMensaje('uploadMessage', 'No se puede subir la lista mientras existan matrículas duplicadas. Corrige el archivo e intenta nuevamente.', 'error');
         return;
     }
 
@@ -631,6 +738,7 @@ async function subirEstudiantes() {
             document.getElementById('csvFile').value = '';
             document.getElementById('csvPreview').innerHTML = '';
             estudiantesActuales = [];
+            matriculasDuplicadas = [];
 
             await cargarEstadisticas();
 
@@ -649,7 +757,11 @@ async function subirEstudiantes() {
     } catch (error) {
         mostrarMensaje('uploadMessage', 'Error de conexión', 'error');
     } finally {
-        botonSubir.disabled = false;
+        if (Array.isArray(matriculasDuplicadas) && matriculasDuplicadas.length > 0) {
+            botonSubir.disabled = true;
+        } else {
+            botonSubir.disabled = false;
+        }
         botonSubir.textContent = 'Subir Lista de Personal';
     }
 }
@@ -692,6 +804,11 @@ async function limpiarBaseEstudiantes() {
             document.getElementById('csvFile').value = '';
             document.getElementById('csvPreview').innerHTML = '';
             estudiantesActuales = [];
+            matriculasDuplicadas = [];
+            const botonSubir = document.getElementById('uploadBtn');
+            if (botonSubir) {
+                botonSubir.disabled = true;
+            }
 
             await Promise.all([
                 cargarEstadisticas(),
