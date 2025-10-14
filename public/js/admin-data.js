@@ -584,194 +584,131 @@ function obtenerTextoPlano(valor, opciones = {}) {
     return uppercase ? texto.toUpperCase() : texto;
 }
 
-function truncarTextoPlano(texto, limite) {
-    if (!texto) {
-        return '';
-    }
-
-    if (!Number.isFinite(limite) || limite <= 1 || texto.length <= limite) {
-        return texto;
-    }
-
-    return `${texto.slice(0, Math.max(0, limite - 1))}…`;
-}
-
-function construirLineasTablaPDF(registros) {
+function prepararTablaPDF(registros) {
     if (!Array.isArray(registros) || registros.length === 0) {
-        return [];
-    }
-
-    const encabezados = ['Matrícula', 'Nombre', 'Grupo', 'Estado', 'Hora', 'Ubicación', 'Dispositivo'];
-    const limites = [12, 32, 10, 18, 12, 32, 28];
-
-    const filas = registros.map(registro => {
-        const fechaRegistro = registro.timestamp ? new Date(registro.timestamp) : null;
-        const horaFormateada = fechaRegistro
-            ? (formatearHoraMexico(fechaRegistro, true)
-                ?? fechaRegistro.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
-            : '-';
-
-        return [
-            truncarTextoPlano(obtenerTextoPlano(registro.matricula, { fallback: '-' }), limites[0]),
-            truncarTextoPlano(obtenerTextoPlano(registro.nombre || '-', { fallback: '-' }), limites[1]),
-            truncarTextoPlano(obtenerTextoPlano(registro.grupo || '-', { uppercase: true, fallback: '-' }), limites[2]),
-            truncarTextoPlano(obtenerTextoPlano(registro.status || '-', { fallback: '-' }), limites[3]),
-            truncarTextoPlano(obtenerTextoPlano(horaFormateada, { fallback: '-' }), limites[4]),
-            truncarTextoPlano(obtenerTextoPlano(registro.location ?? 'N/D', { fallback: 'N/D' }), limites[5]),
-            truncarTextoPlano(obtenerTextoPlano(registro.device ?? 'N/D', { fallback: 'N/D' }), limites[6])
-        ];
-    });
-
-    const anchos = encabezados.map((texto, indice) => Math.min(limites[indice], Math.max(texto.length, 3)));
-
-    filas.forEach(fila => {
-        fila.forEach((valor, indice) => {
-            anchos[indice] = Math.min(limites[indice], Math.max(anchos[indice], valor.length));
-        });
-    });
-
-    const lineas = [];
-    const encabezadoFormateado = encabezados.map((texto, indice) => texto.padEnd(anchos[indice]));
-    const separador = anchos.map((ancho, indice) => '─'.repeat(Math.max(3, Math.min(ancho, limites[indice]))));
-
-    lineas.push(encabezadoFormateado.join('  '));
-    lineas.push(separador.join('  '));
-
-    filas.forEach(fila => {
-        const filaFormateada = fila.map((valor, indice) => valor.padEnd(anchos[indice]));
-        lineas.push(filaFormateada.join('  '));
-    });
-
-    return lineas;
-}
-
-function escaparTextoParaPDF(texto) {
-    return texto
-        .replace(/\\/g, '\\\\')
-        .replace(/\(/g, '\\(')
-        .replace(/\)/g, '\\)');
-}
-
-function crearContenidoPaginaPDF({
-    titulo,
-    subtitulo,
-    lineas,
-    paginaActual,
-    totalPaginas,
-    margenIzquierdo,
-    puntoInicial,
-    alturaLinea
-}) {
-    const partes = ['BT', '/F1 18 Tf', `${alturaLinea} TL`, `${margenIzquierdo} ${puntoInicial} Td`, `(${escaparTextoParaPDF(titulo)}) Tj`, 'T*', '/F1 12 Tf', `${alturaLinea} TL`];
-
-    const segmentosSubtitulo = [];
-    if (subtitulo && subtitulo.trim() !== '') {
-        segmentosSubtitulo.push(subtitulo.trim());
-    }
-    if (totalPaginas > 1) {
-        segmentosSubtitulo.push(`Página ${paginaActual} de ${totalPaginas}`);
-    }
-
-    const textoSubtitulo = segmentosSubtitulo.join(' — ');
-    if (textoSubtitulo) {
-        partes.push(`(${escaparTextoParaPDF(textoSubtitulo)}) Tj`);
-    } else {
-        partes.push('() Tj');
-    }
-
-    partes.push('T*');
-    partes.push('T*');
-
-    lineas.forEach(linea => {
-        partes.push(`(${escaparTextoParaPDF(linea)}) Tj`);
-        partes.push('T*');
-    });
-
-    if (partes[partes.length - 1] === 'T*') {
-        partes.pop();
-    }
-
-    partes.push('ET');
-    return partes.join('\n');
-}
-
-function generarPDFBasico({ titulo, subtitulo, lineas }) {
-    if (!titulo || !Array.isArray(lineas) || lineas.length === 0) {
         return null;
     }
 
-    const encoder = new TextEncoder();
-    const margenIzquierdo = 50;
-    const puntoInicial = 760;
-    const alturaLinea = 20;
-    const margenInferior = 40;
-    const lineasDisponiblesPorPagina = Math.max(1, Math.floor((puntoInicial - margenInferior) / alturaLinea) - 3);
-    const totalPaginas = Math.max(1, Math.ceil(lineas.length / lineasDisponiblesPorPagina));
+    const columnas = [
+        { header: 'Matrícula', dataKey: 'matricula' },
+        { header: 'Nombre completo', dataKey: 'nombre' },
+        { header: 'Grupo', dataKey: 'grupo' },
+        { header: 'Estado', dataKey: 'estado' },
+        { header: 'Hora de registro', dataKey: 'hora' },
+        { header: 'Ubicación', dataKey: 'ubicacion' },
+        { header: 'Dispositivo', dataKey: 'dispositivo' }
+    ];
 
-    const objetos = new Map();
-    const identificadorFuente = 3;
+    const filas = registros.map(registro => {
+        const fechaRegistro = registro?.timestamp ? new Date(registro.timestamp) : null;
+        const horaFormateada = fechaRegistro
+            ? (formatearFechaHoraMexico(fechaRegistro) || fechaRegistro.toLocaleString('es-MX'))
+            : '-';
 
-    const paginas = [];
-    for (let indicePagina = 0; indicePagina < totalPaginas; indicePagina += 1) {
-        const numeroPagina = indicePagina + 1;
-        const inicio = indicePagina * lineasDisponiblesPorPagina;
-        const paginaLineas = lineas.slice(inicio, inicio + lineasDisponiblesPorPagina);
-
-        const contenido = crearContenidoPaginaPDF({
-            titulo,
-            subtitulo,
-            lineas: paginaLineas,
-            paginaActual: numeroPagina,
-            totalPaginas,
-            margenIzquierdo,
-            puntoInicial,
-            alturaLinea
-        });
-
-        const contenidoCodificado = encoder.encode(contenido);
-        const identificadorPagina = 4 + indicePagina * 2;
-        const identificadorContenido = identificadorPagina + 1;
-
-        objetos.set(identificadorContenido, `<< /Length ${contenidoCodificado.length} >>\nstream\n${contenido}\nendstream`);
-        objetos.set(identificadorPagina, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${identificadorFuente} 0 R >> >> /Contents ${identificadorContenido} 0 R >>`);
-        paginas.push(`${identificadorPagina} 0 R`);
-    }
-
-    objetos.set(identificadorFuente, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-    objetos.set(2, `<< /Type /Pages /Count ${paginas.length} /Kids [${paginas.join(' ')}] >>`);
-    objetos.set(1, '<< /Type /Catalog /Pages 2 0 R >>');
-
-    const cabecera = '%PDF-1.4\n%âãÏÓ\n';
-    const fragmentos = [];
-    const offsets = [];
-    let longitudTotal = 0;
-
-    const agregarFragmento = texto => {
-        const bytes = encoder.encode(texto);
-        fragmentos.push(bytes);
-        longitudTotal += bytes.length;
-    };
-
-    agregarFragmento(cabecera);
-
-    const identificadoresOrdenados = Array.from(objetos.keys()).sort((a, b) => a - b);
-    identificadoresOrdenados.forEach(id => {
-        offsets[id] = longitudTotal;
-        agregarFragmento(`${id} 0 obj\n${objetos.get(id)}\nendobj\n`);
+        return {
+            matricula: obtenerTextoPlano(registro?.matricula, { fallback: '-' }),
+            nombre: obtenerTextoPlano(registro?.nombre || '-', { fallback: '-' }),
+            grupo: obtenerTextoPlano(registro?.grupo || '-', { uppercase: true, fallback: '-' }),
+            estado: obtenerTextoPlano(registro?.status || '-', { fallback: '-' }),
+            hora: obtenerTextoPlano(horaFormateada, { fallback: '-' }),
+            ubicacion: obtenerTextoPlano(registro?.location ?? 'N/D', { fallback: 'N/D' }),
+            dispositivo: obtenerTextoPlano(registro?.device ?? 'N/D', { fallback: 'N/D' })
+        };
     });
 
-    const inicioXref = longitudTotal;
-    const maxId = Math.max(...identificadoresOrdenados);
-    let xref = `xref\n0 ${maxId + 1}\n0000000000 65535 f \n`;
-    for (let indice = 1; indice <= maxId; indice += 1) {
-        const offset = offsets[indice] ?? 0;
-        xref += `${String(offset).padStart(10, '0')} 00000 n \n`;
+    return { columnas, filas };
+}
+
+function generarPDFTablaEjecutiva({ titulo, subtitulo, columnas, filas }) {
+    const namespaceJsPDF = typeof window !== 'undefined' ? window.jspdf : null;
+    const ConstructorJsPDF = namespaceJsPDF && typeof namespaceJsPDF.jsPDF === 'function'
+        ? namespaceJsPDF.jsPDF
+        : null;
+
+    if (!ConstructorJsPDF) {
+        console.warn('No se pudo cargar jsPDF.');
+        return null;
     }
 
-    agregarFragmento(xref);
-    agregarFragmento(`trailer\n<< /Size ${maxId + 1} /Root 1 0 R >>\nstartxref\n${inicioXref}\n%%EOF`);
+    const doc = new ConstructorJsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    if (typeof doc.autoTable !== 'function') {
+        console.warn('La extensión autoTable de jsPDF no está disponible.');
+        return null;
+    }
+    const margenHorizontal = 48;
+    const posicionTitulo = 56;
+    const espacioTrasTitulo = subtitulo ? 24 : 16;
+    const inicioTabla = posicionTitulo + espacioTrasTitulo + 24;
+    const totalPagesExp = '{total_pages_count_string}';
+    const fechaGeneracion = formatearFechaHoraMexico(new Date()) || new Date().toLocaleString('es-MX');
 
-    return new Blob(fragmentos, { type: 'application/pdf' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(28, 69, 135);
+    doc.text(titulo, margenHorizontal, posicionTitulo, { baseline: 'alphabetic' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.setTextColor(60);
+    if (subtitulo) {
+        doc.text(subtitulo, margenHorizontal, posicionTitulo + 20, { baseline: 'alphabetic' });
+    }
+
+    const columnStyles = {
+        matricula: { cellWidth: 80 },
+        nombre: { cellWidth: 160 },
+        grupo: { cellWidth: 70 },
+        estado: { cellWidth: 90 },
+        hora: { cellWidth: 120 },
+        ubicacion: { cellWidth: 140 },
+        dispositivo: { cellWidth: 120 }
+    };
+
+    doc.autoTable({
+        columns,
+        body: filas,
+        startY: inicioTabla,
+        styles: {
+            font: 'helvetica',
+            fontSize: 10,
+            textColor: 40,
+            cellPadding: { top: 6, right: 8, bottom: 6, left: 8 },
+            overflow: 'linebreak'
+        },
+        headStyles: {
+            fillColor: [28, 69, 135],
+            textColor: 255,
+            fontSize: 11,
+            fontStyle: 'bold',
+            halign: 'center',
+            valign: 'middle'
+        },
+        alternateRowStyles: {
+            fillColor: [245, 248, 255]
+        },
+        columnStyles,
+        margin: { top: posicionTitulo, right: margenHorizontal, bottom: 60, left: margenHorizontal },
+        didDrawPage: data => {
+            const { pageNumber, settings } = data;
+            const pagina = typeof doc.putTotalPages === 'function'
+                ? `Página ${pageNumber} de ${totalPagesExp}`
+                : `Página ${pageNumber}`;
+            const altoPagina = doc.internal.pageSize.getHeight();
+            const anchoPagina = doc.internal.pageSize.getWidth();
+            const posicionFooterY = altoPagina - 30;
+
+            doc.setFontSize(9);
+            doc.setTextColor(90);
+            doc.text(`Generado: ${fechaGeneracion}`, settings.margin.left, posicionFooterY, { baseline: 'alphabetic' });
+            doc.text(pagina, anchoPagina - settings.margin.right, posicionFooterY, { align: 'right', baseline: 'alphabetic' });
+        }
+    });
+
+    if (typeof doc.putTotalPages === 'function') {
+        doc.putTotalPages(totalPagesExp);
+    }
+
+    return doc.output('blob');
 }
 
 function normalizarTextoParaArchivo(texto) {
@@ -817,8 +754,8 @@ function descargarRegistrosEnPDF(registros, opciones = {}) {
         filtro
     } = opciones;
 
-    const lineasTabla = construirLineasTablaPDF(lista);
-    if (lineasTabla.length === 0) {
+    const tabla = prepararTablaPDF(lista);
+    if (!tabla) {
         return;
     }
 
@@ -834,7 +771,12 @@ function descargarRegistrosEnPDF(registros, opciones = {}) {
     }
 
     const subtitulo = partesSubtitulo.join(' — ');
-    const blobPDF = generarPDFBasico({ titulo, subtitulo, lineas: lineasTabla });
+    const blobPDF = generarPDFTablaEjecutiva({
+        titulo,
+        subtitulo,
+        columnas: tabla.columnas,
+        filas: tabla.filas
+    });
 
     if (!blobPDF) {
         console.warn('No se pudo generar el archivo PDF.');
