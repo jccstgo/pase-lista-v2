@@ -5,26 +5,120 @@ let ultimaListaDetallada = null;
 let filtroListaDetallada = '';
 let valorBusquedaListaDetallada = '';
 
+const ZONA_HORARIA_CDMX = 'America/Mexico_City';
+const TIENE_INTL = typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function';
+const FORMATEADOR_FECHA_LARGA_CDMX = TIENE_INTL
+    ? new Intl.DateTimeFormat('es-MX', {
+        timeZone: ZONA_HORARIA_CDMX,
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    })
+    : null;
+const FORMATEADOR_HORA_CDMX = TIENE_INTL
+    ? new Intl.DateTimeFormat('es-MX', {
+        timeZone: ZONA_HORARIA_CDMX,
+        hour: '2-digit',
+        minute: '2-digit'
+    })
+    : null;
+const FORMATEADOR_HORA_SEGUNDOS_CDMX = TIENE_INTL
+    ? new Intl.DateTimeFormat('es-MX', {
+        timeZone: ZONA_HORARIA_CDMX,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    })
+    : null;
+const FORMATEADOR_FECHA_ISO_CDMX = TIENE_INTL
+    ? new Intl.DateTimeFormat('en-CA', {
+        timeZone: ZONA_HORARIA_CDMX,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    })
+    : null;
+const FORMATEADOR_FECHA_HORA_COMPLETA_CDMX = TIENE_INTL
+    ? new Intl.DateTimeFormat('es-MX', {
+        timeZone: ZONA_HORARIA_CDMX,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    })
+    : null;
+
+function esFechaValida(fecha) {
+    return fecha instanceof Date && !Number.isNaN(fecha.getTime());
+}
+
 function crearFechaLocal(fechaValor) {
     if (!fechaValor) {
         return null;
     }
 
-    if (fechaValor instanceof Date && !Number.isNaN(fechaValor.getTime())) {
-        return fechaValor;
+    if (fechaValor instanceof Date && esFechaValida(fechaValor)) {
+        return new Date(fechaValor.getTime());
     }
 
     if (typeof fechaValor === 'string') {
         const coincidenciaISO = fechaValor.match(/^(\d{4})-(\d{2})-(\d{2})$/);
         if (coincidenciaISO) {
             const [, anio, mes, dia] = coincidenciaISO;
-            const fecha = new Date(Number(anio), Number(mes) - 1, Number(dia));
-            return Number.isNaN(fecha.getTime()) ? null : fecha;
+            const fecha = new Date(Date.UTC(Number(anio), Number(mes) - 1, Number(dia), 12));
+            return esFechaValida(fecha) ? fecha : null;
         }
     }
 
     const fecha = new Date(fechaValor);
-    return Number.isNaN(fecha.getTime()) ? null : fecha;
+    return esFechaValida(fecha) ? fecha : null;
+}
+
+function formatearFechaMexico(fecha) {
+    if (!esFechaValida(fecha)) {
+        return null;
+    }
+    if (FORMATEADOR_FECHA_LARGA_CDMX) {
+        return FORMATEADOR_FECHA_LARGA_CDMX.format(fecha);
+    }
+    return fecha.toLocaleDateString('es-MX');
+}
+
+function formatearHoraMexico(fecha, incluirSegundos = false) {
+    if (!esFechaValida(fecha)) {
+        return null;
+    }
+    const formateador = incluirSegundos ? FORMATEADOR_HORA_SEGUNDOS_CDMX : FORMATEADOR_HORA_CDMX;
+    if (formateador) {
+        return formateador.format(fecha);
+    }
+    return fecha.toLocaleTimeString('es-MX', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: incluirSegundos ? '2-digit' : undefined
+    });
+}
+
+function formatearFechaHoraMexico(fecha) {
+    if (!esFechaValida(fecha)) {
+        return null;
+    }
+    if (FORMATEADOR_FECHA_HORA_COMPLETA_CDMX) {
+        return FORMATEADOR_FECHA_HORA_COMPLETA_CDMX.format(fecha);
+    }
+    return fecha.toLocaleString('es-MX');
+}
+
+function obtenerFechaISOMexico(fecha) {
+    if (!esFechaValida(fecha)) {
+        return null;
+    }
+    if (FORMATEADOR_FECHA_ISO_CDMX) {
+        return FORMATEADOR_FECHA_ISO_CDMX.format(fecha);
+    }
+    return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
 }
 
 function escaparHTML(texto) {
@@ -109,7 +203,7 @@ async function cargarEstadisticas() {
         if (contenedorResumen) {
             const fechaValor = estadisticas.fecha ?? estadisticas.date ?? null;
             const fechaObjeto = crearFechaLocal(fechaValor) ?? new Date();
-            const fechaFormateada = fechaObjeto.toLocaleDateString('es-MX', {
+            const fechaFormateada = formatearFechaMexico(fechaObjeto) ?? fechaObjeto.toLocaleDateString('es-MX', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
@@ -223,7 +317,7 @@ function renderizarListaDetallada() {
     const fechaObjeto = crearFechaLocal(fechaValor) ?? (fechaValor ? null : new Date());
     const fechaValida = fechaObjeto instanceof Date && !Number.isNaN(fechaObjeto.getTime());
     const fechaLegible = fechaValida
-        ? fechaObjeto.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })
+        ? (formatearFechaMexico(fechaObjeto) ?? fechaObjeto.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' }))
         : 'Sin fecha disponible';
 
     const registrosPresentesOriginales = Array.isArray(informacion.presentesRegistrados ?? informacion.presentRegistered)
@@ -357,8 +451,9 @@ function crearTablaDetallada(registros) {
 
     registros.forEach(registro => {
         const claseEstado = registro.status?.includes('Presente') ? 'status-present' : 'status-absent';
-        const horaFormateada = registro.timestamp
-            ? new Date(registro.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+        const fechaRegistro = registro.timestamp ? new Date(registro.timestamp) : null;
+        const horaFormateada = fechaRegistro
+            ? (formatearHoraMexico(fechaRegistro) ?? fechaRegistro.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }))
             : '-';
 
         html += `
@@ -404,7 +499,7 @@ function descargarListaDetallada() {
     const fechaObjeto = crearFechaLocal(fechaValor) ?? new Date();
     const fechaValida = fechaObjeto instanceof Date && !Number.isNaN(fechaObjeto.getTime());
     const fechaISO = fechaValida
-        ? `${fechaObjeto.getFullYear()}-${String(fechaObjeto.getMonth() + 1).padStart(2, '0')}-${String(fechaObjeto.getDate()).padStart(2, '0')}`
+        ? (obtenerFechaISOMexico(fechaObjeto) ?? `${fechaObjeto.getFullYear()}-${String(fechaObjeto.getMonth() + 1).padStart(2, '0')}-${String(fechaObjeto.getDate()).padStart(2, '0')}`)
         : new Date().toISOString().split('T')[0];
 
     const lineas = [];
@@ -412,8 +507,9 @@ function descargarListaDetallada() {
 
     const agregarRegistros = (registros, tipo) => {
         registros.forEach(registro => {
-            const horaFormateada = registro.timestamp
-                ? new Date(registro.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            const fechaRegistro = registro.timestamp ? new Date(registro.timestamp) : null;
+            const horaFormateada = fechaRegistro
+                ? (formatearHoraMexico(fechaRegistro, true) ?? fechaRegistro.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
                 : '';
             const fila = [
                 prepararCampoCSV(tipo),
@@ -506,8 +602,14 @@ function mostrarDispositivos(dispositivos) {
     html += '</tr></thead><tbody>';
 
     dispositivos.forEach(dispositivo => {
-        const primerRegistro = dispositivo.first_registration ? new Date(dispositivo.first_registration).toLocaleString('es-MX') : '-';
-        const ultimoUso = dispositivo.last_used ? new Date(dispositivo.last_used).toLocaleString('es-MX') : '-';
+        const primerRegistroFecha = dispositivo.first_registration ? new Date(dispositivo.first_registration) : null;
+        const ultimoUsoFecha = dispositivo.last_used ? new Date(dispositivo.last_used) : null;
+        const primerRegistro = primerRegistroFecha
+            ? (formatearFechaHoraMexico(primerRegistroFecha) ?? primerRegistroFecha.toLocaleString('es-MX'))
+            : '-';
+        const ultimoUso = ultimoUsoFecha
+            ? (formatearFechaHoraMexico(ultimoUsoFecha) ?? ultimoUsoFecha.toLocaleString('es-MX'))
+            : '-';
 
         html += `
             <tr>
@@ -579,7 +681,10 @@ function mostrarClavesAdministrativas(claves) {
     let html = '';
     claves.forEach(clave => {
         const activa = clave.is_active === 'true';
-        const fechaCreacion = clave.created_at ? new Date(clave.created_at).toLocaleDateString('es-MX') : '-';
+        const fechaCreacionFecha = clave.created_at ? new Date(clave.created_at) : null;
+        const fechaCreacion = fechaCreacionFecha
+            ? (formatearFechaMexico(fechaCreacionFecha) ?? fechaCreacionFecha.toLocaleDateString('es-MX'))
+            : '-';
 
         html += `
             <div class="admin-key-item ${activa ? '' : 'inactive'}">
