@@ -308,17 +308,21 @@ function filtrarRegistrosDetallados(registros, termino) {
     });
 }
 
-function renderizarListaDetallada() {
-    const contenedor = document.getElementById('contenidoDetalle');
-    if (!contenedor) return;
-
+function obtenerContextoListaDetallada() {
     const informacion = ultimaListaDetallada ?? {};
     const fechaValor = informacion?.fecha ?? informacion?.date ?? null;
     const fechaObjeto = crearFechaLocal(fechaValor) ?? (fechaValor ? null : new Date());
-    const fechaValida = fechaObjeto instanceof Date && !Number.isNaN(fechaObjeto.getTime());
+    const fechaValida = fechaObjeto instanceof Date && !Number.isNaN(fechaObjeto?.getTime?.());
+    const fechaBase = fechaValida ? fechaObjeto : new Date();
     const fechaLegible = fechaValida
-        ? (formatearFechaMexico(fechaObjeto) ?? fechaObjeto.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' }))
+        ? (formatearFechaMexico(fechaObjeto) ?? fechaObjeto.toLocaleDateString('es-MX', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }))
         : 'Sin fecha disponible';
+    const fechaISO = obtenerFechaISOMexico(fechaBase)
+        ?? `${fechaBase.getFullYear()}-${String(fechaBase.getMonth() + 1).padStart(2, '0')}-${String(fechaBase.getDate()).padStart(2, '0')}`;
 
     const registrosPresentesOriginales = Array.isArray(informacion.presentesRegistrados ?? informacion.presentRegistered)
         ? (informacion.presentesRegistrados ?? informacion.presentRegistered)
@@ -327,21 +331,60 @@ function renderizarListaDetallada() {
         ? (informacion.faltistas ?? informacion.absent)
         : [];
 
-    const filtroActual = filtroListaDetallada.trim();
+    const filtroActual = (filtroListaDetallada || '').trim();
+    const filtroEscapado = escaparHTML(filtroActual);
     const presentesFiltrados = filtrarRegistrosDetallados(registrosPresentesOriginales, filtroActual);
     const faltistasFiltrados = filtrarRegistrosDetallados(registrosFaltantesOriginales, filtroActual);
 
     const hayRegistrosOriginales = registrosPresentesOriginales.length > 0 || registrosFaltantesOriginales.length > 0;
     const hayCoincidencias = presentesFiltrados.length > 0 || faltistasFiltrados.length > 0;
-    const filtroActivo = filtroActual !== '';
-    const filtroEscapado = escaparHTML(filtroActual);
     const totalCoincidencias = presentesFiltrados.length + faltistasFiltrados.length;
+
+    return {
+        informacion,
+        fechaObjeto,
+        fechaBase,
+        fechaValida,
+        fechaLegible,
+        fechaISO,
+        registrosPresentesOriginales,
+        registrosFaltantesOriginales,
+        presentesFiltrados,
+        faltistasFiltrados,
+        filtroActual,
+        filtroEscapado,
+        hayRegistrosOriginales,
+        hayCoincidencias,
+        totalCoincidencias,
+        filtroActivo: filtroActual !== ''
+    };
+}
+
+function renderizarListaDetallada() {
+    const contenedor = document.getElementById('contenidoDetalle');
+    if (!contenedor) return;
+
+    const contexto = obtenerContextoListaDetallada();
+    const {
+        fechaLegible,
+        fechaISO,
+        registrosPresentesOriginales,
+        registrosFaltantesOriginales,
+        presentesFiltrados,
+        faltistasFiltrados,
+        filtroActual,
+        filtroEscapado,
+        hayRegistrosOriginales,
+        hayCoincidencias,
+        totalCoincidencias,
+        filtroActivo
+    } = contexto;
 
     let html = `
         <div class="detailed-list-header">
             <div>
                 <h3 class="detailed-list-title">Fecha: ${fechaLegible}</h3>
-                <p class="detailed-list-subtitle">Descarga un archivo con la lista de presentes y faltistas mostrados en esta sección.</p>
+                <p class="detailed-list-subtitle">Descarga archivos en PDF con los presentes y faltistas mostrados en esta sección.</p>
             </div>
             <div class="detailed-list-actions">
                 <div class="detailed-list-search">
@@ -361,14 +404,36 @@ function renderizarListaDetallada() {
     }
 
     if (presentesFiltrados.length > 0) {
-        html += `<h3 style="color: #2ecc71; margin: 20px 0 10px 0;">✅ Presentes (En Lista) — ${presentesFiltrados.length}</h3>`;
+        html += `
+            <div class="detailed-section-header detailed-section-header-presentes">
+                <h3 class="detailed-section-title detailed-section-title-presentes">✅ Presentes (En Lista) — ${presentesFiltrados.length}</h3>
+                <button
+                    type="button"
+                    class="detailed-section-download-button detailed-section-download-presentes"
+                    id="descargarPresentesPDFBtn"
+                    title="Descargar presentes en PDF"
+                    aria-label="Descargar presentes en PDF"
+                >⬇️</button>
+            </div>
+        `;
         html += crearTablaDetallada(presentesFiltrados);
     } else if (filtroActivo && registrosPresentesOriginales.length > 0) {
         html += '<p class="detailed-list-empty-section">No hay presentes que coincidan con la búsqueda.</p>';
     }
 
     if (faltistasFiltrados.length > 0) {
-        html += `<h3 style="color: #e74c3c; margin: 20px 0 10px 0;">❌ Faltistas — ${faltistasFiltrados.length}</h3>`;
+        html += `
+            <div class="detailed-section-header detailed-section-header-faltistas">
+                <h3 class="detailed-section-title detailed-section-title-faltistas">❌ Faltistas — ${faltistasFiltrados.length}</h3>
+                <button
+                    type="button"
+                    class="detailed-section-download-button detailed-section-download-faltistas"
+                    id="descargarFaltistasPDFBtn"
+                    title="Descargar faltistas en PDF"
+                    aria-label="Descargar faltistas en PDF"
+                >⬇️</button>
+            </div>
+        `;
         html += crearTablaDetallada(faltistasFiltrados);
     } else if (filtroActivo && registrosFaltantesOriginales.length > 0) {
         html += '<p class="detailed-list-empty-section">No hay faltistas que coincidan con la búsqueda.</p>';
@@ -382,19 +447,45 @@ function renderizarListaDetallada() {
 
     contenedor.innerHTML = html;
 
-    const botonDescarga = document.getElementById('descargarListaDetalladaBtn');
-    if (botonDescarga) {
-        if (!botonDescarga.dataset.listenerAsignado) {
-            botonDescarga.addEventListener('click', descargarListaDetallada);
-            botonDescarga.dataset.listenerAsignado = 'true';
+    const botonDescargaGeneral = document.getElementById('descargarListaDetalladaBtn');
+    if (botonDescargaGeneral) {
+        if (!botonDescargaGeneral.dataset.listenerAsignado) {
+            botonDescargaGeneral.addEventListener('click', descargarListaDetallada);
+            botonDescargaGeneral.dataset.listenerAsignado = 'true';
         }
         if (!hayRegistrosOriginales) {
-            botonDescarga.disabled = true;
-            botonDescarga.title = 'No hay registros para descargar.';
+            botonDescargaGeneral.disabled = true;
+            botonDescargaGeneral.title = 'No hay registros para descargar.';
         } else {
-            botonDescarga.disabled = false;
-            botonDescarga.title = 'Descargar archivo con presentes y faltistas.';
+            botonDescargaGeneral.disabled = false;
+            botonDescargaGeneral.title = 'Descargar archivo con presentes y faltistas.';
         }
+    }
+
+    const botonDescargaPresentes = document.getElementById('descargarPresentesPDFBtn');
+    if (botonDescargaPresentes) {
+        botonDescargaPresentes.addEventListener('click', () => {
+            descargarRegistrosEnPDF(presentesFiltrados, {
+                titulo: 'Presentes (En Lista)',
+                prefijoArchivo: 'presentes',
+                fechaLegible,
+                fechaISO,
+                filtro: filtroActual
+            });
+        });
+    }
+
+    const botonDescargaFaltistas = document.getElementById('descargarFaltistasPDFBtn');
+    if (botonDescargaFaltistas) {
+        botonDescargaFaltistas.addEventListener('click', () => {
+            descargarRegistrosEnPDF(faltistasFiltrados, {
+                titulo: 'Faltistas',
+                prefijoArchivo: 'faltistas',
+                fechaLegible,
+                fechaISO,
+                filtro: filtroActual
+            });
+        });
     }
 
     const campoBusqueda = document.getElementById('filtroListaDetallada');
@@ -473,6 +564,290 @@ function crearTablaDetallada(registros) {
     return html;
 }
 
+function obtenerTextoPlano(valor, opciones = {}) {
+    const { uppercase = false, fallback = '-' } = opciones;
+    if (valor === null || valor === undefined) {
+        return fallback;
+    }
+
+    let texto = typeof valor === 'string' ? valor : String(valor);
+    if (typeof decodificarCaracteresEspeciales === 'function') {
+        texto = decodificarCaracteresEspeciales(texto);
+    }
+
+    texto = texto.replace(/\s+/g, ' ').trim();
+
+    if (texto === '') {
+        return fallback;
+    }
+
+    return uppercase ? texto.toUpperCase() : texto;
+}
+
+function truncarTextoPlano(texto, limite) {
+    if (!texto) {
+        return '';
+    }
+
+    if (!Number.isFinite(limite) || limite <= 1 || texto.length <= limite) {
+        return texto;
+    }
+
+    return `${texto.slice(0, Math.max(0, limite - 1))}…`;
+}
+
+function construirLineasTablaPDF(registros) {
+    if (!Array.isArray(registros) || registros.length === 0) {
+        return [];
+    }
+
+    const encabezados = ['Matrícula', 'Nombre', 'Grupo', 'Estado', 'Hora', 'Ubicación', 'Dispositivo'];
+    const limites = [12, 32, 10, 18, 12, 32, 28];
+
+    const filas = registros.map(registro => {
+        const fechaRegistro = registro.timestamp ? new Date(registro.timestamp) : null;
+        const horaFormateada = fechaRegistro
+            ? (formatearHoraMexico(fechaRegistro, true)
+                ?? fechaRegistro.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+            : '-';
+
+        return [
+            truncarTextoPlano(obtenerTextoPlano(registro.matricula, { fallback: '-' }), limites[0]),
+            truncarTextoPlano(obtenerTextoPlano(registro.nombre || '-', { fallback: '-' }), limites[1]),
+            truncarTextoPlano(obtenerTextoPlano(registro.grupo || '-', { uppercase: true, fallback: '-' }), limites[2]),
+            truncarTextoPlano(obtenerTextoPlano(registro.status || '-', { fallback: '-' }), limites[3]),
+            truncarTextoPlano(obtenerTextoPlano(horaFormateada, { fallback: '-' }), limites[4]),
+            truncarTextoPlano(obtenerTextoPlano(registro.location ?? 'N/D', { fallback: 'N/D' }), limites[5]),
+            truncarTextoPlano(obtenerTextoPlano(registro.device ?? 'N/D', { fallback: 'N/D' }), limites[6])
+        ];
+    });
+
+    const anchos = encabezados.map((texto, indice) => Math.min(limites[indice], Math.max(texto.length, 3)));
+
+    filas.forEach(fila => {
+        fila.forEach((valor, indice) => {
+            anchos[indice] = Math.min(limites[indice], Math.max(anchos[indice], valor.length));
+        });
+    });
+
+    const lineas = [];
+    const encabezadoFormateado = encabezados.map((texto, indice) => texto.padEnd(anchos[indice]));
+    const separador = anchos.map((ancho, indice) => '─'.repeat(Math.max(3, Math.min(ancho, limites[indice]))));
+
+    lineas.push(encabezadoFormateado.join('  '));
+    lineas.push(separador.join('  '));
+
+    filas.forEach(fila => {
+        const filaFormateada = fila.map((valor, indice) => valor.padEnd(anchos[indice]));
+        lineas.push(filaFormateada.join('  '));
+    });
+
+    return lineas;
+}
+
+function escaparTextoParaPDF(texto) {
+    return texto
+        .replace(/\\/g, '\\\\')
+        .replace(/\(/g, '\\(')
+        .replace(/\)/g, '\\)');
+}
+
+function crearContenidoPaginaPDF({
+    titulo,
+    subtitulo,
+    lineas,
+    paginaActual,
+    totalPaginas,
+    margenIzquierdo,
+    puntoInicial,
+    alturaLinea
+}) {
+    const partes = ['BT', '/F1 18 Tf', `${alturaLinea} TL`, `${margenIzquierdo} ${puntoInicial} Td`, `(${escaparTextoParaPDF(titulo)}) Tj`, 'T*', '/F1 12 Tf', `${alturaLinea} TL`];
+
+    const segmentosSubtitulo = [];
+    if (subtitulo && subtitulo.trim() !== '') {
+        segmentosSubtitulo.push(subtitulo.trim());
+    }
+    if (totalPaginas > 1) {
+        segmentosSubtitulo.push(`Página ${paginaActual} de ${totalPaginas}`);
+    }
+
+    const textoSubtitulo = segmentosSubtitulo.join(' — ');
+    if (textoSubtitulo) {
+        partes.push(`(${escaparTextoParaPDF(textoSubtitulo)}) Tj`);
+    } else {
+        partes.push('() Tj');
+    }
+
+    partes.push('T*');
+    partes.push('T*');
+
+    lineas.forEach(linea => {
+        partes.push(`(${escaparTextoParaPDF(linea)}) Tj`);
+        partes.push('T*');
+    });
+
+    if (partes[partes.length - 1] === 'T*') {
+        partes.pop();
+    }
+
+    partes.push('ET');
+    return partes.join('\n');
+}
+
+function generarPDFBasico({ titulo, subtitulo, lineas }) {
+    if (!titulo || !Array.isArray(lineas) || lineas.length === 0) {
+        return null;
+    }
+
+    const encoder = new TextEncoder();
+    const margenIzquierdo = 50;
+    const puntoInicial = 760;
+    const alturaLinea = 20;
+    const margenInferior = 40;
+    const lineasDisponiblesPorPagina = Math.max(1, Math.floor((puntoInicial - margenInferior) / alturaLinea) - 3);
+    const totalPaginas = Math.max(1, Math.ceil(lineas.length / lineasDisponiblesPorPagina));
+
+    const objetos = new Map();
+    const identificadorFuente = 3;
+
+    const paginas = [];
+    for (let indicePagina = 0; indicePagina < totalPaginas; indicePagina += 1) {
+        const numeroPagina = indicePagina + 1;
+        const inicio = indicePagina * lineasDisponiblesPorPagina;
+        const paginaLineas = lineas.slice(inicio, inicio + lineasDisponiblesPorPagina);
+
+        const contenido = crearContenidoPaginaPDF({
+            titulo,
+            subtitulo,
+            lineas: paginaLineas,
+            paginaActual: numeroPagina,
+            totalPaginas,
+            margenIzquierdo,
+            puntoInicial,
+            alturaLinea
+        });
+
+        const contenidoCodificado = encoder.encode(contenido);
+        const identificadorPagina = 4 + indicePagina * 2;
+        const identificadorContenido = identificadorPagina + 1;
+
+        objetos.set(identificadorContenido, `<< /Length ${contenidoCodificado.length} >>\nstream\n${contenido}\nendstream`);
+        objetos.set(identificadorPagina, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${identificadorFuente} 0 R >> >> /Contents ${identificadorContenido} 0 R >>`);
+        paginas.push(`${identificadorPagina} 0 R`);
+    }
+
+    objetos.set(identificadorFuente, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+    objetos.set(2, `<< /Type /Pages /Count ${paginas.length} /Kids [${paginas.join(' ')}] >>`);
+    objetos.set(1, '<< /Type /Catalog /Pages 2 0 R >>');
+
+    const cabecera = '%PDF-1.4\n%âãÏÓ\n';
+    const fragmentos = [];
+    const offsets = [];
+    let longitudTotal = 0;
+
+    const agregarFragmento = texto => {
+        const bytes = encoder.encode(texto);
+        fragmentos.push(bytes);
+        longitudTotal += bytes.length;
+    };
+
+    agregarFragmento(cabecera);
+
+    const identificadoresOrdenados = Array.from(objetos.keys()).sort((a, b) => a - b);
+    identificadoresOrdenados.forEach(id => {
+        offsets[id] = longitudTotal;
+        agregarFragmento(`${id} 0 obj\n${objetos.get(id)}\nendobj\n`);
+    });
+
+    const inicioXref = longitudTotal;
+    const maxId = Math.max(...identificadoresOrdenados);
+    let xref = `xref\n0 ${maxId + 1}\n0000000000 65535 f \n`;
+    for (let indice = 1; indice <= maxId; indice += 1) {
+        const offset = offsets[indice] ?? 0;
+        xref += `${String(offset).padStart(10, '0')} 00000 n \n`;
+    }
+
+    agregarFragmento(xref);
+    agregarFragmento(`trailer\n<< /Size ${maxId + 1} /Root 1 0 R >>\nstartxref\n${inicioXref}\n%%EOF`);
+
+    return new Blob(fragmentos, { type: 'application/pdf' });
+}
+
+function normalizarTextoParaArchivo(texto) {
+    if (!texto) {
+        return '';
+    }
+
+    return texto
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .replace(/[^a-zA-Z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 40)
+        .toLowerCase();
+}
+
+function descargarBlobComoArchivo(blob, nombreArchivo) {
+    if (!(blob instanceof Blob)) {
+        return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const enlaceDescarga = document.createElement('a');
+    enlaceDescarga.href = url;
+    enlaceDescarga.download = nombreArchivo;
+    document.body.appendChild(enlaceDescarga);
+    enlaceDescarga.click();
+    document.body.removeChild(enlaceDescarga);
+    URL.revokeObjectURL(url);
+}
+
+function descargarRegistrosEnPDF(registros, opciones = {}) {
+    const lista = Array.isArray(registros) ? registros : [];
+    if (lista.length === 0) {
+        return;
+    }
+
+    const {
+        titulo = 'Registros',
+        prefijoArchivo = 'registros',
+        fechaLegible,
+        fechaISO,
+        filtro
+    } = opciones;
+
+    const lineasTabla = construirLineasTablaPDF(lista);
+    if (lineasTabla.length === 0) {
+        return;
+    }
+
+    const partesSubtitulo = [];
+    if (fechaLegible) {
+        partesSubtitulo.push(`Fecha: ${fechaLegible}`);
+    }
+
+    partesSubtitulo.push(`Registros: ${lista.length}`);
+
+    if (filtro && filtro.trim() !== '') {
+        partesSubtitulo.push(`Filtro: "${filtro.trim()}"`);
+    }
+
+    const subtitulo = partesSubtitulo.join(' — ');
+    const blobPDF = generarPDFBasico({ titulo, subtitulo, lineas: lineasTabla });
+
+    if (!blobPDF) {
+        console.warn('No se pudo generar el archivo PDF.');
+        return;
+    }
+
+    const fechaParaArchivo = fechaISO || new Date().toISOString().split('T')[0];
+    const sufijoFiltro = filtro ? normalizarTextoParaArchivo(filtro) : '';
+    const nombreArchivo = `${prefijoArchivo}-${fechaParaArchivo}${sufijoFiltro ? `-${sufijoFiltro}` : ''}.pdf`;
+
+    descargarBlobComoArchivo(blobPDF, nombreArchivo);
+}
+
 function prepararCampoCSV(valor) {
     if (valor === null || valor === undefined) {
         return '""';
@@ -488,19 +863,10 @@ function descargarListaDetallada() {
         return;
     }
 
-    const registrosPresentes = Array.isArray(ultimaListaDetallada.presentesRegistrados ?? ultimaListaDetallada.presentRegistered)
-        ? (ultimaListaDetallada.presentesRegistrados ?? ultimaListaDetallada.presentRegistered)
-        : [];
-    const registrosFaltantes = Array.isArray(ultimaListaDetallada.faltistas ?? ultimaListaDetallada.absent)
-        ? (ultimaListaDetallada.faltistas ?? ultimaListaDetallada.absent)
-        : [];
-
-    const fechaValor = ultimaListaDetallada.fecha ?? ultimaListaDetallada.date ?? new Date();
-    const fechaObjeto = crearFechaLocal(fechaValor) ?? new Date();
-    const fechaValida = fechaObjeto instanceof Date && !Number.isNaN(fechaObjeto.getTime());
-    const fechaISO = fechaValida
-        ? (obtenerFechaISOMexico(fechaObjeto) ?? `${fechaObjeto.getFullYear()}-${String(fechaObjeto.getMonth() + 1).padStart(2, '0')}-${String(fechaObjeto.getDate()).padStart(2, '0')}`)
-        : new Date().toISOString().split('T')[0];
+    const contexto = obtenerContextoListaDetallada();
+    const registrosPresentes = contexto.registrosPresentesOriginales ?? [];
+    const registrosFaltantes = contexto.registrosFaltantesOriginales ?? [];
+    const fechaISO = contexto.fechaISO ?? new Date().toISOString().split('T')[0];
 
     const lineas = [];
     lineas.push('Tipo,Matrícula,Nombre,Grupo,Estado,Hora,Ubicación,Dispositivo');
@@ -509,7 +875,8 @@ function descargarListaDetallada() {
         registros.forEach(registro => {
             const fechaRegistro = registro.timestamp ? new Date(registro.timestamp) : null;
             const horaFormateada = fechaRegistro
-                ? (formatearHoraMexico(fechaRegistro, true) ?? fechaRegistro.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+                ? (formatearHoraMexico(fechaRegistro, true)
+                    ?? fechaRegistro.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
                 : '';
             const fila = [
                 prepararCampoCSV(tipo),
@@ -535,14 +902,7 @@ function descargarListaDetallada() {
 
     const contenido = lineas.join('\n');
     const blob = new Blob([`\uFEFF${contenido}`], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const enlaceDescarga = document.createElement('a');
-    enlaceDescarga.href = url;
-    enlaceDescarga.download = `lista-detallada-${fechaISO}.csv`;
-    document.body.appendChild(enlaceDescarga);
-    enlaceDescarga.click();
-    document.body.removeChild(enlaceDescarga);
-    URL.revokeObjectURL(url);
+    descargarBlobComoArchivo(blob, `lista-detallada-${fechaISO}.csv`);
 }
 
 async function cargarDispositivos() {
