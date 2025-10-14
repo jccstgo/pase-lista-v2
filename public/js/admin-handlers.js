@@ -179,9 +179,9 @@ async function manejarInicioSesion(evento) {
             }
             await cargarPanelAdministrativo();
             actualizarInformacionSistema();
-            const pestanaResumen = document.querySelector('.tab[data-group="results"][data-tab="overview"]');
-            if (pestanaResumen) {
-                mostrarPestana('overview', pestanaResumen, 'results');
+            const pestanaDetalle = document.querySelector('.tab[data-group="results"][data-tab="detailed"]');
+            if (pestanaDetalle) {
+                mostrarPestana('detailed', pestanaDetalle, 'results');
             }
             const pestanaAdminActiva = document.querySelector('.tab[data-group="admin"].active') || document.querySelector('.tab[data-group="admin"]');
             if (pestanaAdminActiva) {
