@@ -708,7 +708,37 @@ function generarPDFTablaEjecutiva({ titulo, subtitulo, columnas, filas }) {
         doc.putTotalPages(totalPagesExp);
     }
 
-    return doc.output('blob');
+    let contenidoPDF;
+    try {
+        contenidoPDF = doc.output('arraybuffer');
+    } catch (error) {
+        console.error('Error al generar la salida del PDF:', error);
+        return null;
+    }
+
+    if (!contenidoPDF) {
+        console.warn('La salida del PDF está vacía.');
+        return null;
+    }
+
+    if (contenidoPDF && typeof contenidoPDF.then === 'function') {
+        return contenidoPDF
+            .then(buffer => new Blob([buffer], { type: 'application/pdf' }))
+            .catch(error => {
+                console.error('Error al resolver la generación del PDF:', error);
+                return null;
+            });
+    }
+
+    return new Blob([contenidoPDF], { type: 'application/pdf' });
+}
+
+function esThenable(valor) {
+    return (
+        (typeof valor === 'object' || typeof valor === 'function')
+        && valor !== null
+        && typeof valor.then === 'function'
+    );
 }
 
 function normalizarTextoParaArchivo(texto) {
@@ -771,23 +801,46 @@ function descargarRegistrosEnPDF(registros, opciones = {}) {
     }
 
     const subtitulo = partesSubtitulo.join(' — ');
-    const blobPDF = generarPDFTablaEjecutiva({
+    const resultadoGeneracion = generarPDFTablaEjecutiva({
         titulo,
         subtitulo,
         columnas: tabla.columnas,
         filas: tabla.filas
     });
 
-    if (!blobPDF) {
+    if (!resultadoGeneracion) {
         console.warn('No se pudo generar el archivo PDF.');
         return;
     }
 
-    const fechaParaArchivo = fechaISO || new Date().toISOString().split('T')[0];
-    const sufijoFiltro = filtro ? normalizarTextoParaArchivo(filtro) : '';
-    const nombreArchivo = `${prefijoArchivo}-${fechaParaArchivo}${sufijoFiltro ? `-${sufijoFiltro}` : ''}.pdf`;
+    const manejarBlob = blobPDF => {
+        if (!blobPDF) {
+            console.warn('No se pudo generar el archivo PDF.');
+            return;
+        }
 
-    descargarBlobComoArchivo(blobPDF, nombreArchivo);
+        if (typeof Blob === 'function' && !(blobPDF instanceof Blob)) {
+            console.warn('La generación del PDF no devolvió un Blob válido.');
+            return;
+        }
+
+        const fechaParaArchivo = fechaISO || new Date().toISOString().split('T')[0];
+        const sufijoFiltro = filtro ? normalizarTextoParaArchivo(filtro) : '';
+        const nombreArchivo = `${prefijoArchivo}-${fechaParaArchivo}${sufijoFiltro ? `-${sufijoFiltro}` : ''}.pdf`;
+
+        descargarBlobComoArchivo(blobPDF, nombreArchivo);
+    };
+
+    if (esThenable(resultadoGeneracion)) {
+        resultadoGeneracion
+            .then(manejarBlob)
+            .catch(error => {
+                console.error('Error al generar el archivo PDF:', error);
+            });
+        return;
+    }
+
+    manejarBlob(resultadoGeneracion);
 }
 
 function prepararCampoCSV(valor) {
