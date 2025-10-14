@@ -27,7 +27,7 @@
         body.compact-layout,
         body.keyboard-active {
             align-items: flex-start;
-            justify-content: flex-start;
+            justify-content: center;
         }
 
         body.keyboard-active {
@@ -49,6 +49,7 @@
             gap: clamp(14px, 2.6vh, 22px);
             overflow-y: auto;
             scrollbar-gutter: stable;
+            margin-inline: auto;
         }
 
         body.compact-layout .container,
@@ -398,7 +399,7 @@
         @media (max-height: 720px) {
             body {
                 align-items: flex-start;
-                justify-content: flex-start;
+                justify-content: center;
             }
 
             .container {
