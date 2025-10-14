@@ -11,134 +11,153 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary-gradient: linear-gradient(135deg, #f1a3a3 0%, #9e6666 100%);
+            --accent-gradient: linear-gradient(135deg, #66baea, #4b91a2);
+            --secondary-gradient: linear-gradient(135deg, #f39c12, #e67e22);
+            --card-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            --focus-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f1a3a3 0%, #9e6666 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--primary-gradient);
             min-height: 100vh;
             min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            padding: clamp(12px, 4vh, 40px) clamp(16px, 6vw, 40px);
+            padding: clamp(16px, 4vh, 40px) clamp(16px, 5vw, 40px);
             transition: padding 0.3s ease;
         }
 
         body.compact-layout,
         body.keyboard-active {
             align-items: flex-start;
-            justify-content: center;
         }
 
         body.keyboard-active {
-            padding-top: clamp(8px, 4vh, 28px);
+            padding-top: clamp(12px, 3vh, 28px);
         }
 
         .container {
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            padding: clamp(20px, 4.4vh, 36px) clamp(20px, 5vw, 36px);
-            max-width: min(420px, 96%);
-            max-height: min(680px, 92vh);
+            border-radius: 24px;
+            box-shadow: var(--card-shadow);
+            padding: clamp(24px, 5vh, 40px) clamp(24px, 6vw, 40px);
+            max-width: min(460px, 96%);
             width: 100%;
             text-align: center;
             display: flex;
             flex-direction: column;
-            align-items: stretch;
-            gap: clamp(14px, 2.6vh, 22px);
-            overflow-y: auto;
-            scrollbar-gutter: stable;
-            margin-inline: auto;
+            gap: clamp(16px, 2.8vh, 24px);
+            margin: auto;
+            animation: fadeIn 0.5s ease-out;
         }
 
-        body.compact-layout .container,
-        body.keyboard-active .container {
-            max-height: none;
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         body.compact-layout .container {
-            margin-top: clamp(18px, 5vh, 32px);
+            max-height: none;
+            margin-top: clamp(20px, 5vh, 36px);
         }
 
         .escudo-header {
-            width: min(170px, 42vw);
+            width: min(160px, 40vw);
             height: auto;
-            margin: 0 auto 15px;
+            margin: 0 auto 12px;
             display: block;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+            transition: transform 0.3s ease;
+        }
+
+        .escudo-header:hover {
+            transform: scale(1.05);
         }
 
         .institution-name {
             color: #B22222;
-            font-size: clamp(18px, 2.8vh, 20px);
-            font-weight: 600;
-            margin-bottom: clamp(10px, 2vh, 16px);
+            font-size: clamp(17px, 2.8vh, 20px);
+            font-weight: 700;
+            margin-bottom: clamp(8px, 1.8vh, 14px);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.2px;
+            line-height: 1.3;
         }
 
-        h3 {
-            margin: 0;
-        }
-
-        .page-subtitle {
+        h3.page-subtitle {
             color: #555;
-            font-size: clamp(17px, 3vh, 21px);
+            font-size: clamp(18px, 3.2vh, 22px);
             font-weight: 600;
-            margin-bottom: clamp(10px, 1.8vh, 16px);
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: clamp(22px, 4vh, 28px);
+            margin-bottom: clamp(8px, 1.8vh, 14px);
+            line-height: 1.4;
         }
 
         .form-group {
-            margin-bottom: clamp(14px, 2.5vh, 18px);
+            margin-bottom: clamp(16px, 2.8vh, 20px);
             text-align: left;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             color: #555;
             font-weight: 600;
+            font-size: clamp(14px, 2vh, 16px);
         }
 
-        input[type="text"], input[type="password"] {
+        input[type="text"],
+        input[type="password"] {
             width: 100%;
-            padding: clamp(11px, 2.2vh, 14px);
-            border: 2px solid #ddd;
-            border-radius: 10px;
+            padding: clamp(12px, 2.4vh, 16px);
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
             font-size: 16px;
             transition: all 0.3s ease;
             outline: none;
-            scroll-margin-top: 90px;
+            background: #fafafa;
         }
 
-        input[type="text"]:focus, input[type="password"]:focus {
-            border-color: #ea8566;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #66baea;
+            background: white;
+            box-shadow: var(--focus-shadow);
+            transform: translateY(-1px);
         }
 
         .btn {
             width: 100%;
-            padding: clamp(13px, 2.4vh, 15px);
-            background: linear-gradient(135deg, #66baea, #4b91a2);
+            padding: clamp(14px, 2.6vh, 18px);
+            background: var(--accent-gradient);
             color: white;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: clamp(16px, 2.6vh, 18px);
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-bottom: clamp(6px, 1vh, 12px);
+            margin-bottom: clamp(8px, 1.4vh, 12px);
+            box-shadow: 0 4px 15px rgba(102, 186, 234, 0.3);
         }
 
-        .btn:hover {
+        .btn:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(234, 133, 102, 0.3);
+            box-shadow: 0 8px 20px rgba(102, 186, 234, 0.4);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
         }
 
         .btn:disabled {
@@ -148,48 +167,71 @@
         }
 
         .btn-secondary {
-            background: linear-gradient(135deg, #f39c12, #e67e22);
+            background: var(--secondary-gradient);
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            box-shadow: 0 8px 20px rgba(243, 156, 18, 0.4);
         }
 
         .message {
-            margin-top: clamp(10px, 2vh, 16px);
-            padding: clamp(12px, 2vh, 15px);
-            border-radius: 10px;
+            margin-top: clamp(12px, 2vh, 16px);
+            padding: clamp(14px, 2.2vh, 18px);
+            border-radius: 12px;
             font-weight: 600;
+            font-size: clamp(14px, 2vh, 15px);
             display: none;
+            animation: slideIn 0.3s ease-out;
+            line-height: 1.5;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message.success {
             background-color: #d4edda;
             color: #155724;
-            border: 1px solid #c3e6cb;
+            border: 2px solid #c3e6cb;
+            border-left: 4px solid #28a745;
         }
 
         .message.error {
             background-color: #f8d7da;
             color: #721c24;
-            border: 1px solid #f5c6cb;
+            border: 2px solid #f5c6cb;
+            border-left: 4px solid #dc3545;
         }
 
         .message.warning {
             background-color: #fff3cd;
             color: #856404;
-            border: 1px solid #ffeaa7;
+            border: 2px solid #ffeaa7;
+            border-left: 4px solid #ffc107;
         }
 
         .loading {
             display: none;
-            margin-top: clamp(10px, 2vh, 14px);
+            margin-top: clamp(12px, 2vh, 16px);
+            text-align: center;
         }
 
         .spinner {
             border: 3px solid #f3f3f3;
             border-top: 3px solid #ea7566;
             border-radius: 50%;
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             animation: spin 1s linear infinite;
-            margin: 0 auto;
+            margin: 0 auto 10px;
         }
 
         @keyframes spin {
@@ -198,12 +240,13 @@
         }
 
         .time-info {
-            margin-top: clamp(12px, 2vh, 16px);
-            padding: clamp(10px, 1.8vh, 14px);
-            background-color: #f8f9fa;
-            border-radius: 10px;
-            font-size: 14px;
+            margin-top: clamp(14px, 2.2vh, 18px);
+            padding: clamp(12px, 2vh, 16px);
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            font-size: clamp(13px, 1.8vh, 14px);
             color: #666;
+            border: 1px solid #dee2e6;
         }
 
         .admin-link {
@@ -212,199 +255,195 @@
             right: 20px;
             color: white;
             text-decoration: none;
-            background: rgba(0, 0, 0, 0.25);
-            padding: 10px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
             border-radius: 999px;
             font-size: 14px;
             font-weight: 600;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            transition: background 0.3s ease, transform 0.3s ease;
+            gap: 8px;
+            transition: all 0.3s ease;
             z-index: 10;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
 
         .admin-link:hover {
-            background: rgba(0, 0, 0, 0.35);
+            background: rgba(0, 0, 0, 0.4);
             transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
         }
 
         .location-info {
-            margin-top: clamp(6px, 1.5vh, 10px);
-            padding: clamp(8px, 1.5vh, 10px);
+            margin-top: clamp(8px, 1.6vh, 12px);
+            padding: clamp(10px, 1.8vh, 12px);
             background: #e3f2fd;
-            border-radius: 8px;
-            font-size: 12px;
+            border-radius: 10px;
+            font-size: 13px;
             color: #1976d2;
             display: none;
-        }
-
-        @media (max-height: 720px) {
-            body {
-                padding-top: clamp(10px, 2.6vh, 22px);
-                padding-bottom: clamp(10px, 2.6vh, 22px);
-            }
-
-            .container {
-                border-radius: 18px;
-                gap: clamp(12px, 2.2vh, 18px);
-            }
-
-            .institution-name {
-                margin-bottom: 10px;
-                font-size: clamp(16px, 2.6vh, 18px);
-            }
-        }
-
-        @media (max-height: 640px) {
-            .container {
-                padding: clamp(16px, 3.6vh, 26px) clamp(18px, 5vw, 30px);
-                gap: clamp(10px, 2vh, 16px);
-            }
-
-            .escudo-header {
-                width: min(140px, 38vw);
-                margin-bottom: 8px;
-            }
-
-            h1 {
-                font-size: clamp(19px, 3.2vh, 23px);
-            }
-
-            .btn {
-                font-size: clamp(15px, 2.4vh, 16px);
-            }
-        }
-
-        @media (max-height: 580px) {
-            body {
-                padding: clamp(10px, 2.2vh, 18px) clamp(14px, 5vw, 26px);
-            }
-
-            .container {
-                border-radius: 16px;
-                padding: clamp(14px, 3.2vh, 24px) clamp(16px, 5vw, 26px);
-            }
-
-            .institution-name {
-                letter-spacing: 0.5px;
-            }
-
-            .form-group {
-                margin-bottom: clamp(12px, 2vh, 16px);
-            }
-
-            input[type="text"],
-            input[type="password"] {
-                padding: clamp(10px, 2vh, 13px);
-                font-size: 15px;
-            }
-
-            .btn {
-                padding: clamp(11px, 2.2vh, 14px);
-            }
-
-            .time-info {
-                font-size: 13px;
-            }
-
-            .admin-link {
-                top: 16px;
-                right: 16px;
-                padding: 8px 12px;
-            }
-        }
-
-        @media (max-height: 540px) {
-            body {
-                padding: clamp(8px, 2vh, 16px) clamp(12px, 5vw, 24px);
-            }
-
-            .container {
-                padding: clamp(12px, 2.8vh, 22px) clamp(14px, 5vw, 24px);
-                gap: clamp(8px, 1.6vh, 14px);
-            }
-
-            .escudo-header {
-                width: min(120px, 34vw);
-            }
-
-            .institution-name,
-            .page-subtitle {
-                font-size: clamp(15px, 2.4vh, 17px);
-            }
-
-            h1 {
-                font-size: clamp(18px, 3vh, 22px);
-            }
-
-            .btn {
-                font-size: clamp(14px, 2.2vh, 15px);
-            }
-
-            .admin-link {
-                font-size: 12px;
-            }
+            border: 1px solid #bbdefb;
         }
 
         .admin-key-section {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 8px;
-            padding: 15px;
+            background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+            border: 2px solid #ffeaa7;
+            border-radius: 12px;
+            padding: 16px;
             margin-bottom: 20px;
             display: none;
+            animation: slideIn 0.3s ease-out;
         }
 
         .admin-key-section h4 {
             color: #856404;
-            margin-bottom: 10px;
-            font-size: 14px;
+            margin-bottom: 12px;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .toggle-link {
             color: #007bff;
             cursor: pointer;
             text-decoration: underline;
-            font-size: 12px;
-            margin-top: 10px;
+            font-size: 13px;
+            margin-top: 12px;
             display: inline-block;
+            transition: color 0.3s ease;
         }
 
+        .toggle-link:hover {
+            color: #0056b3;
+        }
+
+        /* Responsive Design */
         @media (max-width: 480px) {
             body {
-                padding: clamp(12px, 5vh, 24px) 16px;
+                padding: 16px;
             }
 
             .container {
-                padding: clamp(18px, 5vh, 28px) clamp(16px, 6vw, 24px);
-                margin: 0;
+                padding: 24px 20px;
+                border-radius: 20px;
             }
 
-            h1 {
-                font-size: clamp(19px, 5vw, 23px);
+            .escudo-header {
+                width: min(140px, 38vw);
             }
 
-            .btn {
-                font-size: clamp(15px, 4.5vw, 17px);
+            .institution-name {
+                font-size: clamp(16px, 4vw, 18px);
+                letter-spacing: 1px;
+            }
+
+            h3.page-subtitle {
+                font-size: clamp(17px, 4.5vw, 20px);
             }
 
             .admin-link {
-                font-size: 12px;
-                padding: 8px 12px;
-                background: rgba(0, 0, 0, 0.35);
+                top: 16px;
+                right: 16px;
+                padding: 10px 16px;
+                font-size: 13px;
             }
         }
 
-        @media (max-height: 720px) {
+        @media (max-height: 680px) {
             body {
-                align-items: flex-start;
-                justify-content: center;
+                padding-top: clamp(12px, 3vh, 24px);
+                padding-bottom: clamp(12px, 3vh, 24px);
             }
 
             .container {
-                margin-top: clamp(16px, 5vh, 28px);
+                gap: clamp(14px, 2.2vh, 20px);
+            }
+
+            .escudo-header {
+                width: min(130px, 36vw);
+                margin-bottom: 8px;
+            }
+
+            .institution-name {
+                margin-bottom: 8px;
+            }
+        }
+
+        @media (max-height: 580px) {
+            body {
+                padding: clamp(10px, 2vh, 18px) clamp(14px, 5vw, 26px);
+            }
+
+            .container {
+                border-radius: 18px;
+                padding: clamp(16px, 3.5vh, 28px) clamp(18px, 5vw, 32px);
                 gap: clamp(12px, 2vh, 18px);
+            }
+
+            .escudo-header {
+                width: min(110px, 32vw);
+            }
+
+            .form-group {
+                margin-bottom: clamp(12px, 2.2vh, 16px);
+            }
+
+            input[type="text"],
+            input[type="password"] {
+                padding: clamp(10px, 2vh, 14px);
+            }
+
+            .btn {
+                padding: clamp(12px, 2.2vh, 16px);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Dark Mode Support */
+        @media (prefers-color-scheme: dark) {
+            .container {
+                background: #1e1e1e;
+                color: #e0e0e0;
+            }
+
+            .institution-name {
+                color: #ff6b6b;
+            }
+
+            h3.page-subtitle {
+                color: #b0b0b0;
+            }
+
+            label {
+                color: #b0b0b0;
+            }
+
+            input[type="text"],
+            input[type="password"] {
+                background: #2a2a2a;
+                color: #e0e0e0;
+                border-color: #3a3a3a;
+            }
+
+            input[type="text"]:focus,
+            input[type="password"]:focus {
+                background: #2a2a2a;
+                border-color: #66baea;
+            }
+
+            .time-info {
+                background: #2a2a2a;
+                color: #b0b0b0;
+                border-color: #3a3a3a;
             }
         }
     </style>
@@ -534,7 +573,6 @@
                     try {
                         evento.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     } catch (error) {
-                        // Ignorar navegadores que no soportan opciones avanzadas
                         evento.target.scrollIntoView();
                     }
                 }, 120);
