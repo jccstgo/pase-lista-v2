@@ -408,43 +408,46 @@
             }
         }
 
-        /* Dark Mode Support */
-        @media (prefers-color-scheme: dark) {
-            .container {
-                background: #1e1e1e;
-                color: #e0e0e0;
-            }
+        /* Forzar modo claro siempre */
+        .container {
+            background: white;
+            color: #333;
+        }
 
-            .institution-name {
-                color: #ff6b6b;
-            }
+        .institution-name {
+            color: #B22222;
+        }
 
-            h3.page-subtitle {
-                color: #b0b0b0;
-            }
+        h3.page-subtitle {
+            color: #555;
+        }
 
-            label {
-                color: #b0b0b0;
-            }
+        label {
+            color: #555;
+        }
 
-            input[type="text"],
-            input[type="password"] {
-                background: #2a2a2a;
-                color: #e0e0e0;
-                border-color: #3a3a3a;
-            }
+        input[type="text"],
+        input[type="password"] {
+            background: #fafafa;
+            color: #333;
+            border-color: #e0e0e0;
+        }
 
-            input[type="text"]:focus,
-            input[type="password"]:focus {
-                background: #2a2a2a;
-                border-color: #66baea;
-            }
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            background: white;
+            border-color: #66baea;
+            color: #333;
+        }
 
-            .time-info {
-                background: #2a2a2a;
-                color: #b0b0b0;
-                border-color: #3a3a3a;
-            }
+        .time-info {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #666;
+            border-color: #dee2e6;
+        }
+
+        .loading p {
+            color: #555;
         }
     </style>
 </head>
