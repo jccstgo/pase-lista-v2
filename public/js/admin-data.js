@@ -406,7 +406,7 @@ function renderizarListaDetallada() {
     if (presentesFiltrados.length > 0) {
         html += `
             <div class="detailed-section-header detailed-section-header-presentes">
-                <h3 class="detailed-section-title detailed-section-title-presentes">✅ Presentes (En Lista) — ${presentesFiltrados.length}</h3>
+                <h3 class="detailed-section-title detailed-section-title-presentes">✅ Presentes — ${presentesFiltrados.length}</h3>
                 <button
                     type="button"
                     class="detailed-section-download-button detailed-section-download-presentes"
@@ -770,7 +770,7 @@ function descargarBlobComoArchivo(blob, nombreArchivo) {
     URL.revokeObjectURL(url);
 }
 
-function descargarRegistrosEnPDF(registros, opciones = {}) {
+async function descargarRegistrosEnPDF(registros, opciones = {}) {
     const lista = Array.isArray(registros) ? registros : [];
     if (lista.length === 0) {
         return;
@@ -806,7 +806,7 @@ function descargarRegistrosEnPDF(registros, opciones = {}) {
         subtitulo,
         columnas: tabla.columnas,
         filas: tabla.filas
-    });
+    }));
 
     if (!resultadoGeneracion) {
         console.warn('No se pudo generar el archivo PDF.');
