@@ -86,21 +86,11 @@
                     </div>
 
                     <div class="tabs" data-group="results">
-                        <div class="tab active" data-group="results" data-tab="overview">📈 Resumen</div>
-                        <div class="tab" data-group="results" data-tab="detailed">📋 Lista Detallada</div>
+                        <div class="tab active" data-group="results" data-tab="detailed">📋 Lista Detallada</div>
+                        <div class="tab" data-group="results" data-tab="overview">📈 Resumen</div>
                     </div>
 
-                    <div id="overviewTab" class="tab-content card" data-group="results" data-tab="overview">
-                        <h2>📅 Resumen del Día</h2>
-                        <div id="contenidoResumen">
-                            <div class="loading" id="cargaResumen">
-                                <div class="spinner"></div>
-                                <p>Cargando estadísticas...</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="detailedTab" class="tab-content card hidden" data-group="results" data-tab="detailed">
+                    <div id="detailedTab" class="tab-content card" data-group="results" data-tab="detailed">
                         <div class="detailed-tab-header">
                             <h2>📋 Lista Detallada de Asistencia</h2>
                             <button type="button" class="btn btn-secondary detailed-tab-download" id="descargarListaDetalladaBtn">⬇️ Descargar listado</button>
@@ -110,6 +100,16 @@
                             <p>Cargando lista detallada...</p>
                         </div>
                         <div id="contenidoDetalle"></div>
+                    </div>
+
+                    <div id="overviewTab" class="tab-content card hidden" data-group="results" data-tab="overview">
+                        <h2>📅 Resumen del Día</h2>
+                        <div id="contenidoResumen">
+                            <div class="loading" id="cargaResumen">
+                                <div class="spinner"></div>
+                                <p>Cargando estadísticas...</p>
+                            </div>
+                        </div>
                     </div>
             </section>
 
