@@ -3,6 +3,7 @@
 // ================================
 let authToken = null;
 let estudiantesActuales = [];
+let matriculasDuplicadas = [];
 let configuracionSistema = {};
 let idIntervaloEstadisticas = null;
 let techAccessGranted = false;
@@ -422,6 +423,13 @@ Object.defineProperty(window, 'estudiantesActuales', {
     get: () => estudiantesActuales,
     set: (valor) => {
         estudiantesActuales = Array.isArray(valor) ? valor : [];
+    }
+});
+
+Object.defineProperty(window, 'matriculasDuplicadas', {
+    get: () => matriculasDuplicadas,
+    set: (valor) => {
+        matriculasDuplicadas = Array.isArray(valor) ? valor : [];
     }
 });
 
