@@ -623,24 +623,27 @@ function prepararTablaPDF(registros) {
 }
 
 function generarPDFTablaEjecutiva({ titulo, subtitulo, columnas, filas }) {
-    const namespaceJsPDF = typeof window !== 'undefined' ? window.jspdf : null;
-    const ConstructorJsPDF = namespaceJsPDF && typeof namespaceJsPDF.jsPDF === 'function'
-        ? namespaceJsPDF.jsPDF
-        : null;
-
-    if (!ConstructorJsPDF) {
-        console.error('❌ No se pudo cargar jsPDF.');
-        alert('Error: La librería jsPDF no está disponible. Verifica que el archivo esté cargado correctamente.');
+    // Verificar que jsPDF esté disponible
+    if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF !== 'function') {
+        console.error('❌ jsPDF no está disponible');
+        alert('Error: La librería jsPDF no está cargada. Verifica la conexión a internet y recarga la página.');
         return null;
     }
 
-    const doc = new ConstructorJsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    // Usar la forma correcta para jsPDF v2.x
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     
+    // Verificar que autoTable esté disponible
     if (typeof doc.autoTable !== 'function') {
-        console.error('❌ La extensión autoTable de jsPDF no está disponible.');
-        alert('Error: La librería jsPDF-AutoTable no está disponible. Verifica que el archivo esté cargado correctamente.');
+        console.error('❌ autoTable no está disponible en el objeto jsPDF');
+        console.log('Objeto doc:', doc);
+        console.log('Propiedades de doc:', Object.keys(doc));
+        alert('Error: La librería jsPDF-AutoTable no está cargada correctamente. Verifica la conexión a internet y recarga la página.');
         return null;
     }
+    
+    console.log('✅ jsPDF y autoTable cargados correctamente');
     
     const margenHorizontal = 48;
     const posicionTitulo = 56;
