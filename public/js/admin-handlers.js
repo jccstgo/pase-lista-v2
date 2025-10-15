@@ -700,35 +700,6 @@ async function previsualizarCSV() {
     }
 }
 
-async function refrescarPanelResultadosDespuesDeCambio({ incluirDispositivos = false } = {}) {
-    const tareas = [];
-
-    if (typeof cargarEstadisticas === 'function') {
-        tareas.push({ nombre: 'estadísticas', accion: cargarEstadisticas });
-    }
-
-    if (typeof cargarListaDetallada === 'function') {
-        tareas.push({ nombre: 'lista detallada', accion: cargarListaDetallada });
-    }
-
-    if (incluirDispositivos && typeof cargarDispositivos === 'function') {
-        tareas.push({ nombre: 'dispositivos', accion: cargarDispositivos });
-    }
-
-    const errores = [];
-
-    for (const tarea of tareas) {
-        try {
-            await tarea.accion();
-        } catch (error) {
-            console.error(`⚠️ Error actualizando ${tarea.nombre} tras modificar la base de personal:`, error);
-            errores.push(tarea.nombre);
-        }
-    }
-
-    return errores;
-}
-
 async function subirEstudiantes() {
     if (estudiantesActuales.length === 0) {
         mostrarMensaje('uploadMessage', 'No hay estudiantes para subir', 'error');
@@ -760,28 +731,19 @@ async function subirEstudiantes() {
             body: JSON.stringify({ students: estudiantesActuales })
         });
 
-        const { data, rawText } = await obtenerRespuestaSegura(response);
+        const data = await response.json();
 
         if (response.ok) {
-            const mensajeExito = obtenerMensajeRespuesta(
-                data,
-                'Lista de personal actualizada correctamente.',
-                rawText
-            );
-            mostrarMensaje('uploadMessage', mensajeExito, 'success');
+            mostrarMensaje('uploadMessage', data.message, 'success');
+            
+            // LIMPIAR TODO después de subir exitosamente
             document.getElementById('csvFile').value = '';
             document.getElementById('csvPreview').innerHTML = '';
             estudiantesActuales = [];
             matriculasDuplicadas = [];
+            botonSubir.disabled = true; // ✅ Desactivar el botón después de subir
 
-            const erroresRefresco = await refrescarPanelResultadosDespuesDeCambio({ incluirDispositivos: true });
-            if (erroresRefresco.length > 0) {
-                mostrarMensaje(
-                    'uploadMessage',
-                    'Lista subida correctamente. Algunas secciones del panel no se pudieron actualizar automáticamente.',
-                    'warning'
-                );
-            }
+            await cargarEstadisticas();
 
             if (configuracionSistema.device_restriction_enabled === 'true') {
                 setTimeout(() => {
@@ -789,30 +751,22 @@ async function subirEstudiantes() {
                 }, 3000);
             }
         } else if (response.status === 403) {
-            const mensajeAcceso = obtenerMensajeRespuesta(
-                data,
-                'Acceso técnico requerido para subir la lista de personal.',
-                rawText
-            );
-            mostrarMensaje('uploadMessage', mensajeAcceso, 'error');
+            mostrarMensaje('uploadMessage', data.error || 'Acceso técnico requerido para subir la lista de personal', 'error');
             mostrarMensaje('techAccessMessage', 'Ingresa la contraseña técnica antes de actualizar la base de datos.', 'error');
             await solicitarAccesoTecnico();
         } else {
-            const mensajeError = obtenerMensajeRespuesta(
-                data,
-                'No se pudo subir la lista de personal. Inténtalo más tarde.',
-                rawText
-            );
-            mostrarMensaje('uploadMessage', mensajeError, 'error');
+            mostrarMensaje('uploadMessage', data.error, 'error');
         }
     } catch (error) {
-        console.error('❌ Error de red al subir la lista de personal:', error);
-        mostrarMensaje('uploadMessage', 'No se pudo conectar con el servidor. Verifica tu conexión e inténtalo de nuevo.', 'error');
+        mostrarMensaje('uploadMessage', 'Error de conexión', 'error');
     } finally {
+        // Solo reactivar si hay archivos válidos sin duplicados
         if (Array.isArray(matriculasDuplicadas) && matriculasDuplicadas.length > 0) {
             botonSubir.disabled = true;
-        } else {
+        } else if (estudiantesActuales.length > 0) {
             botonSubir.disabled = false;
+        } else {
+            botonSubir.disabled = true;
         }
         botonSubir.textContent = 'Subir Lista de Personal';
     }
@@ -849,52 +803,35 @@ async function limpiarBaseEstudiantes() {
             }
         });
 
-        const { data, rawText } = await obtenerRespuestaSegura(response);
+        const data = await response.json();
 
         if (response.ok) {
-            const mensajeExito = obtenerMensajeRespuesta(
-                data,
-                'Base de datos de personal limpiada correctamente.',
-                rawText
-            );
-            mostrarMensaje('uploadMessage', mensajeExito, 'success');
+            mostrarMensaje('uploadMessage', data.message || 'Base de datos limpiada correctamente', 'success');
+            
+            // LIMPIAR TODO después de limpiar la base de datos
             document.getElementById('csvFile').value = '';
             document.getElementById('csvPreview').innerHTML = '';
             estudiantesActuales = [];
             matriculasDuplicadas = [];
             const botonSubir = document.getElementById('uploadBtn');
             if (botonSubir) {
-                botonSubir.disabled = true;
+                botonSubir.disabled = true; // ✅ Desactivar el botón
             }
 
-            const erroresRefresco = await refrescarPanelResultadosDespuesDeCambio({ incluirDispositivos: true });
-            if (erroresRefresco.length > 0) {
-                mostrarMensaje(
-                    'uploadMessage',
-                    'Base limpiada. Algunos paneles no se actualizaron automáticamente.',
-                    'warning'
-                );
-            }
+            await Promise.all([
+                cargarEstadisticas(),
+                cargarListaDetallada(),
+                cargarDispositivos()
+            ]);
         } else if (response.status === 403) {
-            const mensajeAcceso = obtenerMensajeRespuesta(
-                data,
-                'Acceso técnico requerido para limpiar la base de datos de personal.',
-                rawText
-            );
-            mostrarMensaje('uploadMessage', mensajeAcceso, 'error');
+            mostrarMensaje('uploadMessage', data.error || 'Acceso técnico requerido para limpiar la base de datos', 'error');
             mostrarMensaje('techAccessMessage', 'Ingresa la contraseña técnica para realizar acciones críticas.', 'error');
             await solicitarAccesoTecnico();
         } else {
-            const mensajeError = obtenerMensajeRespuesta(
-                data,
-                'No se pudo limpiar la base de datos de personal.',
-                rawText
-            );
-            mostrarMensaje('uploadMessage', mensajeError, 'error');
+            mostrarMensaje('uploadMessage', data.error || 'No se pudo limpiar la base de datos', 'error');
         }
     } catch (error) {
-        console.error('❌ Error de red al limpiar la base de datos de personal:', error);
-        mostrarMensaje('uploadMessage', 'No se pudo conectar con el servidor para limpiar la base de datos.', 'error');
+        mostrarMensaje('uploadMessage', 'Error de conexión al limpiar la base de datos', 'error');
     } finally {
         if (botonLimpiar) {
             botonLimpiar.disabled = false;
