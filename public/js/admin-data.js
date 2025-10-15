@@ -410,7 +410,10 @@ function renderizarListaDetallada() {
                 <button
                     type="button"
                     class="detailed-section-download-button detailed-section-download-presentes"
-                    id="descargarPresentesPDFBtn"
+                    data-tipo="presentes"
+                    data-fecha-legible="${escaparHTML(fechaLegible)}"
+                    data-fecha-iso="${fechaISO}"
+                    data-filtro="${escaparHTML(filtroActual)}"
                     title="Descargar presentes en PDF"
                     aria-label="Descargar presentes en PDF"
                 >⬇️</button>
@@ -428,7 +431,10 @@ function renderizarListaDetallada() {
                 <button
                     type="button"
                     class="detailed-section-download-button detailed-section-download-faltistas"
-                    id="descargarFaltistasPDFBtn"
+                    data-tipo="faltistas"
+                    data-fecha-legible="${escaparHTML(fechaLegible)}"
+                    data-fecha-iso="${fechaISO}"
+                    data-filtro="${escaparHTML(filtroActual)}"
                     title="Descargar faltistas en PDF"
                     aria-label="Descargar faltistas en PDF"
                 >⬇️</button>
@@ -462,31 +468,28 @@ function renderizarListaDetallada() {
         }
     }
 
-    const botonDescargaPresentes = document.getElementById('descargarPresentesPDFBtn');
-    if (botonDescargaPresentes) {
-        botonDescargaPresentes.addEventListener('click', () => {
-            descargarRegistrosEnPDF(presentesFiltrados, {
-                titulo: 'Presentes (En Lista)',
-                prefijoArchivo: 'presentes',
+    // CORREGIDO: Asignar eventos a los botones de descarga individuales
+    const botonesDescarga = document.querySelectorAll('.detailed-section-download-button');
+    botonesDescarga.forEach(boton => {
+        boton.addEventListener('click', function() {
+            const tipo = this.dataset.tipo;
+            const fechaLegible = this.dataset.fechaLegible;
+            const fechaISO = this.dataset.fechaIso;
+            const filtro = this.dataset.filtro;
+            
+            const registros = tipo === 'presentes' ? presentesFiltrados : faltistasFiltrados;
+            const titulo = tipo === 'presentes' ? 'Presentes (En Lista)' : 'Faltistas';
+            const prefijoArchivo = tipo;
+            
+            descargarRegistrosEnPDF(registros, {
+                titulo,
+                prefijoArchivo,
                 fechaLegible,
                 fechaISO,
-                filtro: filtroActual
+                filtro
             });
         });
-    }
-
-    const botonDescargaFaltistas = document.getElementById('descargarFaltistasPDFBtn');
-    if (botonDescargaFaltistas) {
-        botonDescargaFaltistas.addEventListener('click', () => {
-            descargarRegistrosEnPDF(faltistasFiltrados, {
-                titulo: 'Faltistas',
-                prefijoArchivo: 'faltistas',
-                fechaLegible,
-                fechaISO,
-                filtro: filtroActual
-            });
-        });
-    }
+    });
 
     const campoBusqueda = document.getElementById('filtroListaDetallada');
     if (campoBusqueda) {
@@ -626,15 +629,19 @@ function generarPDFTablaEjecutiva({ titulo, subtitulo, columnas, filas }) {
         : null;
 
     if (!ConstructorJsPDF) {
-        console.warn('No se pudo cargar jsPDF.');
+        console.error('❌ No se pudo cargar jsPDF.');
+        alert('Error: La librería jsPDF no está disponible. Verifica que el archivo esté cargado correctamente.');
         return null;
     }
 
     const doc = new ConstructorJsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    
     if (typeof doc.autoTable !== 'function') {
-        console.warn('La extensión autoTable de jsPDF no está disponible.');
+        console.error('❌ La extensión autoTable de jsPDF no está disponible.');
+        alert('Error: La librería jsPDF-AutoTable no está disponible. Verifica que el archivo esté cargado correctamente.');
         return null;
     }
+    
     const margenHorizontal = 48;
     const posicionTitulo = 56;
     const espacioTrasTitulo = subtitulo ? 24 : 16;
@@ -712,12 +719,13 @@ function generarPDFTablaEjecutiva({ titulo, subtitulo, columnas, filas }) {
     try {
         contenidoPDF = doc.output('arraybuffer');
     } catch (error) {
-        console.error('Error al generar la salida del PDF:', error);
+        console.error('❌ Error al generar la salida del PDF:', error);
+        alert('Error al generar el PDF. Por favor, intenta nuevamente.');
         return null;
     }
 
     if (!contenidoPDF) {
-        console.warn('La salida del PDF está vacía.');
+        console.error('❌ La salida del PDF está vacía.');
         return null;
     }
 
@@ -725,20 +733,12 @@ function generarPDFTablaEjecutiva({ titulo, subtitulo, columnas, filas }) {
         return contenidoPDF
             .then(buffer => new Blob([buffer], { type: 'application/pdf' }))
             .catch(error => {
-                console.error('Error al resolver la generación del PDF:', error);
+                console.error('❌ Error al resolver la generación del PDF:', error);
                 return null;
             });
     }
 
     return new Blob([contenidoPDF], { type: 'application/pdf' });
-}
-
-function esThenable(valor) {
-    return (
-        (typeof valor === 'object' || typeof valor === 'function')
-        && valor !== null
-        && typeof valor.then === 'function'
-    );
 }
 
 function normalizarTextoParaArchivo(texto) {
@@ -757,22 +757,40 @@ function normalizarTextoParaArchivo(texto) {
 
 function descargarBlobComoArchivo(blob, nombreArchivo) {
     if (!(blob instanceof Blob)) {
+        console.error('❌ Error: No se recibió un Blob válido para descargar');
         return;
     }
 
-    const url = URL.createObjectURL(blob);
-    const enlaceDescarga = document.createElement('a');
-    enlaceDescarga.href = url;
-    enlaceDescarga.download = nombreArchivo;
-    document.body.appendChild(enlaceDescarga);
-    enlaceDescarga.click();
-    document.body.removeChild(enlaceDescarga);
-    URL.revokeObjectURL(url);
+    try {
+        const url = URL.createObjectURL(blob);
+        const enlaceDescarga = document.createElement('a');
+        enlaceDescarga.href = url;
+        enlaceDescarga.download = nombreArchivo;
+        enlaceDescarga.style.display = 'none';
+        document.body.appendChild(enlaceDescarga);
+        enlaceDescarga.click();
+        
+        // Limpiar después de un pequeño delay
+        setTimeout(() => {
+            document.body.removeChild(enlaceDescarga);
+            URL.revokeObjectURL(url);
+        }, 100);
+        
+        console.log('✅ Descarga iniciada:', nombreArchivo);
+    } catch (error) {
+        console.error('❌ Error al descargar el archivo:', error);
+        alert('Error al descargar el archivo. Por favor, intenta nuevamente.');
+    }
 }
 
 async function descargarRegistrosEnPDF(registros, opciones = {}) {
+    console.log('🔍 Iniciando descarga de PDF...');
+    console.log('Registros a descargar:', registros?.length || 0);
+    
     const lista = Array.isArray(registros) ? registros : [];
     if (lista.length === 0) {
+        console.warn('⚠️ No hay registros para descargar');
+        alert('No hay registros disponibles para descargar.');
         return;
     }
 
@@ -784,10 +802,16 @@ async function descargarRegistrosEnPDF(registros, opciones = {}) {
         filtro
     } = opciones;
 
+    console.log('Opciones de descarga:', { titulo, prefijoArchivo, fechaLegible, fechaISO, filtro });
+
     const tabla = prepararTablaPDF(lista);
     if (!tabla) {
+        console.error('❌ Error al preparar la tabla para PDF');
+        alert('Error al preparar los datos para el PDF.');
         return;
     }
+
+    console.log('✅ Tabla preparada:', tabla.filas.length, 'filas');
 
     const partesSubtitulo = [];
     if (fechaLegible) {
@@ -801,46 +825,33 @@ async function descargarRegistrosEnPDF(registros, opciones = {}) {
     }
 
     const subtitulo = partesSubtitulo.join(' — ');
-    const resultadoGeneracion = generarPDFTablaEjecutiva({
+    
+    console.log('📄 Generando PDF...');
+    const blobPDF = await Promise.resolve(generarPDFTablaEjecutiva({
         titulo,
         subtitulo,
         columnas: tabla.columnas,
         filas: tabla.filas
     }));
 
-    if (!resultadoGeneracion) {
-        console.warn('No se pudo generar el archivo PDF.');
+    if (!blobPDF) {
+        console.error('❌ No se pudo generar el archivo PDF.');
         return;
     }
 
-    const manejarBlob = blobPDF => {
-        if (!blobPDF) {
-            console.warn('No se pudo generar el archivo PDF.');
-            return;
-        }
-
-        if (typeof Blob === 'function' && !(blobPDF instanceof Blob)) {
-            console.warn('La generación del PDF no devolvió un Blob válido.');
-            return;
-        }
-
-        const fechaParaArchivo = fechaISO || new Date().toISOString().split('T')[0];
-        const sufijoFiltro = filtro ? normalizarTextoParaArchivo(filtro) : '';
-        const nombreArchivo = `${prefijoArchivo}-${fechaParaArchivo}${sufijoFiltro ? `-${sufijoFiltro}` : ''}.pdf`;
-
-        descargarBlobComoArchivo(blobPDF, nombreArchivo);
-    };
-
-    if (esThenable(resultadoGeneracion)) {
-        resultadoGeneracion
-            .then(manejarBlob)
-            .catch(error => {
-                console.error('Error al generar el archivo PDF:', error);
-            });
+    if (!(blobPDF instanceof Blob)) {
+        console.error('❌ La generación del PDF no devolvió un Blob válido.');
         return;
     }
 
-    manejarBlob(resultadoGeneracion);
+    console.log('✅ PDF generado correctamente. Tamaño:', blobPDF.size, 'bytes');
+
+    const fechaParaArchivo = fechaISO || new Date().toISOString().split('T')[0];
+    const sufijoFiltro = filtro ? normalizarTextoParaArchivo(filtro) : '';
+    const nombreArchivo = `${prefijoArchivo}-${fechaParaArchivo}${sufijoFiltro ? `-${sufijoFiltro}` : ''}.pdf`;
+
+    console.log('💾 Descargando archivo:', nombreArchivo);
+    descargarBlobComoArchivo(blobPDF, nombreArchivo);
 }
 
 function prepararCampoCSV(valor) {
@@ -855,6 +866,7 @@ function prepararCampoCSV(valor) {
 
 function descargarListaDetallada() {
     if (!ultimaListaDetallada) {
+        console.warn('⚠️ No hay lista detallada para descargar');
         return;
     }
 
@@ -1076,3 +1088,4 @@ window.loadDevices = cargarDispositivos;
 window.loadAdminKeys = cargarClavesAdministrativas;
 window.displayAdminKeys = mostrarClavesAdministrativas;
 window.descargarListaDetallada = descargarListaDetallada;
+window.descargarRegistrosEnPDF = descargarRegistrosEnPDF;
