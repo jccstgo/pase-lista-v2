@@ -87,6 +87,56 @@ function cerrarSesion() {
     }
 }
 
+async function obtenerRespuestaSegura(response) {
+    let data = null;
+    let rawText = '';
+
+    try {
+        data = await response.clone().json();
+    } catch (error) {
+        data = null;
+    }
+
+    try {
+        rawText = await response.text();
+    } catch (error) {
+        rawText = '';
+    }
+
+    return { data, rawText };
+}
+
+function obtenerMensajeRespuesta(payload, fallback, rawText = '') {
+    if (payload && typeof payload === 'object') {
+        const candidatosDirectos = [payload.message, payload.error, payload.descripcion, payload.detail];
+        for (const candidato of candidatosDirectos) {
+            if (typeof candidato === 'string' && candidato.trim().length > 0) {
+                return candidato.trim();
+            }
+        }
+
+        const colecciones = [payload.errors, payload.details];
+        for (const coleccion of colecciones) {
+            if (Array.isArray(coleccion) && coleccion.length > 0) {
+                const primero = coleccion[0];
+                if (typeof primero === 'string' && primero.trim().length > 0) {
+                    return primero.trim();
+                }
+            }
+        }
+    }
+
+    if (typeof payload === 'string' && payload.trim().length > 0) {
+        return payload.trim();
+    }
+
+    if (typeof rawText === 'string' && rawText.trim().length > 0) {
+        return rawText.trim();
+    }
+
+    return fallback;
+}
+
 async function mostrarSeccionTablero(sectionId, triggerElement = null) {
     const techMessage = document.getElementById('techAccessMessage');
     const managementSection = document.getElementById('managementSection');
