@@ -63,7 +63,7 @@ class ServicioBaseDatos {
             )
         `);
 
-        await this.pool.query(`
+       await this.pool.query(`
             CREATE TABLE IF NOT EXISTS attendances (
                 id BIGSERIAL PRIMARY KEY,
                 matricula TEXT NOT NULL,
@@ -72,9 +72,39 @@ class ServicioBaseDatos {
                 attendance_date DATE NOT NULL,
                 recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 status TEXT NOT NULL DEFAULT 'registered',
+                latitude DECIMAL(10, 8),
+                longitude DECIMAL(11, 8),
+                device_fingerprint TEXT,
+                user_agent TEXT,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
+        `);
+
+        // Agregar columnas si no existen (migración)
+        await this.pool.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                            WHERE table_name='attendances' AND column_name='latitude') THEN
+                    ALTER TABLE attendances ADD COLUMN latitude DECIMAL(10, 8);
+                END IF;
+                
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                            WHERE table_name='attendances' AND column_name='longitude') THEN
+                    ALTER TABLE attendances ADD COLUMN longitude DECIMAL(11, 8);
+                END IF;
+                
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                            WHERE table_name='attendances' AND column_name='device_fingerprint') THEN
+                    ALTER TABLE attendances ADD COLUMN device_fingerprint TEXT;
+                END IF;
+                
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                            WHERE table_name='attendances' AND column_name='user_agent') THEN
+                    ALTER TABLE attendances ADD COLUMN user_agent TEXT;
+                END IF;
+            END $$;
         `);
 
         await this.pool.query('CREATE INDEX IF NOT EXISTS idx_attendances_matricula ON attendances (matricula)');

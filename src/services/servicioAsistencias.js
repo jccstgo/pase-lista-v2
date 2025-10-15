@@ -7,17 +7,35 @@ const { ErrorAplicacion } = require('../middleware/manejadorErrores');
 
 class ServicioAsistencias {
     static mapearFilaAAsistencia(row) {
+        if (!row) {
+            return null;
+        }
+
+        // Formatear ubicación
+        let location = 'N/D';
+        if (row.latitude && row.longitude) {
+            location = `${Number(row.latitude).toFixed(6)}, ${Number(row.longitude).toFixed(6)}`;
+        }
+
+        // Formatear dispositivo
+        const device = row.device_fingerprint 
+            ? row.device_fingerprint.substring(0, 16) 
+            : 'N/D';
+
         return Asistencia.fromDatabaseRow({
             ...row,
             timestamp: row?.recorded_at,
-            date: row?.attendance_date
+            date: row?.attendance_date,
+            location: location,
+            device: device
         });
     }
 
     static async obtenerTodasLasAsistencias() {
         try {
             const rows = await servicioBaseDatos.obtenerTodos(`
-                SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
+                SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status,
+                    latitude, longitude, device_fingerprint, user_agent
                 FROM attendances
                 ORDER BY recorded_at DESC
             `);
@@ -59,9 +77,10 @@ class ServicioAsistencias {
 
             const fechaAsistencia = new Date().toISOString().split('T')[0];
             const asistenciaExistente = await servicioBaseDatos.obtenerUno(
-                `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
-                 FROM attendances
-                 WHERE matricula = $1 AND attendance_date = $2`,
+                `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status,
+                        latitude, longitude, device_fingerprint, user_agent
+                FROM attendances
+                WHERE matricula = $1 AND attendance_date = $2`,
                 [matriculaNormalizada, fechaAsistencia]
             );
 
@@ -76,17 +95,33 @@ class ServicioAsistencias {
             }
 
             const timestamp = new Date().toISOString();
+            
+            // ✅ GUARDAR UBICACIÓN Y DISPOSITIVO
+            const latitude = solicitud.latitude || null;
+            const longitude = solicitud.longitude || null;
+            const deviceFingerprint = solicitud.deviceFingerprint || null;
+            const userAgent = solicitud.userAgent || '';
+
             const inserted = await servicioBaseDatos.obtenerUno(
-                `INSERT INTO attendances (matricula, nombre, grupo, attendance_date, recorded_at, status, created_at, updated_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-                 RETURNING id, matricula, nombre, grupo, attendance_date, recorded_at, status`,
+                `INSERT INTO attendances (
+                    matricula, nombre, grupo, attendance_date, recorded_at, status, 
+                    latitude, longitude, device_fingerprint, user_agent,
+                    created_at, updated_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+                RETURNING id, matricula, nombre, grupo, attendance_date, recorded_at, status,
+                        latitude, longitude, device_fingerprint, user_agent`,
                 [
                     estudiante.matricula,
                     estudiante.nombre,
                     estudiante.grupo,
                     fechaAsistencia,
                     timestamp,
-                    'registered'
+                    'registered',
+                    latitude,
+                    longitude,
+                    deviceFingerprint,
+                    userAgent
                 ]
             );
 
@@ -128,9 +163,10 @@ class ServicioAsistencias {
             const fechaHoy = new Date().toISOString().split('T')[0];
 
             const row = await servicioBaseDatos.obtenerUno(
-                `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
-                 FROM attendances
-                 WHERE matricula = $1 AND attendance_date = $2`,
+                `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status,
+                        latitude, longitude, device_fingerprint, user_agent
+                FROM attendances
+                WHERE matricula = $1 AND attendance_date = $2`,
                 [matriculaNormalizada, fechaHoy]
             );
 
@@ -145,10 +181,11 @@ class ServicioAsistencias {
         try {
             const fechaObjetivo = fecha || new Date().toISOString().split('T')[0];
             const rows = await servicioBaseDatos.obtenerTodos(
-                `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status
-                 FROM attendances
-                 WHERE attendance_date = $1
-                 ORDER BY recorded_at ASC`,
+                `SELECT id, matricula, nombre, grupo, attendance_date, recorded_at, status,
+                        latitude, longitude, device_fingerprint, user_agent
+                FROM attendances
+                WHERE attendance_date = $1
+                ORDER BY recorded_at ASC`,
                 [fechaObjetivo]
             );
 
@@ -348,10 +385,11 @@ class ServicioAsistencias {
     static async obtenerReporteAsistencias(fechaInicio, fechaFin) {
         try {
             const rows = await servicioBaseDatos.obtenerTodos(
-                `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status
-                 FROM attendances
-                 WHERE attendance_date BETWEEN $1 AND $2
-                 ORDER BY attendance_date ASC, recorded_at ASC`,
+                `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status,
+                        latitude, longitude, device_fingerprint, user_agent
+                FROM attendances
+                WHERE attendance_date BETWEEN $1 AND $2
+                ORDER BY attendance_date ASC, recorded_at ASC`,
                 [fechaInicio, fechaFin]
             );
 
@@ -462,11 +500,12 @@ class ServicioAsistencias {
         try {
             const matriculaNormalizada = matricula.toString().trim().toUpperCase().replace(/[\s\-]/g, '');
             const rows = await servicioBaseDatos.obtenerTodos(
-                `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status
-                 FROM attendances
-                 WHERE matricula = $1
-                 ORDER BY recorded_at DESC
-                 LIMIT $2`,
+                `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status,
+                        latitude, longitude, device_fingerprint, user_agent
+                FROM attendances
+                WHERE matricula = $1
+                ORDER BY recorded_at DESC
+                LIMIT $2`,
                 [matriculaNormalizada, limite]
             );
 
@@ -623,10 +662,11 @@ class ServicioAsistencias {
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
             const rows = await servicioBaseDatos.obtenerTodos(
-                `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status
-                 FROM attendances
-                 ${whereClause}
-                 ORDER BY attendance_date ASC, recorded_at ASC`,
+                `SELECT matricula, nombre, grupo, attendance_date, recorded_at, status,
+                        latitude, longitude, device_fingerprint, user_agent
+                FROM attendances
+                ${whereClause}
+                ORDER BY attendance_date ASC, recorded_at ASC`,
                 values
             );
 
@@ -643,14 +683,16 @@ class ServicioAsistencias {
                 case 'json':
                     return JSON.stringify(exportData, null, 2);
                 case 'csv': {
-                    const csvHeaders = ['Matricula', 'Nombre', 'Grupo', 'Fecha', 'Hora', 'Status'];
+                    const csvHeaders = ['Matricula', 'Nombre', 'Grupo', 'Fecha', 'Hora', 'Status', 'Ubicacion', 'Dispositivo'];
                     const csvRows = asistencias.map(asistencia => [
                         asistencia.matricula,
                         asistencia.nombre,
                         asistencia.grupo,
                         asistencia.date,
                         asistencia.obtenerHoraFormateada(),
-                        asistencia.status
+                        asistencia.status,
+                        asistencia.location || 'N/D',
+                        asistencia.device || 'N/D'
                     ]);
 
                     return [

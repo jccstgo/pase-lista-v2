@@ -9,6 +9,8 @@ class Asistencia {
         this.timestamp = data.timestamp || data.recorded_at || new Date().toISOString();
         this.status = data.status || 'registered';
         this.date = data.date || data.attendance_date || this.extraerFecha(this.timestamp);
+        this.location = data.location || 'N/D';  // ✅ AGREGAR
+        this.device = data.device || 'N/D';      // ✅ AGREGAR
     }
 
     /**
