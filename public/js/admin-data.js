@@ -675,7 +675,7 @@ function generarPDFTablaEjecutiva({ titulo, subtitulo, columnas, filas }) {
     };
 
     doc.autoTable({
-        columns,
+        columns: columnas,
         body: filas,
         startY: inicioTabla,
         styles: {
@@ -696,7 +696,7 @@ function generarPDFTablaEjecutiva({ titulo, subtitulo, columnas, filas }) {
         alternateRowStyles: {
             fillColor: [245, 248, 255]
         },
-        columnStyles,
+        columnStyles: columnStyles,
         margin: { top: posicionTitulo, right: margenHorizontal, bottom: 60, left: margenHorizontal },
         didDrawPage: data => {
             const { pageNumber, settings } = data;
