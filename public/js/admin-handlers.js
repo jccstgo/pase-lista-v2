@@ -700,6 +700,35 @@ async function previsualizarCSV() {
     }
 }
 
+async function refrescarPanelResultadosDespuesDeCambio({ incluirDispositivos = false } = {}) {
+    const tareas = [];
+
+    if (typeof cargarEstadisticas === 'function') {
+        tareas.push({ nombre: 'estadísticas', accion: cargarEstadisticas });
+    }
+
+    if (typeof cargarListaDetallada === 'function') {
+        tareas.push({ nombre: 'lista detallada', accion: cargarListaDetallada });
+    }
+
+    if (incluirDispositivos && typeof cargarDispositivos === 'function') {
+        tareas.push({ nombre: 'dispositivos', accion: cargarDispositivos });
+    }
+
+    const errores = [];
+
+    for (const tarea of tareas) {
+        try {
+            await tarea.accion();
+        } catch (error) {
+            console.error(`⚠️ Error actualizando ${tarea.nombre} tras modificar la base de personal:`, error);
+            errores.push(tarea.nombre);
+        }
+    }
+
+    return errores;
+}
+
 async function subirEstudiantes() {
     if (estudiantesActuales.length === 0) {
         mostrarMensaje('uploadMessage', 'No hay estudiantes para subir', 'error');
@@ -745,13 +774,11 @@ async function subirEstudiantes() {
             estudiantesActuales = [];
             matriculasDuplicadas = [];
 
-            try {
-                await cargarEstadisticas();
-            } catch (errorActualizandoEstadisticas) {
-                console.error('⚠️ No se pudieron refrescar las estadísticas tras subir la lista:', errorActualizandoEstadisticas);
+            const erroresRefresco = await refrescarPanelResultadosDespuesDeCambio({ incluirDispositivos: true });
+            if (erroresRefresco.length > 0) {
                 mostrarMensaje(
                     'uploadMessage',
-                    'Lista subida correctamente. Actualiza manualmente las estadísticas más tarde.',
+                    'Lista subida correctamente. Algunas secciones del panel no se pudieron actualizar automáticamente.',
                     'warning'
                 );
             }
@@ -840,14 +867,8 @@ async function limpiarBaseEstudiantes() {
                 botonSubir.disabled = true;
             }
 
-            try {
-                await Promise.all([
-                    cargarEstadisticas(),
-                    cargarListaDetallada(),
-                    cargarDispositivos()
-                ]);
-            } catch (errorActualizandoPaneles) {
-                console.error('⚠️ Base limpiada, pero no se pudieron refrescar los paneles:', errorActualizandoPaneles);
+            const erroresRefresco = await refrescarPanelResultadosDespuesDeCambio({ incluirDispositivos: true });
+            if (erroresRefresco.length > 0) {
                 mostrarMensaje(
                     'uploadMessage',
                     'Base limpiada. Algunos paneles no se actualizaron automáticamente.',
