@@ -809,11 +809,13 @@
                     deviceFingerprint: huellaDispositivo
                 };
 
+                // ✅ AGREGAR UBICACIÓN SI ESTÁ DISPONIBLE
                 if (ubicacionActual) {
                     datosSolicitud.latitude = ubicacionActual.latitude;
                     datosSolicitud.longitude = ubicacionActual.longitude;
                 }
 
+                // ✅ AGREGAR CLAVE DE SUPERVISOR SI EXISTE
                 if (claveSupervisor) {
                     datosSolicitud.adminKey = claveSupervisor;
                 }
