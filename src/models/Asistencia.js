@@ -68,24 +68,53 @@ class Asistencia {
     }
 
     /**
-     * Obtener hora formateada
+     * Obtener hora formateada en zona horaria de Ciudad de México
      */
     obtenerHoraFormateada() {
-        return new Date(this.timestamp).toLocaleTimeString('es-MX', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        if (!this.timestamp) return '-';
+        
+        try {
+            const fecha = new Date(this.timestamp);
+            
+            // Usar Intl.DateTimeFormat para zona horaria específica
+            return new Intl.DateTimeFormat('es-MX', {
+                timeZone: 'America/Mexico_City',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            }).format(fecha);
+        } catch (error) {
+            // Fallback si hay error
+            return new Date(this.timestamp).toLocaleTimeString('es-MX', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
     }
 
     /**
-     * Obtener fecha formateada
+     * Obtener fecha formateada en zona horaria de Ciudad de México
      */
     obtenerFechaFormateada() {
-        return new Date(this.timestamp).toLocaleDateString('es-MX', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
+        if (!this.timestamp) return '-';
+        
+        try {
+            const fecha = new Date(this.timestamp);
+            
+            return new Intl.DateTimeFormat('es-MX', {
+                timeZone: 'America/Mexico_City',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }).format(fecha);
+        } catch (error) {
+            return new Date(this.timestamp).toLocaleDateString('es-MX', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
     }
 
     /**

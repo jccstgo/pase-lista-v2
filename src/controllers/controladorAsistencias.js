@@ -8,12 +8,15 @@ class ControladorAsistencias {
      */
     static registrarAsistencia = manejadorAsincrono(async (req, res) => {
         console.log('📝 Petición de registro de asistencia recibida');
+        console.log('📦 Body recibido:', req.body);
         
         const { matricula, deviceFingerprint } = req.body;
 
         const result = await ServicioAsistencias.registrarAsistencia({
             matricula,
             deviceFingerprint,
+            latitude,         
+            longitude,         
             userAgent: req.headers['user-agent'] || ''
         });
         
